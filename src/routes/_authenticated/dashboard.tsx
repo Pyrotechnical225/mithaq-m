@@ -1,0 +1,317 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getMyAnswers } from "@/lib/survey.functions";
+import { getMyPrivacy } from "@/lib/privacy.functions";
+import {
+  expressInterest,
+  generateMatches,
+  getLatestMatches,
+  listInterests,
+  respondInterest,
+} from "@/lib/matches.functions";
+
+export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Your Mithaq dashboard" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: Dashboard,
+});
+
+type MatchRow = {
+  match_user_id: string;
+  score: number;
+  strengths: string;
+  considerations: string;
+  age: string | null;
+  location: string | null;
+  practice_level: string | null;
+  madhab: string | null;
+  timeline: string | null;
+};
+
+function Dashboard() {
+  const navigate = useNavigate();
+  const fetchAnswers = useServerFn(getMyAnswers);
+  const fetchPrivacy = useServerFn(getMyPrivacy);
+  const fetchMatches = useServerFn(getLatestMatches);
+  const runMatch = useServerFn(generateMatches);
+  const sendInterest = useServerFn(expressInterest);
+  const fetchInterests = useServerFn(listInterests);
+  const reply = useServerFn(respondInterest);
+
+  const [email, setEmail] = useState<string>("");
+  const [completed, setCompleted] = useState(false);
+  const [visibility, setVisibility] = useState<string>("hidden");
+  const [matches, setMatches] = useState<MatchRow[] | null>(null);
+  const [matchedAt, setMatchedAt] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
+  const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+
+  const loadAll = () => {
+    Promise.all([fetchAnswers(), fetchPrivacy(), fetchMatches(), fetchInterests()]).then(
+      ([a, p, m, i]) => {
+        setCompleted(!!a?.completed);
+        setVisibility(p?.visibility ?? "hidden");
+        const results = (m?.results as { matches: MatchRow[] } | undefined)?.matches ?? null;
+        setMatches(results);
+        setMatchedAt(m?.created_at ?? null);
+        setInterests(i);
+        setSentIds(new Set(i.sent.map((s) => s.to_user)));
+      },
+    );
+  };
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  };
+
+  const runMatching = async () => {
+    setError(null);
+    setRunning(true);
+    try {
+      const saved = await runMatch({ data: undefined as never });
+      const results = (saved?.results as { matches: MatchRow[] } | undefined)?.matches ?? [];
+      setMatches(results);
+      setMatchedAt(saved?.created_at ?? new Date().toISOString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate matches");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const canMatch = completed && visibility === "discoverable";
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="font-arabic text-2xl text-primary">م</span>
+            <span className="font-display text-lg text-foreground">Mithaq</span>
+          </Link>
+          <div className="flex items-center gap-3 text-sm">
+            <Link to="/settings" className="text-muted-foreground hover:text-foreground">
+              Privacy & settings
+            </Link>
+            <span className="text-muted-foreground">{email}</span>
+            <button
+              onClick={signOut}
+              className="rounded-full border border-border px-3 py-1 hover:bg-accent"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+        {/* Status card */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl text-foreground">As-salamu alaykum</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Complete your survey and set your profile to Discoverable to begin matching.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/survey"
+                className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                {completed ? "Edit my answers" : "Complete survey"}
+              </Link>
+              <Link
+                to="/settings"
+                className="rounded-full border border-border px-5 py-2 text-sm hover:bg-accent"
+              >
+                Privacy settings
+              </Link>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3 text-xs">
+            <Badge label="Survey" value={completed ? "Completed" : "In progress"} ok={completed} />
+            <Badge
+              label="Visibility"
+              value={visibility}
+              ok={visibility === "discoverable"}
+            />
+          </div>
+        </section>
+
+        {/* Matches */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl text-foreground">Your matches</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ranked by our AI matchmaker across deen, values, and life goals.
+                {matchedAt && (
+                  <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>
+                )}
+              </p>
+            </div>
+            <button
+              disabled={!canMatch || running}
+              onClick={runMatching}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {running ? "Finding matches…" : matches ? "Refresh matches" : "Find my matches"}
+            </button>
+          </div>
+          {!canMatch && (
+            <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
+              {completed
+                ? "Set your visibility to Discoverable in Privacy settings to enable matching."
+                : "Finish the survey to enable matching."}
+            </p>
+          )}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
+          <div className="mt-5 space-y-4">
+            {matches?.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No compatible profiles yet. Check back as more people join.
+              </p>
+            )}
+            {matches?.map((m) => (
+              <div key={m.match_user_id} className="rounded-xl border border-border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    {m.age && <span className="mr-3">Age {m.age}</span>}
+                    {m.location && <span className="mr-3">{m.location}</span>}
+                    {m.madhab && <span className="mr-3">{m.madhab}</span>}
+                    {m.practice_level && <span>{m.practice_level}</span>}
+                  </div>
+                  <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                    {Math.round(m.score)}% match
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-foreground">
+                  <span className="font-medium">Strengths — </span>{m.strengths}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Consider — </span>{m.considerations}
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    disabled={sentIds.has(m.match_user_id)}
+                    onClick={async () => {
+                      await sendInterest({ data: { to_user: m.match_user_id } });
+                      setSentIds((s) => new Set(s).add(m.match_user_id));
+                      fetchInterests().then(setInterests);
+                    }}
+                    className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Interests */}
+        {interests && (interests.received.length > 0 || interests.sent.length > 0) && (
+          <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-xl text-foreground">Interests</h2>
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Received</h3>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {interests.received.length === 0 && (
+                    <li className="text-muted-foreground">Nothing yet.</li>
+                  )}
+                  {interests.received.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <div>Someone expressed interest</div>
+                        <div className="text-xs text-muted-foreground">{r.status}</div>
+                        {r.status === "accepted" && interests.contacts[r.from_user] && (
+                          <div className="mt-1 text-xs text-primary">
+                            {interests.contacts[r.from_user].contact_email}
+                          </div>
+                        )}
+                      </div>
+                      {r.status === "pending" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              await reply({ data: { interest_id: r.id, accept: true } });
+                              loadAll();
+                            }}
+                            className="rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await reply({ data: { interest_id: r.id, accept: false } });
+                              loadAll();
+                            }}
+                            className="rounded-full border border-border px-3 py-1 text-xs"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Sent</h3>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {interests.sent.length === 0 && (
+                    <li className="text-muted-foreground">Nothing yet.</li>
+                  )}
+                  {interests.sent.map((s) => (
+                    <li key={s.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <div>Interest sent</div>
+                        <div className="text-xs text-muted-foreground">{s.status}</div>
+                        {s.status === "accepted" && interests.contacts[s.to_user] && (
+                          <div className="mt-1 text-xs text-primary">
+                            {interests.contacts[s.to_user].contact_email}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function Badge({ label, value, ok }: { label: string; value: string; ok: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${
+        ok ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+      }`}
+    >
+      <span className="text-[10px] uppercase tracking-widest opacity-70">{label}</span>
+      <span className="font-medium">{value}</span>
+    </span>
+  );
+}
