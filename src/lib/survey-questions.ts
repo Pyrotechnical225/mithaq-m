@@ -1,0 +1,71 @@
+export type QuestionType = "text" | "number" | "choice";
+
+export interface Question {
+  id: number;
+  section: string;
+  required: boolean;
+  question: string;
+  type: QuestionType;
+  options?: string[];
+}
+
+export const questions: Question[] = [
+  { id: 1, section: "Basic Information", required: true, question: "What is your age?", type: "number" },
+  { id: 2, section: "Basic Information", required: true, question: "What is your gender?", type: "choice", options: ["Male", "Female"] },
+  { id: 3, section: "Basic Information", required: true, question: "What is your current city/country of residence?", type: "text" },
+  { id: 4, section: "Basic Information", required: true, question: "Are you willing to relocate for marriage?", type: "choice", options: ["Yes", "No", "Depends on location", "Not sure"] },
+  { id: 5, section: "Basic Information", required: true, question: "What is your nationality/ethnic background?", type: "text" },
+  { id: 6, section: "Basic Information", required: true, question: "What is your marital status?", type: "choice", options: ["Never married", "Divorced", "Widowed", "Other"] },
+  { id: 7, section: "Basic Information", required: true, question: "Do you have children?", type: "choice", options: ["No children", "1–2 children", "3+ children", "Prefer not to say"] },
+  { id: 8, section: "Basic Information", required: true, question: "What is your highest level of education?", type: "choice", options: ["High school", "Bachelor's degree", "Master's or Doctorate", "Other"] },
+  { id: 9, section: "Basic Information", required: true, question: "What is your current occupation/field of work?", type: "text" },
+
+  { id: 10, section: "Religious Practice", required: true, question: "What school of thought (madhab) do you follow?", type: "choice", options: ["Hanafi", "Shafi'i", "Maliki or Hanbali", "Other", "No specific madhab"] },
+  { id: 11, section: "Religious Practice", required: true, question: "How would you describe your level of religious practice?", type: "choice", options: ["Very practicing", "Moderately practicing", "Still learning", "Cultural Muslim"] },
+  { id: 12, section: "Religious Practice", required: true, question: "How often do you pray the five daily prayers?", type: "choice", options: ["All five daily", "Most of them", "Occasionally", "Rarely"] },
+  { id: 13, section: "Religious Practice", required: true, question: "Do you attend Jummah/mosque regularly?", type: "choice", options: ["Always", "Often", "Rarely", "Never"] },
+  { id: 14, section: "Religious Practice", required: true, question: "Do you keep a beard (men) or wear hijab/niqab (women)?", type: "choice", options: ["Yes", "No", "Sometimes", "Other"] },
+  { id: 15, section: "Religious Practice", required: true, question: "How important is it that your spouse matches your level of religious practice?", type: "choice", options: ["Very important", "Somewhat important", "Not important", "Open, as long as they're respectful"] },
+  { id: 16, section: "Religious Practice", required: true, question: "Do you strictly follow a halal diet?", type: "choice", options: ["Yes, always", "Mostly", "Occasionally lenient", "Other"] },
+  { id: 17, section: "Religious Practice", required: true, question: "What is your stance on alcohol in your household?", type: "choice", options: ["Strictly none", "Prefer none but flexible", "Not a major concern", "Other"] },
+  { id: 18, section: "Religious Practice", required: true, question: "Do you read/recite the Quran regularly?", type: "choice", options: ["Daily", "Weekly", "Occasionally", "Rarely"] },
+
+  { id: 19, section: "Marriage Intentions", required: true, question: "What is your intended timeline for marriage?", type: "choice", options: ["Within 6 months", "6–12 months", "1–2 years", "Not sure", "Open"] },
+  { id: 20, section: "Marriage Intentions", required: true, question: "Will a wali (guardian) be involved in your marriage process?", type: "choice", options: ["Yes, required", "Yes, preferred", "No", "Other"] },
+  { id: 21, section: "Marriage Intentions", required: true, question: "What are your expectations regarding mahr (dowry)?", type: "text" },
+  { id: 22, section: "Marriage Intentions", required: true, question: "Are you open to marrying someone with children from a previous marriage?", type: "choice", options: ["Yes", "No", "Open to it, depending on circumstances", "Not sure"] },
+  { id: 23, section: "Marriage Intentions", required: true, question: "Have you been previously engaged or in a formal marriage process before?", type: "choice", options: ["Yes", "No", "Prefer not to say"] },
+
+  { id: 24, section: "Family & Practical Matters", required: true, question: "How involved is your family in your marriage decision?", type: "choice", options: ["Very involved", "Somewhat involved", "Minimal involvement", "Fully independent"] },
+  { id: 25, section: "Family & Practical Matters", required: true, question: "Do you smoke or use tobacco products?", type: "choice", options: ["Yes", "No", "Occasionally", "Trying to quit"] },
+  { id: 26, section: "Family & Practical Matters", required: true, question: "Do you have any health conditions your potential spouse should know about?", type: "text" },
+  { id: 27, section: "Family & Practical Matters", required: true, question: "What language(s) do you speak fluently?", type: "text" },
+  { id: 28, section: "Family & Practical Matters", required: true, question: "What is your current financial situation?", type: "choice", options: ["Entry-level income", "Moderate income", "High income", "Prefer not to say"] },
+  { id: 29, section: "Family & Practical Matters", required: true, question: "Do you have any outstanding debts that could affect marriage planning?", type: "choice", options: ["No debt", "Minor, manageable debt", "Significant debt", "Prefer not to say"] },
+  { id: 30, section: "Family & Practical Matters", required: true, question: "What are you looking for in a spouse?", type: "text" },
+
+  { id: 31, section: "Personality & Lifestyle", required: false, question: "How would you describe your personality?", type: "choice", options: ["Introverted", "Extroverted", "Balanced", "Other"] },
+  { id: 32, section: "Personality & Lifestyle", required: false, question: "What are your hobbies and interests?", type: "text" },
+  { id: 33, section: "Personality & Lifestyle", required: false, question: "How do you prefer to spend your free time?", type: "choice", options: ["Staying home", "Socializing/outings", "Outdoor activities", "Other"] },
+  { id: 34, section: "Personality & Lifestyle", required: false, question: "How would you describe your sense of humor?", type: "choice", options: ["Witty/sarcastic", "Lighthearted/silly", "Dry/subtle", "Other"] },
+  { id: 35, section: "Personality & Lifestyle", required: false, question: "How do you typically handle stress or conflict?", type: "choice", options: ["Talk it through calmly", "Need space first", "Seek advice from others", "Other"] },
+
+  { id: 36, section: "Family & Children", required: false, question: "How many children would you like to have?", type: "choice", options: ["None", "1–2", "3+", "Open/undecided"] },
+  { id: 37, section: "Family & Children", required: false, question: "What parenting style do you envision?", type: "choice", options: ["Strict/traditional", "Balanced", "Relaxed/flexible", "Other"] },
+  { id: 38, section: "Family & Children", required: false, question: "How do you envision your relationship with in-laws?", type: "choice", options: ["Very close, living near/together", "Regular contact, separate homes", "Minimal involvement", "Other"] },
+  { id: 39, section: "Family & Children", required: false, question: "Where do you see yourself living long-term?", type: "choice", options: ["Own independent home", "With/near extended family", "Open to either", "Other"] },
+  { id: 40, section: "Family & Children", required: false, question: "What role do you envision for division of household chores?", type: "choice", options: ["Traditional roles", "Shared equally", "Flexible based on circumstance", "Other"] },
+
+  { id: 41, section: "Values & Expectations", required: false, question: "How do you prefer to handle financial decisions?", type: "choice", options: ["Jointly", "One partner primarily manages", "Kept separate", "Other"] },
+  { id: 42, section: "Values & Expectations", required: false, question: "What is your love language?", type: "choice", options: ["Words of affirmation", "Quality time", "Acts of service", "Other"] },
+  { id: 43, section: "Values & Expectations", required: false, question: "How important is your spouse's career ambition to you?", type: "choice", options: ["Very important", "Somewhat important", "Not important", "No preference"] },
+  { id: 44, section: "Values & Expectations", required: false, question: "What are your views on your spouse continuing education/career after marriage?", type: "choice", options: ["Full support to continue", "Support, with family as priority", "Prefer focus on home life", "Other"] },
+
+  { id: 45, section: "Islamic & Community Life", required: false, question: "Are you involved in Islamic community activities or organizations?", type: "choice", options: ["Yes, actively", "Occasionally", "Not currently", "Other"] },
+  { id: 46, section: "Islamic & Community Life", required: false, question: "Do you follow any particular Islamic scholars or speakers?", type: "text" },
+  { id: 47, section: "Islamic & Community Life", required: false, question: "How important is it to raise children with strong Islamic education?", type: "choice", options: ["Very important", "Somewhat important", "Open to spouse's input", "Not a priority"] },
+  { id: 48, section: "Islamic & Community Life", required: false, question: "What are your views on Islamic vs. civil marriage documentation?", type: "choice", options: ["Nikah only", "Both nikah and civil", "Civil first, then nikah", "Other"] },
+
+  { id: 49, section: "Compatibility Extras", required: false, question: "What are three qualities that are absolute deal-breakers for you?", type: "text" },
+  { id: 50, section: "Compatibility Extras", required: false, question: "Is there anything else you'd like a potential match to know?", type: "text" },
+];
