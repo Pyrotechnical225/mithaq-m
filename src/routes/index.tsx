@@ -1,10 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
 function Index() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  const ctaTo = signedIn ? "/dashboard" : "/auth";
+  const ctaLabel = signedIn ? "Go to dashboard" : "Start searching";
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -14,9 +24,12 @@ function Index() {
           </div>
           <span className="font-display text-xl font-semibold text-foreground">Mithaq</span>
         </div>
-        <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#how" className="hover:text-foreground">How it works</a>
           <a href="#principles" className="hover:text-foreground">Our principles</a>
+          <Link to={ctaTo} className="rounded-full border border-border px-4 py-1.5 text-foreground hover:bg-accent">
+            {signedIn ? "Dashboard" : "Sign in"}
+          </Link>
         </nav>
       </header>
 
@@ -49,14 +62,14 @@ function Index() {
 
           <div className="mt-12 flex flex-col items-center gap-4">
             <Link
-              to="/survey"
+              to={ctaTo}
               className="group inline-flex items-center gap-3 rounded-full bg-primary px-10 py-5 text-lg font-medium text-primary-foreground shadow-[var(--shadow-elevated)] transition-all hover:-translate-y-0.5 hover:bg-primary/90"
             >
-              Start searching
+              {ctaLabel}
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </Link>
             <p className="text-xs text-muted-foreground">
-              50 thoughtful questions · About 10 minutes
+              Create your account · 50 thoughtful questions · About 10 minutes
             </p>
           </div>
         </section>

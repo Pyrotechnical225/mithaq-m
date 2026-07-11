@@ -1,16 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
 import { questions } from "@/lib/survey-questions";
+import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
 
-export const Route = createFileRoute("/survey")({
+export const Route = createFileRoute("/_authenticated/survey")({
   head: () => ({
     meta: [
       { title: "Your Mithaq profile — 50 questions" },
-      {
-        name: "description",
-        content:
-          "Answer 50 thoughtful questions so we can match you with a spouse who shares your deen, values, and goals.",
-      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -18,9 +15,25 @@ export const Route = createFileRoute("/survey")({
 });
 
 function SurveyPage() {
+  const navigate = useNavigate();
+  const fetchAnswers = useServerFn(getMyAnswers);
+  const save = useServerFn(saveMyAnswers);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [submitted, setSubmitted] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [savedTick, setSavedTick] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAnswers()
+      .then((res) => {
+        const raw = (res?.answers ?? {}) as Record<string, string>;
+        const initial: Record<number, string> = {};
+        for (const k of Object.keys(raw)) initial[Number(k)] = raw[k];
+        setAnswers(initial);
+      })
+      .finally(() => setLoaded(true));
+  }, [fetchAnswers]);
 
   const requiredMissing = useMemo(
     () =>
@@ -46,7 +59,19 @@ function SurveyPage() {
   const set = (id: number, value: string) =>
     setAnswers((prev) => ({ ...prev, [id]: value }));
 
-  const submit = (e: React.FormEvent) => {
+  const persist = async (completed: boolean) => {
+    setSaving(true);
+    try {
+      const stringified: Record<string, string> = {};
+      for (const k of Object.keys(answers)) stringified[k] = answers[Number(k)];
+      await save({ data: { answers: stringified, completed } });
+      setSavedTick(new Date().toLocaleTimeString());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requiredMissing.length > 0) {
       setShowErrors(true);
@@ -54,46 +79,35 @@ function SurveyPage() {
       first?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    setSubmitted(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    await persist(true);
+    navigate({ to: "/dashboard" });
   };
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen">
-        <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <span className="font-arabic text-2xl">✓</span>
-          </div>
-          <h1 className="text-4xl text-foreground">Jazakum Allahu khayran</h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Your answers have been received. We'll begin reviewing compatible profiles
-            and reach out with next steps insha'Allah.
-          </p>
-          <Link
-            to="/"
-            className="mt-8 inline-flex rounded-full bg-primary px-8 py-3 text-primary-foreground hover:bg-primary/90"
-          >
-            Return home
-          </Link>
-        </div>
-      </div>
-    );
+  if (!loaded) {
+    return <div className="p-16 text-center text-muted-foreground">Loading your answers…</div>;
   }
 
   return (
     <div className="min-h-screen pb-24">
       <div className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur">
-        <div className="mx-auto max-w-3xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-              <span>←</span> Home
-            </Link>
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
+          <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">
               {answeredCount} / {questions.length}
             </span>
+            <button
+              type="button"
+              onClick={() => persist(false)}
+              disabled={saving}
+              className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-60"
+            >
+              {saving ? "Saving…" : savedTick ? `Saved ${savedTick}` : "Save draft"}
+            </button>
           </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        </div>
+        <div className="mx-auto max-w-3xl px-6 pb-3">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
@@ -103,8 +117,8 @@ function SurveyPage() {
         <p className="font-arabic text-2xl text-primary" dir="rtl" lang="ar">ميثاق</p>
         <h1 className="mt-2 text-4xl text-foreground md:text-5xl">Tell us about yourself</h1>
         <p className="mt-3 text-muted-foreground">
-          Fifty questions — the first 30 are required, the rest help us match you more
-          precisely. Answer honestly; your answers are for matchmaking only.
+          The first 30 are required; the rest help us match you more precisely. Your answers
+          are stored privately and never shared until you approve a match.
         </p>
       </div>
 
@@ -199,12 +213,13 @@ function SurveyPage() {
           )}
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-10 py-4 text-lg font-medium text-primary-foreground shadow-[var(--shadow-elevated)] transition-all hover:-translate-y-0.5 hover:bg-primary/90"
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-10 py-4 text-lg font-medium text-primary-foreground shadow-[var(--shadow-elevated)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 disabled:opacity-60"
           >
-            Submit my profile →
+            {saving ? "Saving…" : "Save & continue →"}
           </button>
           <p className="mt-3 text-xs text-muted-foreground">
-            By submitting, you affirm your intention to pursue marriage the halal way, insha'Allah.
+            You can return anytime to update your answers.
           </p>
         </div>
       </form>
