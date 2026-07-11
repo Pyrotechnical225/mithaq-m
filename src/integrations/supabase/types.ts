@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interests: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          status: string
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          status?: string
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          status?: string
+          to_user?: string
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          results: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          results: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          results?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      privacy_settings: {
+        Row: {
+          reveal_contact_on_mutual: boolean
+          show_free_text: boolean
+          show_location: boolean
+          show_occupation: boolean
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          reveal_contact_on_mutual?: boolean
+          show_free_text?: boolean
+          show_location?: boolean
+          show_occupation?: boolean
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          reveal_contact_on_mutual?: boolean
+          show_free_text?: boolean
+          show_location?: boolean
+          show_occupation?: boolean
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      survey_answers: {
+        Row: {
+          answers: Json
+          completed: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          completed?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
