@@ -83,7 +83,7 @@ function Dashboard() {
     setError(null);
     setRunning(true);
     try {
-      const saved = await runMatch({ data: undefined as never });
+      const saved = await runMatch();
       const results = (saved?.results as { matches: MatchRow[] } | undefined)?.matches ?? [];
       setMatches(results);
       setMatchedAt(saved?.created_at ?? new Date().toISOString());

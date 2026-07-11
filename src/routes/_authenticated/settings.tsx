@@ -56,7 +56,7 @@ function SettingsPage() {
   };
 
   const wipe = async () => {
-    await deleteAcct({ data: undefined as never });
+    await deleteAcct();
     await supabase.auth.signOut();
     navigate({ to: "/" });
   };
