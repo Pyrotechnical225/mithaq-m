@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -17,21 +19,8 @@ function Index() {
   const ctaLabel = signedIn ? "Go to dashboard" : "Start searching";
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <span className="font-arabic text-lg">م</span>
-          </div>
-          <span className="font-display text-xl font-semibold text-foreground">Mithaq</span>
-        </div>
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-          <a href="#how" className="hover:text-foreground">How it works</a>
-          <a href="#principles" className="hover:text-foreground">Our principles</a>
-          <Link to={ctaTo} className="rounded-full border border-border px-4 py-1.5 text-foreground hover:bg-accent">
-            {signedIn ? "Dashboard" : "Sign in"}
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
+
 
       <main>
         <section className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center md:pt-24">

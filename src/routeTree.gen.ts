@@ -9,6 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaliRouteImport } from './routes/wali'
+import { Route as NikahRouteImport } from './routes/nikah'
+import { Route as MahrRouteImport } from './routes/mahr'
+import { Route as HalalRelationshipsRouteImport } from './routes/halal-relationships'
+import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +21,31 @@ import { Route as AuthenticatedSurveyRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
+const WaliRoute = WaliRouteImport.update({
+  id: '/wali',
+  path: '/wali',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NikahRoute = NikahRouteImport.update({
+  id: '/nikah',
+  path: '/nikah',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MahrRoute = MahrRouteImport.update({
+  id: '/mahr',
+  path: '/mahr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HalalRelationshipsRoute = HalalRelationshipsRouteImport.update({
+  id: '/halal-relationships',
+  path: '/halal-relationships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -49,6 +79,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/community': typeof CommunityRoute
+  '/halal-relationships': typeof HalalRelationshipsRoute
+  '/mahr': typeof MahrRoute
+  '/nikah': typeof NikahRoute
+  '/wali': typeof WaliRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
@@ -56,6 +91,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/community': typeof CommunityRoute
+  '/halal-relationships': typeof HalalRelationshipsRoute
+  '/mahr': typeof MahrRoute
+  '/nikah': typeof NikahRoute
+  '/wali': typeof WaliRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
@@ -65,20 +105,50 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/community': typeof CommunityRoute
+  '/halal-relationships': typeof HalalRelationshipsRoute
+  '/mahr': typeof MahrRoute
+  '/nikah': typeof NikahRoute
+  '/wali': typeof WaliRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/survey': typeof AuthenticatedSurveyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/settings' | '/survey'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/nikah'
+    | '/wali'
+    | '/dashboard'
+    | '/settings'
+    | '/survey'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/settings' | '/survey'
+  to:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/nikah'
+    | '/wali'
+    | '/dashboard'
+    | '/settings'
+    | '/survey'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/nikah'
+    | '/wali'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
     | '/_authenticated/survey'
@@ -88,10 +158,50 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CommunityRoute: typeof CommunityRoute
+  HalalRelationshipsRoute: typeof HalalRelationshipsRoute
+  MahrRoute: typeof MahrRoute
+  NikahRoute: typeof NikahRoute
+  WaliRoute: typeof WaliRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wali': {
+      id: '/wali'
+      path: '/wali'
+      fullPath: '/wali'
+      preLoaderRoute: typeof WaliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nikah': {
+      id: '/nikah'
+      path: '/nikah'
+      fullPath: '/nikah'
+      preLoaderRoute: typeof NikahRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mahr': {
+      id: '/mahr'
+      path: '/mahr'
+      fullPath: '/mahr'
+      preLoaderRoute: typeof MahrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/halal-relationships': {
+      id: '/halal-relationships'
+      path: '/halal-relationships'
+      fullPath: '/halal-relationships'
+      preLoaderRoute: typeof HalalRelationshipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -156,17 +266,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CommunityRoute: CommunityRoute,
+  HalalRelationshipsRoute: HalalRelationshipsRoute,
+  MahrRoute: MahrRoute,
+  NikahRoute: NikahRoute,
+  WaliRoute: WaliRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
