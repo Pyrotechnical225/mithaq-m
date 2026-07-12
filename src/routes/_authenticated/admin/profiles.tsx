@@ -7,7 +7,7 @@ import {
   listAllProfiles,
 } from "@/lib/admin.functions";
 
-export const Route = createFileRoute("/_authenticated/_admin/profiles")({
+export const Route = createFileRoute("/_authenticated/admin/profiles")({
   head: () => ({ meta: [{ title: "Profiles — Admin" }, { name: "robots", content: "noindex" }] }),
   component: ProfilesList,
 });

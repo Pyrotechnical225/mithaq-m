@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getProfileDetail, updateProfileAdmin, deleteProfileAdmin } from "@/lib/admin.functions";
 import { questions } from "@/lib/survey-questions";
 
-export const Route = createFileRoute("/_authenticated/_admin/profiles/$userId")({
+export const Route = createFileRoute("/_authenticated/admin/profiles/$userId")({
   head: () => ({ meta: [{ title: "Edit profile — Admin" }, { name: "robots", content: "noindex" }] }),
   component: EditProfile,
 });

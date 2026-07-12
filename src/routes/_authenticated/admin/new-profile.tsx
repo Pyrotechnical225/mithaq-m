@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { createProfileAdmin } from "@/lib/admin.functions";
 
-export const Route = createFileRoute("/_authenticated/_admin/new-profile")({
+export const Route = createFileRoute("/_authenticated/admin/new-profile")({
   head: () => ({ meta: [{ title: "New profile — Admin" }, { name: "robots", content: "noindex" }] }),
   component: NewProfile,
 });

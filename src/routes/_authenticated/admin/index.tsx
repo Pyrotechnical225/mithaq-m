@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { adminStats } from "@/lib/admin.functions";
 
-export const Route = createFileRoute("/_authenticated/_admin/")({
+export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Admin overview — Mithaq" }, { name: "robots", content: "noindex" }] }),
   component: AdminHome,
 });

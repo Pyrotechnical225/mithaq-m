@@ -22,6 +22,11 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedSurveyRouteImport } from './routes/_authenticated/survey'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
+import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
+import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
 
 const WaliRoute = WaliRouteImport.update({
   id: '/wali',
@@ -87,6 +92,34 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const AuthenticatedAdminProfilesRoute =
+  AuthenticatedAdminProfilesRouteImport.update({
+    id: '/profiles',
+    path: '/profiles',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminNewProfileRoute =
+  AuthenticatedAdminNewProfileRouteImport.update({
+    id: '/new-profile',
+    path: '/new-profile',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminProfilesUserIdRoute =
+  AuthenticatedAdminProfilesUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AuthenticatedAdminProfilesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -97,10 +130,15 @@ export interface FileRoutesByFullPath {
   '/nikah': typeof NikahRoute
   '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
+  '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -115,6 +153,10 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
+  '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,10 +169,15 @@ export interface FileRoutesById {
   '/nikah': typeof NikahRoute
   '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
+  '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -143,10 +190,15 @@ export interface FileRouteTypes {
     | '/nikah'
     | '/verify-email'
     | '/wali'
+    | '/admin'
     | '/dashboard'
     | '/settings'
     | '/survey'
     | '/auth/callback'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin/'
+    | '/admin/profiles/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,6 +213,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/survey'
     | '/auth/callback'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin'
+    | '/admin/profiles/$userId'
   id:
     | '__root__'
     | '/'
@@ -172,10 +228,15 @@ export interface FileRouteTypes {
     | '/nikah'
     | '/verify-email'
     | '/wali'
+    | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
     | '/_authenticated/survey'
     | '/auth/callback'
+    | '/_authenticated/admin/new-profile'
+    | '/_authenticated/admin/profiles'
+    | '/_authenticated/admin/'
+    | '/_authenticated/admin/profiles/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -283,16 +344,87 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/profiles': {
+      id: '/_authenticated/admin/profiles'
+      path: '/profiles'
+      fullPath: '/admin/profiles'
+      preLoaderRoute: typeof AuthenticatedAdminProfilesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/new-profile': {
+      id: '/_authenticated/admin/new-profile'
+      path: '/new-profile'
+      fullPath: '/admin/new-profile'
+      preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/profiles/$userId': {
+      id: '/_authenticated/admin/profiles/$userId'
+      path: '/$userId'
+      fullPath: '/admin/profiles/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminProfilesUserIdRouteImport
+      parentRoute: typeof AuthenticatedAdminProfilesRoute
+    }
   }
 }
 
+interface AuthenticatedAdminProfilesRouteChildren {
+  AuthenticatedAdminProfilesUserIdRoute: typeof AuthenticatedAdminProfilesUserIdRoute
+}
+
+const AuthenticatedAdminProfilesRouteChildren: AuthenticatedAdminProfilesRouteChildren =
+  {
+    AuthenticatedAdminProfilesUserIdRoute:
+      AuthenticatedAdminProfilesUserIdRoute,
+  }
+
+const AuthenticatedAdminProfilesRouteWithChildren =
+  AuthenticatedAdminProfilesRoute._addFileChildren(
+    AuthenticatedAdminProfilesRouteChildren,
+  )
+
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminNewProfileRoute: typeof AuthenticatedAdminNewProfileRoute
+  AuthenticatedAdminProfilesRoute: typeof AuthenticatedAdminProfilesRouteWithChildren
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminNewProfileRoute: AuthenticatedAdminNewProfileRoute,
+    AuthenticatedAdminProfilesRoute:
+      AuthenticatedAdminProfilesRouteWithChildren,
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSurveyRoute: typeof AuthenticatedSurveyRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSurveyRoute: AuthenticatedSurveyRoute,
