@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { bootstrapAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -16,6 +18,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const ensureAdmin = useServerFn(bootstrapAdmin);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +42,13 @@ function AuthPage() {
     setError(null);
     setLoading(true);
     try {
+      // Special dev/admin shortcut: typing "admin" as email
+      if (mode === "signin" && email.trim().toLowerCase() === "admin") {
+        const { email: adminEmail } = await ensureAdmin();
+        const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
+        if (error) throw error;
+        return;
+      }
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,

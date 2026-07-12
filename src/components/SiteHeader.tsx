@@ -12,11 +12,29 @@ const learnLinks = [
 
 export function SiteHeader() {
   const [signedIn, setSignedIn] = useState(false);
+  const [verified, setVerified] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const refresh = async () => {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    setSignedIn(!!user);
+    setVerified(!!user?.email_confirmed_at);
+    if (user) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      setIsAdmin(!!roles?.some((r) => r.role === "admin"));
+    } else {
+      setIsAdmin(false);
+    }
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    refresh();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -56,6 +74,16 @@ export function SiteHeader() {
             </div>
           )}
         </div>
+        {signedIn && !verified && (
+          <Link to="/verify-email" className="rounded-full bg-destructive/10 px-3 py-1 text-xs text-destructive">
+            Verify email
+          </Link>
+        )}
+        {isAdmin && (
+          <Link to="/admin" className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            Admin
+          </Link>
+        )}
         <Link
           to={signedIn ? "/dashboard" : "/auth"}
           className="rounded-full border border-border px-4 py-1.5 text-foreground hover:bg-accent"
