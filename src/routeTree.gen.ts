@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaliRouteImport } from './routes/wali'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as NikahRouteImport } from './routes/nikah'
 import { Route as MahrRouteImport } from './routes/mahr'
 import { Route as HalalRelationshipsRouteImport } from './routes/halal-relationships'
@@ -25,6 +26,11 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 const WaliRoute = WaliRouteImport.update({
   id: '/wali',
   path: '/wali',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NikahRoute = NikahRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
   '/nikah': typeof NikahRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
   '/nikah': typeof NikahRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
   '/nikah': typeof NikahRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/halal-relationships'
     | '/mahr'
     | '/nikah'
+    | '/verify-email'
     | '/wali'
     | '/dashboard'
     | '/settings'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/halal-relationships'
     | '/mahr'
     | '/nikah'
+    | '/verify-email'
     | '/wali'
     | '/dashboard'
     | '/settings'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/halal-relationships'
     | '/mahr'
     | '/nikah'
+    | '/verify-email'
     | '/wali'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
@@ -174,6 +186,7 @@ export interface RootRouteChildren {
   HalalRelationshipsRoute: typeof HalalRelationshipsRoute
   MahrRoute: typeof MahrRoute
   NikahRoute: typeof NikahRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   WaliRoute: typeof WaliRoute
 }
 
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       path: '/wali'
       fullPath: '/wali'
       preLoaderRoute: typeof WaliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nikah': {
@@ -299,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   HalalRelationshipsRoute: HalalRelationshipsRoute,
   MahrRoute: MahrRoute,
   NikahRoute: NikahRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   WaliRoute: WaliRoute,
 }
 export const routeTree = rootRouteImport

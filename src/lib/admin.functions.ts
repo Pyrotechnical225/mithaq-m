@@ -5,7 +5,8 @@ import { z } from "zod";
 const ADMIN_EMAIL = "admin@mithaq.local";
 const ADMIN_PASSWORD = "Malik225@@2";
 
-async function assertAdmin(context: { supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }; userId: string }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "admin",
@@ -173,7 +174,7 @@ export const updateProfileAdmin = createServerFn({ method: "POST" })
         .upsert({ id: data.user_id, ...patch }, { onConflict: "id" });
     }
     if (data.answers !== undefined || data.completed !== undefined) {
-      const patch: Record<string, unknown> = { user_id: data.user_id };
+      const patch: { user_id: string; answers?: Record<string, string>; completed?: boolean } = { user_id: data.user_id };
       if (data.answers !== undefined) patch.answers = data.answers;
       if (data.completed !== undefined) patch.completed = data.completed;
       await supabaseAdmin
