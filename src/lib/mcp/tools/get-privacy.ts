@@ -13,7 +13,7 @@ export default defineTool({
     const { data, error } = await supabase
       .from("privacy_settings")
       .select("*")
-      .eq("user_id", ctx.getUserId())
+      .eq("user_id", ctx.getUserId()!)
       .maybeSingle();
     if (error) return errResult(error.message);
     return jsonResult(data);

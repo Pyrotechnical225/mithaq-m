@@ -10,7 +10,7 @@ export default defineTool({
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) return unauthed();
     const supabase = supabaseForUser(ctx);
-    const uid = ctx.getUserId();
+    const uid = ctx.getUserId()!;
     const [sent, received] = await Promise.all([
       supabase
         .from("interests")

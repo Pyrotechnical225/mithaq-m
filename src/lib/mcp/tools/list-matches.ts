@@ -13,7 +13,7 @@ export default defineTool({
     const { data, error } = await supabase
       .from("matches")
       .select("id, results, created_at")
-      .eq("user_id", ctx.getUserId())
+      .eq("user_id", ctx.getUserId()!)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

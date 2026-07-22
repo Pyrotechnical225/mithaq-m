@@ -13,7 +13,7 @@ export default defineTool({
     const { data, error } = await supabase
       .from("survey_answers")
       .select("answers, completed, updated_at")
-      .eq("user_id", ctx.getUserId())
+      .eq("user_id", ctx.getUserId()!)
       .maybeSingle();
     if (error) return errResult(error.message);
     return jsonResult(data ?? { answers: {}, completed: false, updated_at: null });

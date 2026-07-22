@@ -18,7 +18,7 @@ export default defineTool({
     if (!ctx.isAuthenticated()) return unauthed();
     const supabase = supabaseForUser(ctx);
     const { error } = await supabase.from("privacy_settings").upsert({
-      user_id: ctx.getUserId(),
+      user_id: ctx.getUserId()!,
       ...input,
       updated_at: new Date().toISOString(),
     });

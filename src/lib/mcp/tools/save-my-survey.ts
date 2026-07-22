@@ -16,7 +16,7 @@ export default defineTool({
     if (!ctx.isAuthenticated()) return unauthed();
     const supabase = supabaseForUser(ctx);
     const { error } = await supabase.from("survey_answers").upsert({
-      user_id: ctx.getUserId(),
+      user_id: ctx.getUserId()!,
       answers,
       completed,
       updated_at: new Date().toISOString(),

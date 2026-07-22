@@ -9,7 +9,7 @@ function isNewKey(v: string) {
 export function supabaseForUser(ctx: ToolContext) {
   const url = process.env.SUPABASE_URL!;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-  const token = ctx.getToken();
+  const token = ctx.getToken()!;
   return createClient<Database>(url, key, {
     global: {
       headers: { Authorization: `Bearer ${token}` },

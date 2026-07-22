@@ -15,7 +15,7 @@ export default defineTool({
     if (!ctx.isAuthenticated()) return unauthed();
     const supabase = supabaseForUser(ctx);
     const { error } = await supabase.from("interests").upsert(
-      { from_user: ctx.getUserId(), to_user, status: "pending" },
+      { from_user: ctx.getUserId()!, to_user, status: "pending" },
       { onConflict: "from_user,to_user" },
     );
     if (error) return errResult(error.message);

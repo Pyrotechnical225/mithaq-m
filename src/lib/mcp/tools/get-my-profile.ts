@@ -13,7 +13,7 @@ export default defineTool({
     const { data, error } = await supabase
       .from("profiles")
       .select("id, display_name, contact_email, created_at")
-      .eq("id", ctx.getUserId())
+      .eq("id", ctx.getUserId()!)
       .maybeSingle();
     if (error) return errResult(error.message);
     return jsonResult(data);

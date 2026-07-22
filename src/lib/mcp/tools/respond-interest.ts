@@ -18,7 +18,7 @@ export default defineTool({
       .from("interests")
       .update({ status: accept ? "accepted" : "declined" })
       .eq("id", interest_id)
-      .eq("to_user", ctx.getUserId());
+      .eq("to_user", ctx.getUserId()!);
     if (error) return errResult(error.message);
     return jsonResult({ ok: true });
   },
