@@ -6,6 +6,9 @@ import { lovable } from "@/integrations/lovable/index";
 import { bootstrapAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — Mithaq" },
@@ -18,6 +21,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const ensureAdmin = useServerFn(bootstrapAdmin);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -25,17 +29,23 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const goNext = () => {
+    if (next) window.location.href = next;
+    else navigate({ to: "/dashboard" });
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+      if (data.session) goNext();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
-        navigate({ to: "/dashboard" });
+        goNext();
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,10 +60,13 @@ function AuthPage() {
         return;
       }
       if (mode === "signup") {
+        const emailRedirectTo = next
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+          : `${window.location.origin}/auth/callback`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: { emailRedirectTo },
         });
         if (error) throw error;
       } else {
@@ -69,9 +82,10 @@ function AuthPage() {
 
   const google = async () => {
     setError(null);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
+    const redirect_uri = next
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : window.location.origin;
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
     if (result.error) setError(result.error.message);
   };
 
