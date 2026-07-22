@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://ezczqpvlsnrgpdhqzcpi.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "mithaq-mcp",
+      "version": "0.1.0",
+      "title": "Mithaq"
+    },
+    "tools": [
+      {
+        "name": "get_my_profile",
+        "title": "Get my profile",
+        "description": "Return the signed-in Mithaq user's profile row (display name, contact email).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_my_survey",
+        "title": "Get my survey answers",
+        "description": "Return the signed-in user's Mithaq survey answers and completion state.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "save_my_survey",
+        "title": "Save my survey answers",
+        "description": "Upsert the signed-in user's Mithaq survey answers. Answers is a map of question id (string) to answer text. Set completed=true only after all required questions (1-30) are filled.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "answers": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Map of question id to answer text."
+            },
+            "completed": {
+              "type": "boolean",
+              "description": "Whether the survey is fully completed."
+            }
+          },
+          "required": [
+            "answers",
+            "completed"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_privacy_settings",
+        "title": "Get privacy settings",
+        "description": "Return the signed-in user's Mithaq privacy settings (visibility, field visibility).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_privacy_settings",
+        "title": "Update privacy settings",
+        "description": "Update the signed-in user's Mithaq privacy settings.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "discoverable",
+                "paused",
+                "hidden"
+              ]
+            },
+            "show_location": {
+              "type": "boolean"
+            },
+            "show_occupation": {
+              "type": "boolean"
+            },
+            "show_free_text": {
+              "type": "boolean"
+            },
+            "reveal_contact_on_mutual": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "visibility",
+            "show_location",
+            "show_occupation",
+            "show_free_text",
+            "reveal_contact_on_mutual"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_latest_matches",
+        "title": "List latest matches",
+        "description": "Return the signed-in user's most recent AI-generated match results.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_interests",
+        "title": "List interests",
+        "description": "List interests sent and received by the signed-in Mithaq user.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "express_interest",
+        "title": "Express interest",
+        "description": "Express interest in another Mithaq user by their user id (uuid). Creates or refreshes a pending interest from the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "to_user": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Recipient user id (uuid)."
+            }
+          },
+          "required": [
+            "to_user"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "respond_to_interest",
+        "title": "Respond to interest",
+        "description": "Accept or decline a received interest by its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "interest_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "accept": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "interest_id",
+            "accept"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

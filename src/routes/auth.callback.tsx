@@ -81,12 +81,17 @@ function AuthCallback() {
           }
         }
 
+        const nextRaw = url.searchParams.get("next") ?? "";
+        const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
         const { data } = await supabase.auth.getUser();
         if (data.user?.email_confirmed_at) {
           setStatus("success");
           setTitle("Email verified");
-          setBody("Redirecting you to your dashboard…");
-          setTimeout(() => navigate({ to: "/dashboard", replace: true }), 1500);
+          setBody("Redirecting…");
+          setTimeout(() => {
+            if (next) window.location.href = next;
+            else navigate({ to: "/dashboard", replace: true });
+          }, 1200);
         } else {
           setStatus("already");
           setTitle("You're signed in");

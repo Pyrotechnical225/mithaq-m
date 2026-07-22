@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaliRouteImport } from './routes/wali'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as NikahRouteImport } from './routes/nikah'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MahrRouteImport } from './routes/mahr'
 import { Route as HalalRelationshipsRouteImport } from './routes/halal-relationships'
 import { Route as CommunityRouteImport } from './routes/community'
@@ -22,10 +23,14 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedSurveyRouteImport } from './routes/_authenticated/survey'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
 import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
 
 const WaliRoute = WaliRouteImport.update({
@@ -41,6 +46,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
 const NikahRoute = NikahRouteImport.update({
   id: '/nikah',
   path: '/nikah',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MahrRoute = MahrRouteImport.update({
@@ -92,6 +102,18 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -114,6 +136,17 @@ const AuthenticatedAdminNewProfileRoute =
     path: '/new-profile',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminProfilesUserIdRoute =
   AuthenticatedAdminProfilesUserIdRouteImport.update({
     id: '/$userId',
@@ -127,14 +160,19 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
+  '/mcp': typeof McpRoute
   '/nikah': typeof NikahRoute
   '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -146,13 +184,18 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
+  '/mcp': typeof McpRoute
   '/nikah': typeof NikahRoute
   '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -166,14 +209,19 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/halal-relationships': typeof HalalRelationshipsRoute
   '/mahr': typeof MahrRoute
+  '/mcp': typeof McpRoute
   '/nikah': typeof NikahRoute
   '/verify-email': typeof VerifyEmailRoute
   '/wali': typeof WaliRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/survey': typeof AuthenticatedSurveyRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -187,14 +235,19 @@ export interface FileRouteTypes {
     | '/community'
     | '/halal-relationships'
     | '/mahr'
+    | '/mcp'
     | '/nikah'
     | '/verify-email'
     | '/wali'
     | '/admin'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/dashboard'
     | '/settings'
     | '/survey'
     | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/admin/new-profile'
     | '/admin/profiles'
     | '/admin/'
@@ -206,13 +259,18 @@ export interface FileRouteTypes {
     | '/community'
     | '/halal-relationships'
     | '/mahr'
+    | '/mcp'
     | '/nikah'
     | '/verify-email'
     | '/wali'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/dashboard'
     | '/settings'
     | '/survey'
     | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/admin/new-profile'
     | '/admin/profiles'
     | '/admin'
@@ -225,14 +283,19 @@ export interface FileRouteTypes {
     | '/community'
     | '/halal-relationships'
     | '/mahr'
+    | '/mcp'
     | '/nikah'
     | '/verify-email'
     | '/wali'
     | '/_authenticated/admin'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
     | '/_authenticated/survey'
     | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/admin/new-profile'
     | '/_authenticated/admin/profiles'
     | '/_authenticated/admin/'
@@ -246,9 +309,14 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   HalalRelationshipsRoute: typeof HalalRelationshipsRoute
   MahrRoute: typeof MahrRoute
+  McpRoute: typeof McpRoute
   NikahRoute: typeof NikahRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   WaliRoute: typeof WaliRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/nikah'
       fullPath: '/nikah'
       preLoaderRoute: typeof NikahRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mahr': {
@@ -344,6 +419,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -371,6 +460,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/new-profile'
       preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/profiles/$userId': {
       id: '/_authenticated/admin/profiles/$userId'
@@ -450,9 +553,15 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   HalalRelationshipsRoute: HalalRelationshipsRoute,
   MahrRoute: MahrRoute,
+  McpRoute: McpRoute,
   NikahRoute: NikahRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   WaliRoute: WaliRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
