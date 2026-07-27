@@ -27,8 +27,10 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminSeedRouteImport } from './routes/_authenticated/admin/seed'
 import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
 import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
+import { Route as AuthenticatedAdminImamsRouteImport } from './routes/_authenticated/admin/imams'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
@@ -124,6 +126,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminSeedRoute = AuthenticatedAdminSeedRouteImport.update({
+  id: '/seed',
+  path: '/seed',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const AuthenticatedAdminProfilesRoute =
   AuthenticatedAdminProfilesRouteImport.update({
     id: '/profiles',
@@ -136,6 +143,11 @@ const AuthenticatedAdminNewProfileRoute =
     path: '/new-profile',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminImamsRoute = AuthenticatedAdminImamsRouteImport.update({
+  id: '/imams',
+  path: '/imams',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -173,8 +185,10 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/admin/seed': typeof AuthenticatedAdminSeedRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
@@ -196,8 +210,10 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/admin/seed': typeof AuthenticatedAdminSeedRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
@@ -222,8 +238,10 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
+  '/_authenticated/admin/seed': typeof AuthenticatedAdminSeedRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
@@ -248,8 +266,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/admin/imams'
     | '/admin/new-profile'
     | '/admin/profiles'
+    | '/admin/seed'
     | '/admin/'
     | '/admin/profiles/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -271,8 +291,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/admin/imams'
     | '/admin/new-profile'
     | '/admin/profiles'
+    | '/admin/seed'
     | '/admin'
     | '/admin/profiles/$userId'
   id:
@@ -296,8 +318,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/admin/imams'
     | '/_authenticated/admin/new-profile'
     | '/_authenticated/admin/profiles'
+    | '/_authenticated/admin/seed'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/profiles/$userId'
   fileRoutesById: FileRoutesById
@@ -447,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/seed': {
+      id: '/_authenticated/admin/seed'
+      path: '/seed'
+      fullPath: '/admin/seed'
+      preLoaderRoute: typeof AuthenticatedAdminSeedRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/profiles': {
       id: '/_authenticated/admin/profiles'
       path: '/profiles'
@@ -459,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/new-profile'
       fullPath: '/admin/new-profile'
       preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/imams': {
+      id: '/_authenticated/admin/imams'
+      path: '/imams'
+      fullPath: '/admin/imams'
+      preLoaderRoute: typeof AuthenticatedAdminImamsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/.mcp/invoke-tool/$tool': {
@@ -501,16 +539,20 @@ const AuthenticatedAdminProfilesRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminImamsRoute: typeof AuthenticatedAdminImamsRoute
   AuthenticatedAdminNewProfileRoute: typeof AuthenticatedAdminNewProfileRoute
   AuthenticatedAdminProfilesRoute: typeof AuthenticatedAdminProfilesRouteWithChildren
+  AuthenticatedAdminSeedRoute: typeof AuthenticatedAdminSeedRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminImamsRoute: AuthenticatedAdminImamsRoute,
     AuthenticatedAdminNewProfileRoute: AuthenticatedAdminNewProfileRoute,
     AuthenticatedAdminProfilesRoute:
       AuthenticatedAdminProfilesRouteWithChildren,
+    AuthenticatedAdminSeedRoute: AuthenticatedAdminSeedRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 
