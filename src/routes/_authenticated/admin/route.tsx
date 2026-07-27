@@ -40,6 +40,12 @@ function AdminLayout() {
             <Link to="/admin/new-profile" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
               New profile
             </Link>
+            <Link to="/admin/imams" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
+              Imams
+            </Link>
+            <Link to="/admin/seed" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
+              Seed data
+            </Link>
             <Link to="/dashboard" className="rounded-full border border-border px-3 py-1 hover:bg-accent">
               User view
             </Link>

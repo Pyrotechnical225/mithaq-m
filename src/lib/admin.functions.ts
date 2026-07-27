@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "admin@mithaq.local";
-const ADMIN_PASSWORD = "Malik225@@2";
+const ADMIN_EMAIL = "admin@mithaq.com";
+const ADMIN_PASSWORD = "Malikmalik1@";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
@@ -356,3 +356,177 @@ export const amIAdmin = createServerFn({ method: "GET" })
     });
     return { isAdmin: !!data };
   });
+
+// -----------------------------------------------------------------------------
+// Admin: imam directory CRUD + seed
+// -----------------------------------------------------------------------------
+import { findUkCity, UK_CITY_NAMES } from "@/lib/uk-cities";
+import { EXAMPLE_IMAMS } from "@/lib/example-imams";
+import { EXAMPLE_USERS, EXAMPLE_USER_DOMAIN } from "@/lib/example-users";
+
+const ImamInput = z.object({
+  name: z.string().min(1).max(200),
+  title: z.string().max(80).optional().nullable(),
+  mosque: z.string().max(200).optional().nullable(),
+  city: z.string().min(1).max(120),
+  postcode: z.string().max(20).optional().nullable(),
+  lat: z.number().optional().nullable(),
+  lng: z.number().optional().nullable(),
+  phone: z.string().max(60).optional().nullable(),
+  email: z.string().max(320).optional().nullable(),
+  website: z.string().max(500).optional().nullable(),
+  languages: z.array(z.string().max(60)).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+function withCityCoords(input: z.infer<typeof ImamInput>) {
+  if (input.lat != null && input.lng != null) return input;
+  const known = findUkCity(input.city);
+  if (known) return { ...input, lat: known.lat, lng: known.lng };
+  return input;
+}
+
+export const createImam = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ImamInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const payload = withCityCoords(data);
+    const { data: row, error } = await supabaseAdmin
+      .from("imams")
+      .insert({ ...payload, languages: payload.languages ?? [] })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+const UpdateImamInput = ImamInput.partial().extend({ id: z.string().uuid() });
+
+export const updateImam = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => UpdateImamInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { id, ...patch } = data;
+    const { error } = await supabaseAdmin.from("imams").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteImam = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("imams").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Idempotent: only inserts imams whose (name, city) pair is missing.
+export const seedExampleImams = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin.from("imams").select("name, city");
+    const have = new Set((existing ?? []).map((r) => `${r.name}::${r.city}`));
+    const toInsert = EXAMPLE_IMAMS
+      .filter((e) => !have.has(`${e.name}::${e.city}`))
+      .map((e) => {
+        const known = findUkCity(e.city);
+        return {
+          name: e.name,
+          title: e.title,
+          mosque: e.mosque,
+          city: e.city,
+          postcode: e.postcode ?? null,
+          lat: known?.lat ?? null,
+          lng: known?.lng ?? null,
+          phone: e.phone ?? null,
+          email: e.email ?? null,
+          website: e.website ?? null,
+          languages: e.languages,
+          notes: e.notes ?? null,
+        };
+      });
+    if (toInsert.length === 0) return { inserted: 0, skipped: EXAMPLE_IMAMS.length };
+    const { error } = await supabaseAdmin.from("imams").insert(toInsert);
+    if (error) throw new Error(error.message);
+    return { inserted: toInsert.length, skipped: EXAMPLE_IMAMS.length - toInsert.length };
+  });
+
+// -----------------------------------------------------------------------------
+// Admin: seed example users (idempotent). Any email ending in mithaq.demo
+// is a fixture and can be bulk-deleted.
+// -----------------------------------------------------------------------------
+export const seedExampleUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 });
+    if (listErr) throw new Error(listErr.message);
+    const existing = new Map(list.users.map((u) => [u.email?.toLowerCase() ?? "", u]));
+
+    let inserted = 0;
+    let skipped = 0;
+    for (const ex of EXAMPLE_USERS) {
+      const key = ex.email.toLowerCase();
+      let userId = existing.get(key)?.id;
+      if (!userId) {
+        const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          email: ex.email,
+          password: ex.password,
+          email_confirm: true,
+          user_metadata: { display_name: ex.display_name },
+        });
+        if (createErr) { skipped += 1; continue; }
+        userId = created.user!.id;
+        inserted += 1;
+      } else {
+        skipped += 1;
+      }
+      const known = findUkCity(ex.uk_city);
+      await supabaseAdmin.from("profiles").upsert({
+        id: userId,
+        display_name: ex.display_name,
+        contact_email: ex.email,
+        uk_city: ex.uk_city,
+        location_lat: known?.lat ?? null,
+        location_lng: known?.lng ?? null,
+      }, { onConflict: "id" });
+      await supabaseAdmin.from("privacy_settings").upsert({
+        user_id: userId,
+        visibility: "discoverable",
+      }, { onConflict: "user_id" });
+      await supabaseAdmin.from("survey_answers").upsert({
+        user_id: userId,
+        answers: ex.answers,
+        completed: true,
+      }, { onConflict: "user_id" });
+    }
+    return { inserted, skipped, total: EXAMPLE_USERS.length };
+  });
+
+export const deleteExampleUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 });
+    let deleted = 0;
+    for (const u of list?.users ?? []) {
+      if (u.email && u.email.toLowerCase().endsWith(EXAMPLE_USER_DOMAIN)) {
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(u.id);
+        if (!error) deleted += 1;
+      }
+    }
+    return { deleted };
+  });
+
+export const ADMIN_UK_CITIES = UK_CITY_NAMES;
