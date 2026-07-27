@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAnswers } from "@/lib/survey.functions";
 import { getMyPrivacy } from "@/lib/privacy.functions";
@@ -11,6 +11,8 @@ import {
   listInterests,
   respondInterest,
 } from "@/lib/matches.functions";
+import { getMyLocation, listImams, saveMyLocation, UK_CITIES_FOR_UI } from "@/lib/imams.functions";
+import { haversineKm, kmToMiles } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
