@@ -45,6 +45,9 @@ function Dashboard() {
   const sendInterest = useServerFn(expressInterest);
   const fetchInterests = useServerFn(listInterests);
   const reply = useServerFn(respondInterest);
+  const fetchLocation = useServerFn(getMyLocation);
+  const saveLocation = useServerFn(saveMyLocation);
+  const fetchImams = useServerFn(listImams);
 
   const [email, setEmail] = useState<string>("");
   const [completed, setCompleted] = useState(false);
@@ -56,9 +59,23 @@ function Dashboard() {
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
 
+  // Location & imams
+  const [locCity, setLocCity] = useState<string>("");
+  const [locPostcode, setLocPostcode] = useState<string>("");
+  const [locLat, setLocLat] = useState<number | null>(null);
+  const [locLng, setLocLng] = useState<number | null>(null);
+  const [locSaving, setLocSaving] = useState(false);
+  const [locMsg, setLocMsg] = useState<string | null>(null);
+  const [imams, setImams] = useState<Awaited<ReturnType<typeof listImams>> | null>(null);
+  const [imamCityFilter, setImamCityFilter] = useState<string>("all");
+  const [imamRadius, setImamRadius] = useState<number>(0); // 0 = any
+
   const loadAll = () => {
-    Promise.all([fetchAnswers(), fetchPrivacy(), fetchMatches(), fetchInterests()]).then(
-      ([a, p, m, i]) => {
+    Promise.all([
+      fetchAnswers(), fetchPrivacy(), fetchMatches(), fetchInterests(),
+      fetchLocation(), fetchImams(),
+    ]).then(
+      ([a, p, m, i, loc, im]) => {
         setCompleted(!!a?.completed);
         setVisibility(p?.visibility ?? "hidden");
         const results = (m?.results as { matches: MatchRow[] } | undefined)?.matches ?? null;
@@ -66,6 +83,11 @@ function Dashboard() {
         setMatchedAt(m?.created_at ?? null);
         setInterests(i);
         setSentIds(new Set(i.sent.map((s) => s.to_user)));
+        setLocCity(loc?.uk_city ?? "");
+        setLocPostcode(loc?.uk_postcode ?? "");
+        setLocLat(loc?.location_lat ?? null);
+        setLocLng(loc?.location_lng ?? null);
+        setImams(im);
       },
     );
   };
@@ -96,7 +118,53 @@ function Dashboard() {
     }
   };
 
+  const saveLoc = async () => {
+    setLocSaving(true);
+    setLocMsg(null);
+    try {
+      const r = await saveLocation({ data: { uk_city: locCity || null, uk_postcode: locPostcode || null } });
+      setLocMsg(r.matched_city ? `Saved. Nearby imams sorted by distance from ${r.matched_city}.` : "Saved.");
+      const loc = await fetchLocation();
+      setLocLat(loc?.location_lat ?? null);
+      setLocLng(loc?.location_lng ?? null);
+    } catch (e) {
+      setLocMsg(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setLocSaving(false);
+    }
+  };
+
+  const rankedImams = useMemo(() => {
+    if (!imams) return [];
+    const withDist = imams.map((im) => {
+      const distKm = locLat != null && locLng != null && im.lat != null && im.lng != null
+        ? haversineKm(locLat, locLng, im.lat, im.lng)
+        : null;
+      return { ...im, distKm };
+    });
+    const filtered = withDist.filter((im) => {
+      if (imamCityFilter !== "all" && im.city !== imamCityFilter) return false;
+      if (imamRadius > 0 && im.distKm != null && kmToMiles(im.distKm) > imamRadius) return false;
+      return true;
+    });
+    filtered.sort((a, b) => {
+      if (a.distKm != null && b.distKm != null) return a.distKm - b.distKm;
+      if (a.distKm != null) return -1;
+      if (b.distKm != null) return 1;
+      return a.city.localeCompare(b.city);
+    });
+    return filtered;
+  }, [imams, locLat, locLng, imamCityFilter, imamRadius]);
+
+  const availableImamCities = useMemo(() => {
+    const s = new Set<string>();
+    (imams ?? []).forEach((im) => s.add(im.city));
+    return Array.from(s).sort();
+  }, [imams]);
+
   const canMatch = completed && visibility === "discoverable";
+
+
 
   return (
     <div className="min-h-screen bg-background">
