@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "admin@mithaq.local";
-const ADMIN_PASSWORD = "Malik225@@2";
+const ADMIN_EMAIL = "admin@mithaq.com";
+const ADMIN_PASSWORD = "Malikmalik1@";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
