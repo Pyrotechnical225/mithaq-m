@@ -224,6 +224,97 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* Location */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <h2 className="text-xl text-foreground">Your location in the UK</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Set your city so we can suggest imams close to you for the nikah and guidance.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+            <label className="block">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">City</span>
+              <select value={locCity} onChange={(e) => setLocCity(e.target.value)} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm">
+                <option value="">Select…</option>
+                {UK_CITIES_FOR_UI.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">Postcode (optional)</span>
+              <input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="e.g. B1 1AA" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+            </label>
+            <div className="flex items-end">
+              <button disabled={locSaving || !locCity} onClick={saveLoc} className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+                {locSaving ? "Saving…" : "Save location"}
+              </button>
+            </div>
+          </div>
+          {locMsg && <p className="mt-2 text-xs text-muted-foreground">{locMsg}</p>}
+        </section>
+
+        {/* Imams near you */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <h2 className="text-xl text-foreground">Imams near you</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {locLat != null
+                  ? "Sorted by distance from your saved location."
+                  : "Save your location above to sort by distance."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <select value={imamCityFilter} onChange={(e) => setImamCityFilter(e.target.value)} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs">
+                <option value="all">All cities</option>
+                {availableImamCities.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={imamRadius} onChange={(e) => setImamRadius(Number(e.target.value))} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs" disabled={locLat == null}>
+                <option value={0}>Any distance</option>
+                <option value={10}>Within 10 mi</option>
+                <option value={25}>Within 25 mi</option>
+                <option value={50}>Within 50 mi</option>
+                <option value={100}>Within 100 mi</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {rankedImams.length === 0 && (
+              <p className="text-sm text-muted-foreground">No imams match your filters yet.</p>
+            )}
+            {rankedImams.map((im) => (
+              <div key={im.id} className="rounded-xl border border-border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <div className="text-foreground font-medium">{im.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {im.title}{im.mosque ? ` · ${im.mosque}` : ""} · {im.city}{im.postcode ? `, ${im.postcode}` : ""}
+                    </div>
+                  </div>
+                  {im.distKm != null && (
+                    <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      {kmToMiles(im.distKm).toFixed(1)} mi
+                    </div>
+                  )}
+                </div>
+                {(im.languages ?? []).length > 0 && (
+                  <div className="mt-2 text-xs text-muted-foreground">Languages: {(im.languages ?? []).join(", ")}</div>
+                )}
+                {im.notes && <p className="mt-2 text-sm text-foreground">{im.notes}</p>}
+                <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                  {im.phone && <a href={`tel:${im.phone}`} className="text-primary hover:underline">{im.phone}</a>}
+                  {im.email && <a href={`mailto:${im.email}`} className="text-primary hover:underline">{im.email}</a>}
+                  {im.website && <a href={im.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">Website</a>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+
+
         {/* Matches */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-center justify-between gap-4">
