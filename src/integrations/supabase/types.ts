@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      imams: {
+        Row: {
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          languages: string[]
+          lat: number | null
+          lng: number | null
+          mosque: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          postcode: string | null
+          title: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          languages?: string[]
+          lat?: number | null
+          lng?: number | null
+          mosque?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          languages?: string[]
+          lat?: number | null
+          lng?: number | null
+          mosque?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       interests: {
         Row: {
           created_at: string
@@ -95,6 +149,10 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          location_lat: number | null
+          location_lng: number | null
+          uk_city: string | null
+          uk_postcode: string | null
           updated_at: string
         }
         Insert: {
@@ -102,6 +160,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          location_lat?: number | null
+          location_lng?: number | null
+          uk_city?: string | null
+          uk_postcode?: string | null
           updated_at?: string
         }
         Update: {
@@ -109,6 +171,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          uk_city?: string | null
+          uk_postcode?: string | null
           updated_at?: string
         }
         Relationships: []
