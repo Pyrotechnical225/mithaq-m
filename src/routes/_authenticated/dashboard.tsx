@@ -274,6 +274,35 @@ function Dashboard() {
             </p>
           </div>
 
+          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
+            <p className="font-medium">Please review these matches with your wali or parent.</p>
+            <p className="mt-1 text-muted-foreground">
+              Mithaq encourages family involvement from the very first step. Sit down with a parent
+              or wali (guardian) and go through the suggestions together before expressing interest —
+              their guidance is part of the halal way.
+            </p>
+            {!waliConfirmed ? (
+              <label className="mt-3 flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-input"
+                  onChange={(e) => e.target.checked && confirmWali()}
+                />
+                <span>
+                  I confirm my wali or parent is with me (or has agreed) to review these matches
+                  together.
+                </span>
+              </label>
+            ) : (
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-primary">✓ Wali / parent confirmed for this session.</span>
+                <button onClick={resetWali} className="text-muted-foreground underline hover:text-foreground">
+                  Undo
+                </button>
+              </div>
+            )}
+          </div>
+
           {!canMatch && (
             <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
               {completed
@@ -283,13 +312,18 @@ function Dashboard() {
           )}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
-          <div className="mt-5 space-y-4">
-            {matches?.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No compatible profiles yet. Check back as more people join.
-              </p>
-            )}
-            {matches?.map((m) => (
+          {!waliConfirmed ? (
+            <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              Confirm your wali or parent is reviewing with you to reveal your suitable matches.
+            </p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {matches?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No compatible profiles yet. Check back as more people join.
+                </p>
+              )}
+              {matches?.map((m) => (
               <div key={m.match_user_id} className="rounded-xl border border-border p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div className="text-sm text-muted-foreground">
@@ -323,7 +357,9 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
+
         </section>
 
         {/* Location */}
