@@ -70,7 +70,24 @@ function Dashboard() {
   const [locMsg, setLocMsg] = useState<string | null>(null);
   const [imams, setImams] = useState<Awaited<ReturnType<typeof listImams>> | null>(null);
   const [imamCityFilter, setImamCityFilter] = useState<string>("all");
-  const [imamRadius, setImamRadius] = useState<number>(0); // 0 = any
+  const [imamRadius, setImamRadius] = useState<number>(0); // 0 = any (km)
+
+  // Wali/parent confirmation before viewing matches. Persisted per browser.
+  const [waliConfirmed, setWaliConfirmed] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWaliConfirmed(window.localStorage.getItem("mithaq:waliConfirmed") === "1");
+    }
+  }, []);
+  const confirmWali = () => {
+    setWaliConfirmed(true);
+    if (typeof window !== "undefined") window.localStorage.setItem("mithaq:waliConfirmed", "1");
+  };
+  const resetWali = () => {
+    setWaliConfirmed(false);
+    if (typeof window !== "undefined") window.localStorage.removeItem("mithaq:waliConfirmed");
+  };
+
 
   const loadAll = () => {
     Promise.all([
