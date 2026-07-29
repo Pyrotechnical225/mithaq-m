@@ -52,8 +52,9 @@ function AuthPage() {
     setError(null);
     setLoading(true);
     try {
-      // Special dev/admin shortcut: typing "admin" as email
-      if (mode === "signin" && email.trim().toLowerCase() === "admin") {
+      // Special dev/admin shortcut: typing "admin" (or admin@mithaq.com) as email
+      const normalized = email.trim().toLowerCase();
+      if (mode === "signin" && (normalized === "admin" || normalized === "admin@mithaq.com")) {
         const { email: adminEmail } = await ensureAdmin();
         const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
         if (error) throw error;
