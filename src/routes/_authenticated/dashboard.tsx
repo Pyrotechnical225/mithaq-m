@@ -411,13 +411,32 @@ function Dashboard() {
               </select>
               <select value={imamRadius} onChange={(e) => setImamRadius(Number(e.target.value))} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs" disabled={locLat == null}>
                 <option value={0}>Any distance</option>
-                <option value={10}>Within 10 mi</option>
-                <option value={25}>Within 25 mi</option>
-                <option value={50}>Within 50 mi</option>
-                <option value={100}>Within 100 mi</option>
+                <option value={15}>Within 15 km</option>
+                <option value={40}>Within 40 km</option>
+                <option value={80}>Within 80 km</option>
+                <option value={160}>Within 160 km</option>
               </select>
             </div>
           </div>
+
+          {/* Map of UK with imam pins */}
+          <div className="mt-4">
+            <UkImamMap
+              points={rankedImams
+                .filter((im): im is typeof im & { lat: number; lng: number } => im.lat != null && im.lng != null)
+                .map<ImamMapPoint>((im) => ({
+                  id: im.id,
+                  name: im.name,
+                  city: im.city,
+                  mosque: im.mosque,
+                  lat: im.lat as number,
+                  lng: im.lng as number,
+                  distKm: im.distKm ?? null,
+                }))}
+              user={locLat != null && locLng != null ? { lat: locLat, lng: locLng } : null}
+            />
+          </div>
+
           <div className="mt-4 space-y-3">
             {rankedImams.length === 0 && (
               <p className="text-sm text-muted-foreground">No imams match your filters yet.</p>
@@ -433,7 +452,7 @@ function Dashboard() {
                   </div>
                   {im.distKm != null && (
                     <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                      {kmToMiles(im.distKm).toFixed(1)} mi
+                      {im.distKm.toFixed(1)} km <span className="opacity-60">· {kmToMiles(im.distKm).toFixed(1)} mi</span>
                     </div>
                   )}
                 </div>
@@ -450,6 +469,7 @@ function Dashboard() {
             ))}
           </div>
         </section>
+
 
         {/* Interests */}
         {interests && (interests.received.length > 0 || interests.sent.length > 0) && (
