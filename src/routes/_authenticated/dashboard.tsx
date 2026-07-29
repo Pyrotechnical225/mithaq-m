@@ -224,6 +224,88 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* Matches */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl text-foreground">Your matches</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ranked by our AI matchmaker across deen, values, and life goals.
+                {matchedAt && (
+                  <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>
+                )}
+              </p>
+            </div>
+            <button
+              disabled={!canMatch || running}
+              onClick={runMatching}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {running ? "Finding matches…" : matches ? "Refresh matches" : "Find my matches"}
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
+            <p className="font-medium">Please review these matches with your wali or parent.</p>
+            <p className="mt-1 text-muted-foreground">
+              Mithaq encourages family involvement from the very first step. Sit down with a parent
+              or wali (guardian) and go through the suggestions together before expressing interest —
+              their guidance is part of the halal way.
+            </p>
+          </div>
+
+          {!canMatch && (
+            <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
+              {completed
+                ? "Set your visibility to Discoverable in Privacy settings to enable matching."
+                : "Finish the survey to enable matching."}
+            </p>
+          )}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
+          <div className="mt-5 space-y-4">
+            {matches?.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No compatible profiles yet. Check back as more people join.
+              </p>
+            )}
+            {matches?.map((m) => (
+              <div key={m.match_user_id} className="rounded-xl border border-border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    {m.age && <span className="mr-3">Age {m.age}</span>}
+                    {m.location && <span className="mr-3">{m.location}</span>}
+                    {m.madhab && <span className="mr-3">{m.madhab}</span>}
+                    {m.practice_level && <span>{m.practice_level}</span>}
+                  </div>
+                  <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                    {Math.round(m.score)}% match
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-foreground">
+                  <span className="font-medium">Strengths — </span>{m.strengths}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Consider — </span>{m.considerations}
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    disabled={sentIds.has(m.match_user_id)}
+                    onClick={async () => {
+                      await sendInterest({ data: { to_user: m.match_user_id } });
+                      setSentIds((s) => new Set(s).add(m.match_user_id));
+                      fetchInterests().then(setInterests);
+                    }}
+                    className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Location */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -307,80 +389,6 @@ function Dashboard() {
                   {im.phone && <a href={`tel:${im.phone}`} className="text-primary hover:underline">{im.phone}</a>}
                   {im.email && <a href={`mailto:${im.email}`} className="text-primary hover:underline">{im.email}</a>}
                   {im.website && <a href={im.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">Website</a>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-
-
-        {/* Matches */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl text-foreground">Your matches</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ranked by our AI matchmaker across deen, values, and life goals.
-                {matchedAt && (
-                  <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>
-                )}
-              </p>
-            </div>
-            <button
-              disabled={!canMatch || running}
-              onClick={runMatching}
-              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {running ? "Finding matches…" : matches ? "Refresh matches" : "Find my matches"}
-            </button>
-          </div>
-          {!canMatch && (
-            <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
-              {completed
-                ? "Set your visibility to Discoverable in Privacy settings to enable matching."
-                : "Finish the survey to enable matching."}
-            </p>
-          )}
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-
-          <div className="mt-5 space-y-4">
-            {matches?.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No compatible profiles yet. Check back as more people join.
-              </p>
-            )}
-            {matches?.map((m) => (
-              <div key={m.match_user_id} className="rounded-xl border border-border p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-sm text-muted-foreground">
-                    {m.age && <span className="mr-3">Age {m.age}</span>}
-                    {m.location && <span className="mr-3">{m.location}</span>}
-                    {m.madhab && <span className="mr-3">{m.madhab}</span>}
-                    {m.practice_level && <span>{m.practice_level}</span>}
-                  </div>
-                  <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                    {Math.round(m.score)}% match
-                  </div>
-                </div>
-                <p className="mt-3 text-sm text-foreground">
-                  <span className="font-medium">Strengths — </span>{m.strengths}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Consider — </span>{m.considerations}
-                </p>
-                <div className="mt-3 flex items-center gap-3">
-                  <button
-                    disabled={sentIds.has(m.match_user_id)}
-                    onClick={async () => {
-                      await sendInterest({ data: { to_user: m.match_user_id } });
-                      setSentIds((s) => new Set(s).add(m.match_user_id));
-                      fetchInterests().then(setInterests);
-                    }}
-                    className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
-                  </button>
                 </div>
               </div>
             ))}
