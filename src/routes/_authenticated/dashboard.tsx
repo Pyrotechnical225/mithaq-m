@@ -13,6 +13,8 @@ import {
 } from "@/lib/matches.functions";
 import { getMyLocation, listImams, saveMyLocation, UK_CITIES_FOR_UI } from "@/lib/imams.functions";
 import { haversineKm, kmToMiles } from "@/lib/geo";
+import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
