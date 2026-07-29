@@ -163,9 +163,10 @@ function Dashboard() {
     });
     const filtered = withDist.filter((im) => {
       if (imamCityFilter !== "all" && im.city !== imamCityFilter) return false;
-      if (imamRadius > 0 && im.distKm != null && kmToMiles(im.distKm) > imamRadius) return false;
+      if (imamRadius > 0 && im.distKm != null && im.distKm > imamRadius) return false;
       return true;
     });
+
     filtered.sort((a, b) => {
       if (a.distKm != null && b.distKm != null) return a.distKm - b.distKm;
       if (a.distKm != null) return -1;
