@@ -13,6 +13,8 @@ import {
 } from "@/lib/matches.functions";
 import { getMyLocation, listImams, saveMyLocation, UK_CITIES_FOR_UI } from "@/lib/imams.functions";
 import { haversineKm, kmToMiles } from "@/lib/geo";
+import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -68,7 +70,24 @@ function Dashboard() {
   const [locMsg, setLocMsg] = useState<string | null>(null);
   const [imams, setImams] = useState<Awaited<ReturnType<typeof listImams>> | null>(null);
   const [imamCityFilter, setImamCityFilter] = useState<string>("all");
-  const [imamRadius, setImamRadius] = useState<number>(0); // 0 = any
+  const [imamRadius, setImamRadius] = useState<number>(0); // 0 = any (km)
+
+  // Wali/parent confirmation before viewing matches. Persisted per browser.
+  const [waliConfirmed, setWaliConfirmed] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWaliConfirmed(window.localStorage.getItem("mithaq:waliConfirmed") === "1");
+    }
+  }, []);
+  const confirmWali = () => {
+    setWaliConfirmed(true);
+    if (typeof window !== "undefined") window.localStorage.setItem("mithaq:waliConfirmed", "1");
+  };
+  const resetWali = () => {
+    setWaliConfirmed(false);
+    if (typeof window !== "undefined") window.localStorage.removeItem("mithaq:waliConfirmed");
+  };
+
 
   const loadAll = () => {
     Promise.all([
@@ -144,9 +163,10 @@ function Dashboard() {
     });
     const filtered = withDist.filter((im) => {
       if (imamCityFilter !== "all" && im.city !== imamCityFilter) return false;
-      if (imamRadius > 0 && im.distKm != null && kmToMiles(im.distKm) > imamRadius) return false;
+      if (imamRadius > 0 && im.distKm != null && im.distKm > imamRadius) return false;
       return true;
     });
+
     filtered.sort((a, b) => {
       if (a.distKm != null && b.distKm != null) return a.distKm - b.distKm;
       if (a.distKm != null) return -1;
@@ -254,6 +274,35 @@ function Dashboard() {
             </p>
           </div>
 
+          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
+            <p className="font-medium">Please review these matches with your wali or parent.</p>
+            <p className="mt-1 text-muted-foreground">
+              Mithaq encourages family involvement from the very first step. Sit down with a parent
+              or wali (guardian) and go through the suggestions together before expressing interest —
+              their guidance is part of the halal way.
+            </p>
+            {!waliConfirmed ? (
+              <label className="mt-3 flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-input"
+                  onChange={(e) => e.target.checked && confirmWali()}
+                />
+                <span>
+                  I confirm my wali or parent is with me (or has agreed) to review these matches
+                  together.
+                </span>
+              </label>
+            ) : (
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-primary">✓ Wali / parent confirmed for this session.</span>
+                <button onClick={resetWali} className="text-muted-foreground underline hover:text-foreground">
+                  Undo
+                </button>
+              </div>
+            )}
+          </div>
+
           {!canMatch && (
             <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
               {completed
@@ -263,13 +312,18 @@ function Dashboard() {
           )}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
-          <div className="mt-5 space-y-4">
-            {matches?.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No compatible profiles yet. Check back as more people join.
-              </p>
-            )}
-            {matches?.map((m) => (
+          {!waliConfirmed ? (
+            <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              Confirm your wali or parent is reviewing with you to reveal your suitable matches.
+            </p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {matches?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No compatible profiles yet. Check back as more people join.
+                </p>
+              )}
+              {matches?.map((m) => (
               <div key={m.match_user_id} className="rounded-xl border border-border p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div className="text-sm text-muted-foreground">
@@ -303,7 +357,9 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
+
         </section>
 
         {/* Location */}
@@ -355,13 +411,32 @@ function Dashboard() {
               </select>
               <select value={imamRadius} onChange={(e) => setImamRadius(Number(e.target.value))} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs" disabled={locLat == null}>
                 <option value={0}>Any distance</option>
-                <option value={10}>Within 10 mi</option>
-                <option value={25}>Within 25 mi</option>
-                <option value={50}>Within 50 mi</option>
-                <option value={100}>Within 100 mi</option>
+                <option value={15}>Within 15 km</option>
+                <option value={40}>Within 40 km</option>
+                <option value={80}>Within 80 km</option>
+                <option value={160}>Within 160 km</option>
               </select>
             </div>
           </div>
+
+          {/* Map of UK with imam pins */}
+          <div className="mt-4">
+            <UkImamMap
+              points={rankedImams
+                .filter((im): im is typeof im & { lat: number; lng: number } => im.lat != null && im.lng != null)
+                .map<ImamMapPoint>((im) => ({
+                  id: im.id,
+                  name: im.name,
+                  city: im.city,
+                  mosque: im.mosque,
+                  lat: im.lat as number,
+                  lng: im.lng as number,
+                  distKm: im.distKm ?? null,
+                }))}
+              user={locLat != null && locLng != null ? { lat: locLat, lng: locLng } : null}
+            />
+          </div>
+
           <div className="mt-4 space-y-3">
             {rankedImams.length === 0 && (
               <p className="text-sm text-muted-foreground">No imams match your filters yet.</p>
@@ -377,7 +452,7 @@ function Dashboard() {
                   </div>
                   {im.distKm != null && (
                     <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                      {kmToMiles(im.distKm).toFixed(1)} mi
+                      {im.distKm.toFixed(1)} km <span className="opacity-60">· {kmToMiles(im.distKm).toFixed(1)} mi</span>
                     </div>
                   )}
                 </div>
@@ -394,6 +469,7 @@ function Dashboard() {
             ))}
           </div>
         </section>
+
 
         {/* Interests */}
         {interests && (interests.received.length > 0 || interests.sent.length > 0) && (
