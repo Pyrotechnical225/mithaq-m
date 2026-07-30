@@ -49,16 +49,51 @@ function AdminHome() {
         </ul>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Link to="/admin/new-profile" className="rounded-2xl border border-border bg-card p-6 hover:bg-accent">
-          <h3 className="text-lg text-foreground">+ Create a profile</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Add a new user with an auto-confirmed email.</p>
-        </Link>
-        <Link to="/admin/profiles" className="rounded-2xl border border-border bg-card p-6 hover:bg-accent">
-          <h3 className="text-lg text-foreground">Manage & export</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Edit answers, toggle visibility, download data as JSON or CSV.</p>
-        </Link>
-      </div>
+      <section className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Admin controls</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Direct access to the spouse (member) and imam records — view, edit, add or delete.
+        </p>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-border p-5">
+            <h3 className="text-lg text-foreground">Spouses database</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Member profiles, survey answers, visibility and exports.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/admin/profiles" className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">
+                Browse & edit profiles
+              </Link>
+              <Link to="/admin/new-profile" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
+                + Add profile
+              </Link>
+              <Link to="/admin/profiles" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
+                Export JSON / CSV
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border p-5">
+            <h3 className="text-lg text-foreground">Imams database</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Imam directory: mosque, city, contact details and languages.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/admin/imams" className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">
+                Browse & edit imams
+              </Link>
+              <Link to="/admin/imams" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
+                + Add imam
+              </Link>
+              <Link to="/admin/seed" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
+                Seed / clear example data
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
