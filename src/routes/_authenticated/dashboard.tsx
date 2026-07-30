@@ -265,14 +265,8 @@ function Dashboard() {
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
-            <p className="font-medium">Please review these matches with your wali or parent.</p>
-            <p className="mt-1 text-muted-foreground">
-              Mithaq encourages family involvement from the very first step. Sit down with a parent
-              or wali (guardian) and go through the suggestions together before expressing interest —
-              their guidance is part of the halal way.
-            </p>
-          </div>
+
+
 
           <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
             <p className="font-medium">Please review these matches with your wali or parent.</p>
