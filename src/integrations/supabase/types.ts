@@ -14,6 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      imam_accounts: {
+        Row: {
+          active: boolean
+          created_at: string
+          imam_id: string
+          radius_km: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          imam_id: string
+          radius_km?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          imam_id?: string
+          radius_km?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imam_accounts_imam_id_fkey"
+            columns: ["imam_id"]
+            isOneToOne: false
+            referencedRelation: "imams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imam_applications: {
+        Row: {
+          admin_notes: string | null
+          city: string
+          created_at: string
+          credentials: string | null
+          email: string
+          id: string
+          imam_id: string | null
+          languages: string[]
+          message: string | null
+          mosque: string | null
+          name: string
+          phone: string | null
+          postcode: string | null
+          reviewed_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          city: string
+          created_at?: string
+          credentials?: string | null
+          email: string
+          id?: string
+          imam_id?: string | null
+          languages?: string[]
+          message?: string | null
+          mosque?: string | null
+          name: string
+          phone?: string | null
+          postcode?: string | null
+          reviewed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          city?: string
+          created_at?: string
+          credentials?: string | null
+          email?: string
+          id?: string
+          imam_id?: string | null
+          languages?: string[]
+          message?: string | null
+          mosque?: string | null
+          name?: string
+          phone?: string | null
+          postcode?: string | null
+          reviewed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imam_applications_imam_id_fkey"
+            columns: ["imam_id"]
+            isOneToOne: false
+            referencedRelation: "imams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imams: {
         Row: {
           city: string
@@ -113,6 +216,148 @@ export type Database = {
         }
         Relationships: []
       }
+      meetups: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          imam_id: string | null
+          note: string | null
+          pairing_id: string
+          response_a: string
+          response_b: string
+          scheduled_at: string
+          status: string
+          updated_at: string
+          venue: string
+          wali_required: boolean
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          imam_id?: string | null
+          note?: string | null
+          pairing_id: string
+          response_a?: string
+          response_b?: string
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+          venue: string
+          wali_required?: boolean
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          imam_id?: string | null
+          note?: string | null
+          pairing_id?: string
+          response_a?: string
+          response_b?: string
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+          venue?: string
+          wali_required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetups_imam_id_fkey"
+            columns: ["imam_id"]
+            isOneToOne: false
+            referencedRelation: "imams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_pairing_id_fkey"
+            columns: ["pairing_id"]
+            isOneToOne: false
+            referencedRelation: "pairings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pairing_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          pairing_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          pairing_id: string
+          sender_id: string
+          sender_role?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          pairing_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pairing_messages_pairing_id_fkey"
+            columns: ["pairing_id"]
+            isOneToOne: false
+            referencedRelation: "pairings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pairings: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          id: string
+          imam_id: string | null
+          status: string
+          updated_at: string
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          imam_id?: string | null
+          status?: string
+          updated_at?: string
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          imam_id?: string | null
+          status?: string
+          updated_at?: string
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pairings_imam_id_fkey"
+            columns: ["imam_id"]
+            isOneToOne: false
+            referencedRelation: "imams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       privacy_settings: {
         Row: {
           reveal_contact_on_mutual: boolean
@@ -179,6 +424,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          plan: string
+          provider: string | null
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          plan?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          plan?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       survey_answers: {
         Row: {
           answers: Json
@@ -229,6 +510,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_see_pairing: {
+        Args: { _pairing_id: string; _user_id: string }
+        Returns: boolean
+      }
+      has_active_membership: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -236,6 +522,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_imam: { Args: { _user_id: string }; Returns: boolean }
+      my_imam_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"

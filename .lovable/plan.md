@@ -1,61 +1,41 @@
-## 1. Admin credential change
+## Goal
 
-- In `src/lib/admin.functions.ts`, change:
-  - `ADMIN_EMAIL` → `admin@mithaq.com`
-  - `ADMIN_PASSWORD` → `Malikmalik1@`
-- `bootstrapAdmin` already updates password + email_confirm on every call, so the next sign-in as "admin" will migrate the existing admin record. Old `admin@mithaq.local` user will be left in place (harmless) — optionally deleted manually via the admin panel.
-- The "type `admin` as email" shortcut on the sign-in page keeps working. Users can also sign in directly with `admin@mithaq.com` / `Malikmalik1@`.
+1. Charge for access right after the survey is completed, before matches are shown.
+2. Give approved imams their own dashboard to review local pairings, approve/decline, arrange meetups, and message families.
 
-## 2. UK location + imam finder on user dashboard
+## Part 1 — Paywall (after survey, before matches)
 
-### Database (new migration)
-- New `imams` table (public schema, admin-managed):
-  - `id`, `name`, `title` (e.g. "Imam", "Sheikh"), `mosque`, `city`, `postcode`, `lat`, `lng`, `phone`, `email`, `website`, `languages` (text[]), `notes` (text), `created_at`
-  - GRANT SELECT to `authenticated` and `anon`; GRANT ALL to `service_role`.
-  - RLS: everyone authenticated can read; only admins can insert/update/delete (`has_role(auth.uid(),'admin')`).
-- Extend `profiles` with `uk_city text`, `uk_postcode text`, `location_lat double precision`, `location_lng double precision` (nullable — no backfill needed).
+Journey: sign up → verify email → 50-question survey → **paywall** → wali confirmation → matches + imam finder.
 
-### User-facing UI (`src/routes/_authenticated/dashboard.tsx`)
-- New "Your location" card on the dashboard with:
-  - UK city dropdown (curated list: London, Birmingham, Manchester, Leeds, Bradford, Luton, Leicester, Glasgow, Cardiff, Sheffield, Nottingham, Bristol, Newcastle, Liverpool, Edinburgh, Coventry, Blackburn, Oldham, Rochdale, Slough, Other).
-  - Optional postcode input (free-text, UK format hint).
-  - Save button → new `saveMyLocation` server fn that upserts city/postcode and, if the city matches the curated list, stores its known lat/lng.
-- New "Imams near you" card:
-  - Lists imams from the DB, sorted by great-circle distance to the user's saved coordinates (Haversine, computed client-side from the fetched imam list; falls back to alphabetical by city when the user has no location saved).
-  - Each row: name, title, mosque, city + distance ("~ 4.2 mi"), phone/email/website links, languages badges.
-  - "Filter by city" dropdown and a "Within X miles" slider (25 / 50 / 100 / any).
+- Payments via Lovable's built-in Stripe integration (no Stripe account setup needed). I'll run the provider eligibility check first; Mithaq is a digital subscription service, so Stripe with tax handling is the expected fit.
+- Two plans, created as products: **Monthly** and **Yearly** (yearly discounted). You give me the prices.
+- New `/membership` page: plan comparison, what unlocking gives (AI matches, express interest, imam finder + meetup requests), checkout buttons, and current status/manage.
+- Dashboard behaviour when unpaid: survey and location stay usable; the matches section and imam contact are replaced with a locked card explaining the benefit + "Unlock matches" button. Free users still see how many matches are waiting (count only, no profiles).
+- Server-side enforcement: match generation, interest sending, and meetup requests all check active subscription server-side, not just hidden in the UI.
+- Admin: can grant complimentary access to any member (useful for demo/test profiles), and see subscription status in the profiles table.
 
-### Server functions (`src/lib/imams.functions.ts`, new file)
-- `listImams` (authenticated) — returns all imams.
-- `saveMyLocation` (authenticated) — validates city/postcode, upserts profile columns.
-- `getMyLocation` (authenticated) — returns current stored location.
-- Admin-only mutations (in `admin.functions.ts`): `createImam`, `updateImam`, `deleteImam`, `bulkSeedImams`, plus `bulkSeedExampleUsers`.
+## Part 2 — Imam dashboard
 
-### Notes
-- No external geocoding API; we ship a small hard-coded lat/lng table for the curated UK cities (kept in `src/lib/uk-cities.ts`). Imam lat/lng comes from what admins enter (either directly or auto-set from the imam's city when they pick from the same list).
+Access model (as you described): imams apply, you meet them, then you approve and create their account.
 
-## 3. Admin panel additions
+- Public `/imams/apply` page: name, mosque, city, postcode, languages, phone/email, credentials/notes. Creates a pending application — no account yet.
+- Admin gets an **Imam applications** page: review, add your meeting notes, then **Approve & create account** (creates a confirmed login, links it to an imam record, gives the imam role) or decline. You can also revoke access later.
+- Approved imams sign in through the normal `/auth` page and are routed to `/imam` instead of the member dashboard.
 
-New route `src/routes/_authenticated/admin/imams.tsx`:
-- Table of imams (name, mosque, city, contact, edit / delete).
-- "Add imam" inline form (name, title, mosque, city dropdown, postcode, lat/lng optional, phone, email, website, languages comma list, notes).
-- "Seed example imams" button → inserts ~8 curated fictional imams across major UK cities (idempotent by name+city).
+Imam dashboard sections:
+- **Local pairings awaiting review** — mutual-interest pairs where both parties are within a radius of the imam's city (distance shown in km), with the deen/values summary and wali contact.
+- **Approve / decline** a pairing with a written reason; the decision and note become visible to both members and their walis on their dashboards.
+- **Arrange a meetup** — propose date, time, venue (mosque/address), and a wali-attendance requirement; both members accept or decline from their dashboard. Status tracked: proposed → accepted → completed / cancelled.
+- **Notes & messages** — a thread per pairing between the imam and the two families.
+- Imams see only what they need: names, city, deen/values summary and wali contact for pairings assigned to their area — never the full private survey.
 
-New route `src/routes/_authenticated/admin/seed.tsx` (or a section on the existing admin index):
-- "Seed example users" button → creates ~6 example users with realistic display names + emails (`example1@mithaq.demo`, …), auto-confirmed, each with pre-filled survey answers, visibility = discoverable, and a UK city. Idempotent by email.
-- "Delete all example accounts" button to reset the demo data (only touches users whose email ends in `@mithaq.demo`).
+## Technical notes
 
-Sidebar: add "Imams" and "Seed data" links in `src/routes/_authenticated/admin/route.tsx`.
+- New tables: `subscriptions` (plan, status, period end, provider ids), `imam_applications`, `imam_profiles` link (imam user ↔ `imams` row), `pairings` (from/to user, imam, status, decision note), `meetups` (pairing, imam, datetime, venue, wali_required, status), `pairing_messages`. RLS on all: members see their own pairings/meetups, imams see rows assigned to them, admin sees everything, plus explicit grants.
+- New role values added to `app_role` for `imam`; route gates: `_authenticated/imam/*` for imams, existing `_authenticated/admin/*` unchanged.
+- Subscription checks live in server functions (`hasActiveMembership`) called by match generation, interest, and meetup endpoints. Stripe webhook handled on a public API route with signature verification.
+- Proximity uses the existing `haversineKm` + UK city coordinates, with a configurable radius per imam (default 40 km).
 
-## Technical section
+## What I need from you
 
-- Migration: creates `imams`, adds 4 columns to `profiles`, adds RLS + grants for `imams`.
-- Distance math: Haversine helper in `src/lib/geo.ts`; miles conversion.
-- Example imam seed data lives in `src/lib/example-imams.ts`; example user seed data in `src/lib/example-users.ts` (imports `SURVEY_QUESTIONS` to generate plausible answers).
-- All admin mutations go through `assertAdmin(context)` in server fns; user-facing fns use `requireSupabaseAuth`.
-- No changes to matching logic — location is informational for imam lookup only (can be layered into matching later if you want).
-
-## Out of scope
-
-- No live UK postcode → lat/lng geocoding (would need a paid API). We use city-level coordinates only; postcode is stored for display.
-- No maps rendering (list view only). Say the word and I'll add a Google Maps view in a follow-up.
+Monthly and yearly prices (e.g. £14.99/mo, £99/yr) — I can start with those as placeholders and you change them later.
