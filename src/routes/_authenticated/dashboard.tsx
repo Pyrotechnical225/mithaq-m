@@ -60,6 +60,14 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [memberActive, setMemberActive] = useState(false);
+  const fetchMembership = useServerFn(getMyMembership);
+  useEffect(() => {
+    fetchMembership()
+      .then((m) => setMemberActive(!!m.active))
+      .catch(() => setMemberActive(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Location & imams
   const [locCity, setLocCity] = useState<string>("");
