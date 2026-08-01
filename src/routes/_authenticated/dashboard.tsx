@@ -14,6 +14,8 @@ import {
 import { getMyLocation, listImams, saveMyLocation, UK_CITIES_FOR_UI } from "@/lib/imams.functions";
 import { haversineKm, kmToMiles } from "@/lib/geo";
 import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
+import { getMyMembership } from "@/lib/membership.functions";
+import { PairingsSection } from "@/components/PairingsSection";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
