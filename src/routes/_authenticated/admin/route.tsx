@@ -43,6 +43,9 @@ function AdminLayout() {
             <Link to="/admin/imams" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
               Imams
             </Link>
+            <Link to="/admin/imam-applications" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
+              Imam applications
+            </Link>
             <Link to="/admin/seed" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
               Seed data
             </Link>

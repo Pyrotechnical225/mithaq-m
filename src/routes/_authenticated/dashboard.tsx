@@ -14,6 +14,8 @@ import {
 import { getMyLocation, listImams, saveMyLocation, UK_CITIES_FOR_UI } from "@/lib/imams.functions";
 import { haversineKm, kmToMiles } from "@/lib/geo";
 import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
+import { getMyMembership } from "@/lib/membership.functions";
+import { PairingsSection } from "@/components/PairingsSection";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -60,6 +62,14 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [memberActive, setMemberActive] = useState(false);
+  const fetchMembership = useServerFn(getMyMembership);
+  useEffect(() => {
+    fetchMembership()
+      .then((m) => setMemberActive(!!m.active))
+      .catch(() => setMemberActive(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Location & imams
   const [locCity, setLocCity] = useState<string>("");
@@ -306,7 +316,23 @@ function Dashboard() {
           )}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
-          {!waliConfirmed ? (
+          {!memberActive ? (
+            <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-6 text-center">
+              <p className="text-sm font-medium text-foreground">
+                Membership unlocks your matches
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                Your survey and privacy controls are free. Become a member to see your ranked
+                matches, express interest and have a local imam arrange a wali-attended meeting.
+              </p>
+              <Link
+                to="/membership"
+                className="mt-4 inline-block rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                View membership plans
+              </Link>
+            </div>
+          ) : !waliConfirmed ? (
             <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               Confirm your wali or parent is reviewing with you to reveal your suitable matches.
             </p>
@@ -355,6 +381,8 @@ function Dashboard() {
           )}
 
         </section>
+
+        {memberActive && <PairingsSection />}
 
         {/* Location */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
