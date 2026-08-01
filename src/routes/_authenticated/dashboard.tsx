@@ -306,7 +306,23 @@ function Dashboard() {
           )}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
-          {!waliConfirmed ? (
+          {!memberActive ? (
+            <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-6 text-center">
+              <p className="text-sm font-medium text-foreground">
+                Membership unlocks your matches
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                Your survey and privacy controls are free. Become a member to see your ranked
+                matches, express interest and have a local imam arrange a wali-attended meeting.
+              </p>
+              <Link
+                to="/membership"
+                className="mt-4 inline-block rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                View membership plans
+              </Link>
+            </div>
+          ) : !waliConfirmed ? (
             <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               Confirm your wali or parent is reviewing with you to reveal your suitable matches.
             </p>
