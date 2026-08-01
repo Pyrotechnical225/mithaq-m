@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/imam-applications")(
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: AdminImamApplications;
+  component: AdminImamApplications,
 });
 
 function AdminImamApplications() {
