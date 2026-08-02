@@ -4,8 +4,15 @@ import { PLANS, type PlanId } from "./membership-plans";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
+// Prefer the full secret key; fall back to a restricted key (rk_...) which
+// works for Checkout/Billing calls as long as it has write access to those
+// resources.
+function stripeKey() {
+  return process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_API_KEY;
+}
+
 export function stripeConfigured() {
-  return !!process.env.STRIPE_SECRET_KEY;
+  return !!stripeKey();
 }
 
 function form(obj: Record<string, string | number | boolean | undefined>) {
@@ -21,7 +28,7 @@ async function stripeCall(
   body?: URLSearchParams,
   method: "GET" | "POST" = "POST",
 ) {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = stripeKey();
   if (!key) throw new Error("Payments are not configured yet");
   const res = await fetch(`${STRIPE_API}${path}`, {
     method,
