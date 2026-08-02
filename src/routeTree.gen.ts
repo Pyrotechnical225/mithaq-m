@@ -35,6 +35,7 @@ import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/
 import { Route as AuthenticatedAdminSeedRouteImport } from './routes/_authenticated/admin/seed'
 import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
 import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
+import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin/memberships'
 import { Route as AuthenticatedAdminImamsRouteImport } from './routes/_authenticated/admin/imams'
 import { Route as AuthenticatedAdminImamApplicationsRouteImport } from './routes/_authenticated/admin/imam-applications'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -174,6 +175,12 @@ const AuthenticatedAdminNewProfileRoute =
     path: '/new-profile',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminMembershipsRoute =
+  AuthenticatedAdminMembershipsRouteImport.update({
+    id: '/memberships',
+    path: '/memberships',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminImamsRoute = AuthenticatedAdminImamsRouteImport.update({
   id: '/imams',
   path: '/imams',
@@ -227,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
+  '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin/seed': typeof AuthenticatedAdminSeedRoute
@@ -257,6 +265,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
+  '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin/seed': typeof AuthenticatedAdminSeedRoute
@@ -291,6 +300,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/_authenticated/admin/imams': typeof AuthenticatedAdminImamsRoute
+  '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/_authenticated/admin/seed': typeof AuthenticatedAdminSeedRoute
@@ -325,6 +335,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/admin/imam-applications'
     | '/admin/imams'
+    | '/admin/memberships'
     | '/admin/new-profile'
     | '/admin/profiles'
     | '/admin/seed'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/admin/imam-applications'
     | '/admin/imams'
+    | '/admin/memberships'
     | '/admin/new-profile'
     | '/admin/profiles'
     | '/admin/seed'
@@ -388,6 +400,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/admin/imam-applications'
     | '/_authenticated/admin/imams'
+    | '/_authenticated/admin/memberships'
     | '/_authenticated/admin/new-profile'
     | '/_authenticated/admin/profiles'
     | '/_authenticated/admin/seed'
@@ -599,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/memberships': {
+      id: '/_authenticated/admin/memberships'
+      path: '/memberships'
+      fullPath: '/admin/memberships'
+      preLoaderRoute: typeof AuthenticatedAdminMembershipsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/imams': {
       id: '/_authenticated/admin/imams'
       path: '/imams'
@@ -655,6 +675,7 @@ const AuthenticatedAdminProfilesRouteWithChildren =
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminImamApplicationsRoute: typeof AuthenticatedAdminImamApplicationsRoute
   AuthenticatedAdminImamsRoute: typeof AuthenticatedAdminImamsRoute
+  AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
   AuthenticatedAdminNewProfileRoute: typeof AuthenticatedAdminNewProfileRoute
   AuthenticatedAdminProfilesRoute: typeof AuthenticatedAdminProfilesRouteWithChildren
   AuthenticatedAdminSeedRoute: typeof AuthenticatedAdminSeedRoute
@@ -666,6 +687,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminImamApplicationsRoute:
       AuthenticatedAdminImamApplicationsRoute,
     AuthenticatedAdminImamsRoute: AuthenticatedAdminImamsRoute,
+    AuthenticatedAdminMembershipsRoute: AuthenticatedAdminMembershipsRoute,
     AuthenticatedAdminNewProfileRoute: AuthenticatedAdminNewProfileRoute,
     AuthenticatedAdminProfilesRoute:
       AuthenticatedAdminProfilesRouteWithChildren,

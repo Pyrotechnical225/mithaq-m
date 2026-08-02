@@ -52,51 +52,97 @@ function AdminHome() {
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Admin controls</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Direct access to the spouse (member) and imam records — view, edit, add or delete.
+          Everything this admin account can do, in one place.
         </p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-border p-5">
-            <h3 className="text-lg text-foreground">Spouses database</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Member profiles, survey answers, visibility and exports.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/admin/profiles" className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">
-                Browse & edit profiles
-              </Link>
-              <Link to="/admin/new-profile" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
-                + Add profile
-              </Link>
-              <Link to="/admin/profiles" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
-                Export JSON / CSV
-              </Link>
-            </div>
-          </div>
+          <ControlCard
+            title="Spouses database"
+            body="Member profiles, survey answers, visibility and exports."
+            actions={[
+              { to: "/admin/profiles", label: "Browse & edit profiles", primary: true },
+              { to: "/admin/new-profile", label: "+ Add profile" },
+              { to: "/admin/profiles", label: "Export JSON / CSV" },
+            ]}
+          />
 
-          <div className="rounded-xl border border-border p-5">
-            <h3 className="text-lg text-foreground">Imams database</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Imam directory: mosque, city, contact details and languages.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/admin/imams" className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">
-                Browse & edit imams
-              </Link>
-              <Link to="/admin/imams" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
-                + Add imam
-              </Link>
-              <Link to="/admin/seed" className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent">
-                Seed / clear example data
-              </Link>
-            </div>
-          </div>
+          <ControlCard
+            title="Imams database"
+            body="Imam directory: mosque, city, contact details and languages."
+            actions={[
+              { to: "/admin/imams", label: "Browse & edit imams", primary: true },
+              { to: "/admin/imams", label: "+ Add imam" },
+              { to: "/admin/seed", label: "Seed / clear example data" },
+            ]}
+          />
+
+          <ControlCard
+            title="Imam applications & pairings"
+            body="Approve or decline imam applicants, activate or suspend imam dashboard access, and oversee every pairing and arranged meetup."
+            actions={[
+              { to: "/admin/imam-applications", label: "Review applications", primary: true },
+              { to: "/admin/imam-applications", label: "All pairings & meetups" },
+            ]}
+          />
+
+          <ControlCard
+            title="Memberships & billing"
+            body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
+            actions={[
+              { to: "/admin/memberships", label: "Manage memberships", primary: true },
+              { to: "/membership", label: "Member-facing plans" },
+            ]}
+          />
+
+          <ControlCard
+            title="Example & demo data"
+            body="Seed example members and imams for testing, then clear them out again in one click."
+            actions={[{ to: "/admin/seed", label: "Seed data tools", primary: true }]}
+          />
+
+          <ControlCard
+            title="Member experience"
+            body="Open the platform exactly as a member sees it — survey, privacy controls, matches, location and imam picker."
+            actions={[
+              { to: "/dashboard", label: "Open user dashboard", primary: true },
+              { to: "/survey", label: "Survey" },
+              { to: "/settings", label: "Privacy settings" },
+            ]}
+          />
         </div>
       </section>
+
 
     </div>
   );
 }
+
+type Action = { to: string; label: string; primary?: boolean };
+
+function ControlCard({ title, body, actions }: { title: string; body: string; actions: Action[] }) {
+  return (
+    <div className="rounded-xl border border-border p-5">
+      <h3 className="text-lg text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {actions.map((a, i) => (
+          <Link
+            key={`${a.to}-${i}`}
+            to={a.to}
+            className={
+              a.primary
+                ? "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+                : "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+            }
+          >
+            {a.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
