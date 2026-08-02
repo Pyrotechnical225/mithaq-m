@@ -117,6 +117,33 @@ function AdminHome() {
   );
 }
 
+type Action = { to: string; label: string; primary?: boolean };
+
+function ControlCard({ title, body, actions }: { title: string; body: string; actions: Action[] }) {
+  return (
+    <div className="rounded-xl border border-border p-5">
+      <h3 className="text-lg text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {actions.map((a, i) => (
+          <Link
+            key={`${a.to}-${i}`}
+            to={a.to}
+            className={
+              a.primary
+                ? "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+                : "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+            }
+          >
+            {a.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
