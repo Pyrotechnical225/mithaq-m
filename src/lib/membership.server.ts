@@ -28,7 +28,7 @@ async function stripeCall(
   body?: URLSearchParams,
   method: "GET" | "POST" = "POST",
 ) {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = stripeKey();
   if (!key) throw new Error("Payments are not configured yet");
   const res = await fetch(`${STRIPE_API}${path}`, {
     method,
