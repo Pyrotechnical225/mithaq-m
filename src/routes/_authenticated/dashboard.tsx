@@ -211,6 +211,14 @@ function Dashboard() {
             <span className="font-display text-lg text-foreground">Mithaq</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="rounded-full bg-primary px-3 py-1 text-primary-foreground hover:bg-primary/90"
+              >
+                Admin dashboard
+              </Link>
+            )}
             <Link to="/settings" className="text-muted-foreground hover:text-foreground">
               Privacy & settings
             </Link>
