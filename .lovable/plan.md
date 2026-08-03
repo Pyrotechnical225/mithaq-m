@@ -1,41 +1,32 @@
-## Goal
+# Get Stripe checkout working
 
-1. Charge for access right after the survey is completed, before matches are shown.
-2. Give approved imams their own dashboard to review local pairings, approve/decline, arrange meetups, and message families.
+Clicking Monthly/Yearly currently throws an error. The only key saved is a restricted key (`rk_...`), and the saved webhook secret does not look like a Stripe signing secret (`whsec_...`). So there are two likely causes to confirm and fix: the key lacks the permissions Checkout needs, and webhook confirmation would fail even if checkout succeeded.
 
-## Part 1 — Paywall (after survey, before matches)
+## Step 1 — Diagnose with a real Stripe call
 
-Journey: sign up → verify email → 50-question survey → **paywall** → wali confirmation → matches + imam finder.
+Add a temporary admin-only diagnostic that calls Stripe with the saved key and reports back exactly what Stripe says (key type, mode test/live, and the error code/message from a Checkout Session attempt). This replaces guessing: Stripe returns a precise message when a restricted key is missing a permission.
 
-- Payments via Lovable's built-in Stripe integration (no Stripe account setup needed). I'll run the provider eligibility check first; Mithaq is a digital subscription service, so Stripe with tax handling is the expected fit.
-- Two plans, created as products: **Monthly** and **Yearly** (yearly discounted). You give me the prices.
-- New `/membership` page: plan comparison, what unlocking gives (AI matches, express interest, imam finder + meetup requests), checkout buttons, and current status/manage.
-- Dashboard behaviour when unpaid: survey and location stay usable; the matches section and imam contact are replaced with a locked card explaining the benefit + "Unlock matches" button. Free users still see how many matches are waiting (count only, no profiles).
-- Server-side enforcement: match generation, interest sending, and meetup requests all check active subscription server-side, not just hidden in the UI.
-- Admin: can grant complimentary access to any member (useful for demo/test profiles), and see subscription status in the profiles table.
+## Step 2 — Fix based on what Stripe reports
 
-## Part 2 — Imam dashboard
+- **Missing permissions on the restricted key** — you grant write access to Checkout Sessions, Billing Portal Sessions and Prices/Products, plus read on Subscriptions and Customers, in Stripe (Developers → API keys → edit the restricted key). If you prefer, saving a full secret key (`sk_test_...`) instead removes this class of problem entirely.
+- **Key rejected / wrong mode** — re-save the key.
+- **Any other Stripe error** — fixed in the request we send (for example switching from inline `price_data` to pre-created Prices if the restricted key cannot create products on the fly).
 
-Access model (as you described): imams apply, you meet them, then you approve and create their account.
+## Step 3 — Make failures readable instead of raw
 
-- Public `/imams/apply` page: name, mosque, city, postcode, languages, phone/email, credentials/notes. Creates a pending application — no account yet.
-- Admin gets an **Imam applications** page: review, add your meeting notes, then **Approve & create account** (creates a confirmed login, links it to an imam record, gives the imam role) or decline. You can also revoke access later.
-- Approved imams sign in through the normal `/auth` page and are routed to `/imam` instead of the member dashboard.
+Right now a Stripe failure surfaces as a raw provider dump. Change checkout so that:
+- The membership page shows a plain-language reason ("payments not connected", "payment setup incomplete — contact support") and keeps the full detail in server logs only.
+- Admins (your account) additionally see the underlying Stripe message, so you can self-diagnose without me.
 
-Imam dashboard sections:
-- **Local pairings awaiting review** — mutual-interest pairs where both parties are within a radius of the imam's city (distance shown in km), with the deen/values summary and wali contact.
-- **Approve / decline** a pairing with a written reason; the decision and note become visible to both members and their walis on their dashboards.
-- **Arrange a meetup** — propose date, time, venue (mosque/address), and a wali-attendance requirement; both members accept or decline from their dashboard. Status tracked: proposed → accepted → completed / cancelled.
-- **Notes & messages** — a thread per pairing between the imam and the two families.
-- Imams see only what they need: names, city, deen/values summary and wali contact for pairings assigned to their area — never the full private survey.
+## Step 4 — Webhook secret and end-to-end verification
+
+- Confirm the webhook signing secret. In Stripe → Developers → Webhooks, the endpoint must point at `https://mithaq-m.lovable.app/api/public/stripe-webhook` with events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`; the signing secret starts with `whsec_`. If the stored value is not that, you re-save it via the secure form.
+- Add a fallback so membership activates even if a webhook is delayed: on returning to `/membership?checkout=success`, the app verifies the session with Stripe directly and syncs the subscription row. This makes the paid flow reliable rather than webhook-dependent.
+- Then run a test-mode purchase with card `4242 4242 4242 4242` and confirm the dashboard's matches section unlocks.
 
 ## Technical notes
 
-- New tables: `subscriptions` (plan, status, period end, provider ids), `imam_applications`, `imam_profiles` link (imam user ↔ `imams` row), `pairings` (from/to user, imam, status, decision note), `meetups` (pairing, imam, datetime, venue, wali_required, status), `pairing_messages`. RLS on all: members see their own pairings/meetups, imams see rows assigned to them, admin sees everything, plus explicit grants.
-- New role values added to `app_role` for `imam`; route gates: `_authenticated/imam/*` for imams, existing `_authenticated/admin/*` unchanged.
-- Subscription checks live in server functions (`hasActiveMembership`) called by match generation, interest, and meetup endpoints. Stripe webhook handled on a public API route with signature verification.
-- Proximity uses the existing `haversineKm` + UK city coordinates, with a configurable radius per imam (default 40 km).
-
-## What I need from you
-
-Monthly and yearly prices (e.g. £14.99/mo, £99/yr) — I can start with those as placeholders and you change them later.
+- `src/lib/membership.server.ts` — richer error typing from `stripeCall`, key-mode detection, new `retrieveCheckoutSession`.
+- `src/lib/membership.functions.ts` — new `diagnoseStripe` (admin-only) and `confirmCheckout` server functions; sanitised error messages.
+- `src/routes/_authenticated/membership.tsx` — friendly error display, admin diagnostic panel, post-checkout confirmation on `?checkout=success`.
+- Webhook route unchanged apart from reusing the shared sync helper.
