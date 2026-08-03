@@ -128,7 +128,59 @@ function MembershipPage() {
           </div>
         )}
 
+        {notice && (
+          <p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+            {notice}
+          </p>
+        )}
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+        {state?.is_admin && (
+          <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-medium text-foreground">Admin: Stripe diagnostic</h3>
+              <button
+                onClick={runDiagnostic}
+                disabled={diagBusy}
+                className="rounded-full border border-border bg-card px-4 py-1.5 text-xs hover:bg-accent disabled:opacity-60"
+              >
+                {diagBusy ? "Testing…" : "Test Stripe connection"}
+              </button>
+            </div>
+            {diag && (
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                {diag.key.configured ? (
+                  <p>
+                    Key: <strong>{diag.key.kind}</strong> ({diag.key.source}), mode{" "}
+                    <strong>{diag.key.mode}</strong>, prefix <code>{diag.key.prefix}</code> · webhook
+                    secret{" "}
+                    {diag.key.webhook_secret_present
+                      ? diag.key.webhook_secret_looks_valid
+                        ? "saved (whsec_…)"
+                        : "saved but does NOT start with whsec_"
+                      : "missing"}
+                  </p>
+                ) : (
+                  <p>No Stripe key saved.</p>
+                )}
+                <ul className="space-y-1">
+                  {diag.checks.map((c) => (
+                    <li key={c.name}>
+                      <span className={c.ok ? "text-primary" : "text-destructive"}>
+                        {c.ok ? "✓" : "✕"}
+                      </span>{" "}
+                      {c.name} — <span className="break-all">{c.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="pt-1">
+                  A restricted key needs write access to Checkout Sessions, Billing Portal Sessions
+                  and Products/Prices, plus read on Subscriptions and Customers.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {state && !state.payments_configured && (
           <p className="mt-4 rounded-xl bg-muted p-4 text-xs text-muted-foreground">
             Card payments aren’t connected yet, so checkout is disabled. An admin can also grant
