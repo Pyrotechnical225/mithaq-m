@@ -8,7 +8,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
         const payload = await request.text();
-        const { verifyStripeSignature, retrieveSubscription } = await import(
+        const { verifyStripeSignature, syncSubscriptionFromSession } = await import(
           "@/lib/membership.server"
         );
         const ok = await verifyStripeSignature(
@@ -35,27 +35,9 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
 
         try {
           if (event.type === "checkout.session.completed") {
-            const userId =
-              (obj.client_reference_id as string) ??
-              ((obj.metadata as Record<string, string> | undefined)?.user_id ?? null);
-            const subId = obj.subscription as string | null;
-            if (userId && subId) {
-              const sub = (await retrieveSubscription(subId)) as Record<string, unknown>;
-              const plan =
-                (obj.metadata as Record<string, string> | undefined)?.plan ?? "monthly";
-              await upsert({
-                user_id: userId,
-                plan,
-                status: (sub.status as string) ?? "active",
-                current_period_end: sub.current_period_end
-                  ? new Date((sub.current_period_end as number) * 1000).toISOString()
-                  : null,
-                provider: "stripe",
-                provider_customer_id: obj.customer as string | null,
-                provider_subscription_id: subId,
-              });
-            }
+            await syncSubscriptionFromSession(obj.id as string);
           } else if (
+
             event.type === "customer.subscription.updated" ||
             event.type === "customer.subscription.deleted"
           ) {
