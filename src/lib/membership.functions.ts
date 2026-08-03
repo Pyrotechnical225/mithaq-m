@@ -14,6 +14,10 @@ export const getMyMembership = createServerFn({ method: "GET" })
     const { data: active } = await context.supabase.rpc("has_active_membership", {
       _user_id: context.userId,
     });
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
     const { stripeConfigured } = await import("./membership.server");
     return {
       active: !!active,
@@ -22,6 +26,7 @@ export const getMyMembership = createServerFn({ method: "GET" })
       current_period_end: data?.current_period_end ?? null,
       has_billing_portal: !!data?.provider_customer_id,
       payments_configured: stripeConfigured(),
+      is_admin: !!isAdmin,
     };
   });
 
@@ -34,20 +39,75 @@ export const startCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CheckoutInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { createCheckoutSession, stripeConfigured } = await import("./membership.server");
+    const { createCheckoutSession, stripeConfigured, StripeError } = await import(
+      "./membership.server"
+    );
     if (!stripeConfigured()) {
       throw new Error(
         "Payments are not connected yet. Add your Stripe secret key to enable checkout.",
       );
     }
-    const email = (context.claims as { email?: string } | undefined)?.email ?? null;
-    return createCheckoutSession({
-      plan: data.plan,
-      userId: context.userId,
-      email,
-      origin: data.origin,
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
     });
+    const email = (context.claims as { email?: string } | undefined)?.email ?? null;
+    try {
+      return await createCheckoutSession({
+        plan: data.plan,
+        userId: context.userId,
+        email,
+        origin: data.origin,
+      });
+    } catch (e) {
+      // Full detail stays in the server logs; members see a plain message.
+      // Admins get the underlying Stripe message so they can self-diagnose.
+      if (e instanceof StripeError) {
+        const permissionIssue =
+          e.status === 401 || e.status === 403 || e.code === "api_key_insufficient_permissions";
+        const friendly = permissionIssue
+          ? "Payment setup is incomplete — our team has been notified. Please try again later or contact support."
+          : "We couldn’t start checkout just now. Please try again in a moment.";
+        throw new Error(isAdmin ? `${friendly} (Stripe: ${e.status} ${e.code ?? ""} ${e.message})` : friendly);
+      }
+      throw new Error("We couldn’t start checkout just now. Please try again in a moment.");
+    }
   });
+
+// Called when the member returns from Stripe with ?checkout=success&session_id=…
+// so membership activates even if the webhook is delayed or misconfigured.
+const ConfirmInput = z.object({ session_id: z.string().min(10).max(200) });
+
+export const confirmCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ConfirmInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { syncSubscriptionFromSession } = await import("./membership.server");
+    try {
+      const result = await syncSubscriptionFromSession(data.session_id, context.userId);
+      return result;
+    } catch (e) {
+      console.error("confirmCheckout failed:", e);
+      return { ok: false as const, reason: "stripe_error" as const };
+    }
+  });
+
+// Admin-only Stripe diagnostic.
+const DiagnoseInput = z.object({ origin: z.string().url() });
+
+export const diagnoseStripe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DiagnoseInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden: admin only");
+    const { diagnoseStripeKey } = await import("./membership.server");
+    return diagnoseStripeKey(data.origin);
+  });
+
 
 const PortalInput = z.object({ origin: z.string().url() });
 

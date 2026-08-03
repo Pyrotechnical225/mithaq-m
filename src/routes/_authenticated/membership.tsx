@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+  confirmCheckout,
+  diagnoseStripe,
   getMyMembership,
   openBillingPortal,
   startCheckout,
@@ -23,13 +25,38 @@ function MembershipPage() {
   const fetchMembership = useServerFn(getMyMembership);
   const checkout = useServerFn(startCheckout);
   const portal = useServerFn(openBillingPortal);
+  const confirm = useServerFn(confirmCheckout);
+  const diagnose = useServerFn(diagnoseStripe);
 
   const [state, setState] = useState<Awaited<ReturnType<typeof getMyMembership>> | null>(null);
   const [busy, setBusy] = useState<PlanId | "portal" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [diag, setDiag] = useState<Awaited<ReturnType<typeof diagnoseStripe>> | null>(null);
+  const [diagBusy, setDiagBusy] = useState(false);
 
   useEffect(() => {
-    fetchMembership().then(setState).catch(() => setState(null));
+    const load = () => fetchMembership().then(setState).catch(() => setState(null));
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("checkout") === "success" && sessionId) {
+      setNotice("Confirming your payment…");
+      confirm({ data: { session_id: sessionId } })
+        .then((r) =>
+          setNotice(
+            r.ok
+              ? "Payment confirmed — your membership is active."
+              : "Payment received. Your membership will activate shortly; refresh in a moment.",
+          ),
+        )
+        .catch(() =>
+          setNotice("Payment received. Your membership will activate shortly; refresh in a moment."),
+        )
+        .finally(load);
+    } else {
+      if (params.get("checkout") === "cancelled") setNotice("Checkout was cancelled.");
+      load();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -45,6 +72,17 @@ function MembershipPage() {
     }
   };
 
+  const runDiagnostic = async () => {
+    setDiagBusy(true);
+    try {
+      setDiag(await diagnose({ data: { origin: window.location.origin } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Diagnostic failed");
+    } finally {
+      setDiagBusy(false);
+    }
+  };
+
   const manage = async () => {
     setError(null);
     setBusy("portal");
@@ -56,6 +94,7 @@ function MembershipPage() {
       setBusy(null);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,7 +128,59 @@ function MembershipPage() {
           </div>
         )}
 
+        {notice && (
+          <p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+            {notice}
+          </p>
+        )}
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+        {state?.is_admin && (
+          <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-medium text-foreground">Admin: Stripe diagnostic</h3>
+              <button
+                onClick={runDiagnostic}
+                disabled={diagBusy}
+                className="rounded-full border border-border bg-card px-4 py-1.5 text-xs hover:bg-accent disabled:opacity-60"
+              >
+                {diagBusy ? "Testing…" : "Test Stripe connection"}
+              </button>
+            </div>
+            {diag && (
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                {diag.key.configured ? (
+                  <p>
+                    Key: <strong>{diag.key.kind}</strong> ({diag.key.source}), mode{" "}
+                    <strong>{diag.key.mode}</strong>, prefix <code>{diag.key.prefix}</code> · webhook
+                    secret{" "}
+                    {diag.key.webhook_secret_present
+                      ? diag.key.webhook_secret_looks_valid
+                        ? "saved (whsec_…)"
+                        : "saved but does NOT start with whsec_"
+                      : "missing"}
+                  </p>
+                ) : (
+                  <p>No Stripe key saved.</p>
+                )}
+                <ul className="space-y-1">
+                  {diag.checks.map((c) => (
+                    <li key={c.name}>
+                      <span className={c.ok ? "text-primary" : "text-destructive"}>
+                        {c.ok ? "✓" : "✕"}
+                      </span>{" "}
+                      {c.name} — <span className="break-all">{c.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="pt-1">
+                  A restricted key needs write access to Checkout Sessions, Billing Portal Sessions
+                  and Products/Prices, plus read on Subscriptions and Customers.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {state && !state.payments_configured && (
           <p className="mt-4 rounded-xl bg-muted p-4 text-xs text-muted-foreground">
             Card payments aren’t connected yet, so checkout is disabled. An admin can also grant
