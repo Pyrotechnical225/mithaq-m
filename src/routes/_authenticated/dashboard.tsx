@@ -16,6 +16,7 @@ import { haversineKm, kmToMiles } from "@/lib/geo";
 import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
 import { getMyMembership } from "@/lib/membership.functions";
 import { PairingsSection } from "@/components/PairingsSection";
+import { amIAdmin } from "@/lib/admin.functions";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
