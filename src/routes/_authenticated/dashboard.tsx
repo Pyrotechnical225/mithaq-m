@@ -53,6 +53,7 @@ function Dashboard() {
   const fetchLocation = useServerFn(getMyLocation);
   const saveLocation = useServerFn(saveMyLocation);
   const fetchImams = useServerFn(listImams);
+  const checkAdmin = useServerFn(amIAdmin);
 
   const [email, setEmail] = useState<string>("");
   const [completed, setCompleted] = useState(false);
@@ -64,11 +65,15 @@ function Dashboard() {
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [memberActive, setMemberActive] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const fetchMembership = useServerFn(getMyMembership);
   useEffect(() => {
     fetchMembership()
       .then((m) => setMemberActive(!!m.active))
       .catch(() => setMemberActive(false));
+    checkAdmin()
+      .then((r) => setIsAdmin(!!r.isAdmin))
+      .catch(() => setIsAdmin(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
