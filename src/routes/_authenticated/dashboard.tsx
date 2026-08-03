@@ -16,6 +16,7 @@ import { haversineKm, kmToMiles } from "@/lib/geo";
 import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
 import { getMyMembership } from "@/lib/membership.functions";
 import { PairingsSection } from "@/components/PairingsSection";
+import { amIAdmin } from "@/lib/admin.functions";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -52,6 +53,7 @@ function Dashboard() {
   const fetchLocation = useServerFn(getMyLocation);
   const saveLocation = useServerFn(saveMyLocation);
   const fetchImams = useServerFn(listImams);
+  const checkAdmin = useServerFn(amIAdmin);
 
   const [email, setEmail] = useState<string>("");
   const [completed, setCompleted] = useState(false);
@@ -63,11 +65,15 @@ function Dashboard() {
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [memberActive, setMemberActive] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const fetchMembership = useServerFn(getMyMembership);
   useEffect(() => {
     fetchMembership()
       .then((m) => setMemberActive(!!m.active))
       .catch(() => setMemberActive(false));
+    checkAdmin()
+      .then((r) => setIsAdmin(!!r.isAdmin))
+      .catch(() => setIsAdmin(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -205,6 +211,14 @@ function Dashboard() {
             <span className="font-display text-lg text-foreground">Mithaq</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="rounded-full bg-primary px-3 py-1 text-primary-foreground hover:bg-primary/90"
+              >
+                Admin dashboard
+              </Link>
+            )}
             <Link to="/settings" className="text-muted-foreground hover:text-foreground">
               Privacy & settings
             </Link>
