@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+  confirmCheckout,
+  diagnoseStripe,
   getMyMembership,
   openBillingPortal,
   startCheckout,
@@ -23,13 +25,38 @@ function MembershipPage() {
   const fetchMembership = useServerFn(getMyMembership);
   const checkout = useServerFn(startCheckout);
   const portal = useServerFn(openBillingPortal);
+  const confirm = useServerFn(confirmCheckout);
+  const diagnose = useServerFn(diagnoseStripe);
 
   const [state, setState] = useState<Awaited<ReturnType<typeof getMyMembership>> | null>(null);
   const [busy, setBusy] = useState<PlanId | "portal" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [diag, setDiag] = useState<Awaited<ReturnType<typeof diagnoseStripe>> | null>(null);
+  const [diagBusy, setDiagBusy] = useState(false);
 
   useEffect(() => {
-    fetchMembership().then(setState).catch(() => setState(null));
+    const load = () => fetchMembership().then(setState).catch(() => setState(null));
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("checkout") === "success" && sessionId) {
+      setNotice("Confirming your payment…");
+      confirm({ data: { session_id: sessionId } })
+        .then((r) =>
+          setNotice(
+            r.ok
+              ? "Payment confirmed — your membership is active."
+              : "Payment received. Your membership will activate shortly; refresh in a moment.",
+          ),
+        )
+        .catch(() =>
+          setNotice("Payment received. Your membership will activate shortly; refresh in a moment."),
+        )
+        .finally(load);
+    } else {
+      if (params.get("checkout") === "cancelled") setNotice("Checkout was cancelled.");
+      load();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -45,6 +72,17 @@ function MembershipPage() {
     }
   };
 
+  const runDiagnostic = async () => {
+    setDiagBusy(true);
+    try {
+      setDiag(await diagnose({ data: { origin: window.location.origin } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Diagnostic failed");
+    } finally {
+      setDiagBusy(false);
+    }
+  };
+
   const manage = async () => {
     setError(null);
     setBusy("portal");
@@ -56,6 +94,7 @@ function MembershipPage() {
       setBusy(null);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background">
