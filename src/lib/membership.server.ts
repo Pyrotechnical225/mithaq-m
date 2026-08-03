@@ -215,3 +215,38 @@ export async function diagnoseStripeKey(origin: string) {
 
   return { key: info, checks };
 }
+
+// Verifies the Stripe-Signature header against the raw request body.
+export async function verifyStripeSignature(
+  payload: string,
+  header: string | null,
+  secret: string,
+) {
+  if (!header) return false;
+  const parts = Object.fromEntries(
+    header.split(",").map((p) => {
+      const [k, ...rest] = p.split("=");
+      return [k.trim(), rest.join("=")];
+    }),
+  );
+  const timestamp = parts["t"];
+  const sig = parts["v1"];
+  if (!timestamp || !sig) return false;
+
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, enc.encode(`${timestamp}.${payload}`));
+  const expected = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  if (expected.length !== sig.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
+  return diff === 0;
+}
