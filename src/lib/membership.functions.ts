@@ -8,9 +8,7 @@ export const getMyMembership = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data } = await context.supabase
       .from("subscriptions")
-      .select(
-        "plan, status, current_period_end, cancel_at_period_end, last_payment_status, provider_customer_id",
-      )
+      .select("plan, status, current_period_end, provider_customer_id")
       .eq("user_id", context.userId)
       .maybeSingle();
     const { data: active } = await context.supabase.rpc("has_active_membership", {
@@ -26,8 +24,6 @@ export const getMyMembership = createServerFn({ method: "GET" })
       plan: data?.plan ?? "none",
       status: data?.status ?? "inactive",
       current_period_end: data?.current_period_end ?? null,
-      cancel_at_period_end: !!data?.cancel_at_period_end,
-      last_payment_status: data?.last_payment_status ?? null,
       has_billing_portal: !!data?.provider_customer_id,
       payments_configured: stripeConfigured(),
       is_admin: !!isAdmin,
@@ -35,7 +31,6 @@ export const getMyMembership = createServerFn({ method: "GET" })
   });
 
 const CheckoutInput = z.object({
-  // Allowlisted plan ids only — no client-supplied price or amount.
   plan: z.enum(["monthly", "yearly"]),
   origin: z.string().url(),
 });
@@ -44,72 +39,38 @@ export const startCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CheckoutInput.parse(input))
   .handler(async ({ data, context }) => {
-    const {
-      createCheckoutSession,
-      stripeConfigured,
-      StripeError,
-      getOrCreateCustomer,
-      customerHasLiveSubscription,
-    } = await import("./membership.server");
-
+    const { createCheckoutSession, stripeConfigured, StripeError } =
+      await import("./membership.server");
     if (!stripeConfigured()) {
       throw new Error(
         "Payments are not connected yet. Add your Stripe secret key to enable checkout.",
       );
     }
-
     const { data: isAdmin } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: "admin",
     });
-
-    // Already a member? Don't let them buy a second subscription.
-    const { data: active } = await context.supabase.rpc("has_active_membership", {
-      _user_id: context.userId,
-    });
-    if (active) {
-      throw new Error(
-        "You already have an active membership. Use “Manage billing” to change plan.",
-      );
-    }
-
     const { data: existing } = await context.supabase
       .from("subscriptions")
-      .select("provider_customer_id")
+      .select("status, current_period_end, provider_customer_id")
       .eq("user_id", context.userId)
       .maybeSingle();
-
+    const periodStillOpen =
+      !existing?.current_period_end || new Date(existing.current_period_end).getTime() > Date.now();
+    if (
+      existing &&
+      ["active", "trialing", "complimentary"].includes(existing.status) &&
+      periodStillOpen
+    ) {
+      throw new Error("You already have an active membership. Use Manage billing to make changes.");
+    }
     const email = (context.claims as { email?: string } | undefined)?.email ?? null;
-
     try {
-      const customerId = await getOrCreateCustomer({
-        userId: context.userId,
-        email,
-        storedCustomerId: existing?.provider_customer_id ?? null,
-      });
-
-      // Remember the customer immediately so the billing portal and webhooks
-      // can always resolve this user, even if checkout is abandoned.
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("subscriptions").upsert(
-        {
-          user_id: context.userId,
-          provider: "stripe",
-          provider_customer_id: customerId,
-        },
-        { onConflict: "user_id" },
-      );
-
-      if (await customerHasLiveSubscription(customerId)) {
-        throw new Error(
-          "There is already a subscription on your billing account. Use “Manage billing” to review it.",
-        );
-      }
-
       return await createCheckoutSession({
         plan: data.plan,
         userId: context.userId,
-        customerId,
+        email,
+        customerId: existing?.provider_customer_id ?? null,
         origin: data.origin,
       });
     } catch (e) {
@@ -125,14 +86,12 @@ export const startCheckout = createServerFn({ method: "POST" })
           isAdmin ? `${friendly} (Stripe: ${e.status} ${e.code ?? ""} ${e.message})` : friendly,
         );
       }
-      if (e instanceof Error) throw e;
       throw new Error("We couldn’t start checkout just now. Please try again in a moment.");
     }
   });
 
 // Called when the member returns from Stripe with ?checkout=success&session_id=…
 // so membership activates even if the webhook is delayed or misconfigured.
-// The session is only applied when it belongs to the signed-in user.
 const ConfirmInput = z.object({ session_id: z.string().min(10).max(200) });
 
 export const confirmCheckout = createServerFn({ method: "POST" })
@@ -141,14 +100,15 @@ export const confirmCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { syncSubscriptionFromSession } = await import("./membership.server");
     try {
-      return await syncSubscriptionFromSession(data.session_id, context.userId);
+      const result = await syncSubscriptionFromSession(data.session_id, context.userId);
+      return result;
     } catch (e) {
       console.error("confirmCheckout failed:", e);
       return { ok: false as const, reason: "stripe_error" as const };
     }
   });
 
-// Admin-only Stripe diagnostic — read-only Stripe calls, creates nothing.
+// Admin-only Stripe diagnostic.
 export const diagnoseStripe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -167,7 +127,6 @@ export const openBillingPortal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PortalInput.parse(input))
   .handler(async ({ data, context }) => {
-    // The customer id always comes from this user's own DB row.
     const { data: sub } = await context.supabase
       .from("subscriptions")
       .select("provider_customer_id")
@@ -177,9 +136,9 @@ export const openBillingPortal = createServerFn({ method: "POST" })
     const { createBillingPortalSession } = await import("./membership.server");
     try {
       return await createBillingPortalSession(sub.provider_customer_id, data.origin);
-    } catch (e) {
-      console.error("billing portal failed:", e);
-      throw new Error("We couldn’t open the billing portal just now. Please try again shortly.");
+    } catch (error) {
+      console.error("Billing portal failed:", error);
+      throw new Error("We couldn’t open billing just now. Please try again in a moment.");
     }
   });
 
@@ -205,7 +164,6 @@ export const setComplimentaryMembership = createServerFn({ method: "POST" })
         plan: data.grant ? "complimentary" : "none",
         status: data.grant ? "complimentary" : "cancelled",
         current_period_end: null,
-        cancel_at_period_end: false,
         provider: data.grant ? "admin" : null,
       },
       { onConflict: "user_id" },
@@ -226,6 +184,6 @@ export const listMemberships = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin
       .from("subscriptions")
-      .select("user_id, plan, status, current_period_end, cancel_at_period_end");
+      .select("user_id, plan, status, current_period_end");
     return data ?? [];
   });
