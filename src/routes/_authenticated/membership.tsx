@@ -118,9 +118,7 @@ function MembershipPage() {
             <p className="text-sm font-medium text-foreground">
               Your membership is active ({state.plan}).
               {state.current_period_end &&
-                (state.cancel_at_period_end
-                  ? ` Access ends ${new Date(state.current_period_end).toLocaleDateString()} — cancellation scheduled.`
-                  : ` Renews ${new Date(state.current_period_end).toLocaleDateString()}.`)}
+                ` Renews ${new Date(state.current_period_end).toLocaleDateString()}.`}
             </p>
             {state.has_billing_portal && (
               <button
@@ -133,37 +131,6 @@ function MembershipPage() {
             )}
           </div>
         )}
-
-        {state && !state.active && ["past_due", "unpaid", "incomplete"].includes(state.status) && (
-          <div className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/5 p-5 text-sm text-foreground">
-            <p className="font-medium">Your last payment didn’t go through.</p>
-            <p className="mt-1 text-muted-foreground">
-              Update your card in the billing portal to restore access.
-            </p>
-            {state.has_billing_portal && (
-              <button
-                onClick={manage}
-                disabled={busy === "portal"}
-                className="mt-3 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
-              >
-                {busy === "portal" ? "Opening…" : "Update payment method"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {state &&
-          !state.active &&
-          state.has_billing_portal &&
-          !["past_due", "unpaid", "incomplete"].includes(state.status) && (
-            <button
-              onClick={manage}
-              disabled={busy === "portal"}
-              className="mt-6 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
-            >
-              {busy === "portal" ? "Opening…" : "Manage billing"}
-            </button>
-          )}
 
         {notice && (
           <p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
@@ -210,8 +177,8 @@ function MembershipPage() {
                   ))}
                 </ul>
                 <p className="pt-1">
-                  These checks are read-only. Checkout also needs <em>write</em> access to Checkout
-                  Sessions, Billing Portal Sessions, Customers and Products/Prices on the key.
+                  Checkout also needs write access to Checkout Sessions and Billing Portal Sessions.
+                  Configure both Stripe price IDs to avoid requiring Products/Prices write access.
                 </p>
               </div>
             )}
