@@ -4,10 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/verify-email")({
   head: () => ({
-    meta: [
-      { title: "Verify your email — Mithaq" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Verify your email — Mithaq" }, { name: "robots", content: "noindex" }],
   }),
   ssr: false,
   component: VerifyEmail,
@@ -71,7 +68,9 @@ function VerifyEmail() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="max-w-md w-full rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-soft)] text-center">
-        <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">ميثاق</p>
+        <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">
+          ميثاق
+        </p>
         <h1 className="mt-4 text-2xl text-foreground">Verify your email</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Before you can access your dashboard and matches, please confirm your address:
@@ -109,7 +108,10 @@ function VerifyEmail() {
           </button>
         </div>
 
-        <Link to="/" className="mt-6 inline-block text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/"
+          className="mt-6 inline-block text-xs text-muted-foreground hover:text-foreground"
+        >
           ← Back to home
         </Link>
       </div>

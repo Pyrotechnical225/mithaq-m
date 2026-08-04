@@ -28,13 +28,23 @@ function ImamsAdmin() {
   const [msg, setMsg] = useState<string | null>(null);
   const [editing, setEditing] = useState<Imam | null>(null);
   const empty = {
-    name: "", title: "Imam", mosque: "", city: ADMIN_UK_CITIES[0], postcode: "",
-    phone: "", email: "", website: "", languages: "", notes: "",
+    name: "",
+    title: "Imam",
+    mosque: "",
+    city: ADMIN_UK_CITIES[0],
+    postcode: "",
+    phone: "",
+    email: "",
+    website: "",
+    languages: "",
+    notes: "",
   };
   const [form, setForm] = useState(empty);
 
   const load = () => fetchAll().then(setRows);
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +58,10 @@ function ImamsAdmin() {
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       website: form.website.trim() || null,
-      languages: form.languages.split(",").map((s) => s.trim()).filter(Boolean),
+      languages: form.languages
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
       notes: form.notes.trim() || null,
     };
     try {
@@ -100,32 +113,72 @@ function ImamsAdmin() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-3xl text-foreground">Imams directory</h1>
-        <button onClick={seed} className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent">
+        <button
+          onClick={seed}
+          className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
+        >
           Seed example imams
         </button>
       </div>
 
-      <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-border bg-card p-6 md:grid-cols-2">
+      <form
+        onSubmit={submit}
+        className="grid gap-3 rounded-2xl border border-border bg-card p-6 md:grid-cols-2"
+      >
         <h2 className="md:col-span-2 text-sm uppercase tracking-widest text-muted-foreground">
           {editing ? `Editing ${editing.name}` : "Add a new imam"}
         </h2>
-        <Field label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
+        <Field
+          label="Name"
+          value={form.name}
+          onChange={(v) => setForm({ ...form, name: v })}
+          required
+        />
         <Field label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-        <Field label="Mosque" value={form.mosque} onChange={(v) => setForm({ ...form, mosque: v })} />
+        <Field
+          label="Mosque"
+          value={form.mosque}
+          onChange={(v) => setForm({ ...form, mosque: v })}
+        />
         <label className="block">
           <span className="text-xs uppercase tracking-widest text-muted-foreground">City</span>
-          <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm">
-            {ADMIN_UK_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          <select
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+          >
+            {ADMIN_UK_CITIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </label>
-        <Field label="Postcode" value={form.postcode} onChange={(v) => setForm({ ...form, postcode: v })} />
+        <Field
+          label="Postcode"
+          value={form.postcode}
+          onChange={(v) => setForm({ ...form, postcode: v })}
+        />
         <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-        <Field label="Website" value={form.website} onChange={(v) => setForm({ ...form, website: v })} />
-        <Field label="Languages (comma-separated)" value={form.languages} onChange={(v) => setForm({ ...form, languages: v })} />
+        <Field
+          label="Website"
+          value={form.website}
+          onChange={(v) => setForm({ ...form, website: v })}
+        />
+        <Field
+          label="Languages (comma-separated)"
+          value={form.languages}
+          onChange={(v) => setForm({ ...form, languages: v })}
+        />
         <label className="md:col-span-2 block">
           <span className="text-xs uppercase tracking-widest text-muted-foreground">Notes</span>
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+          <textarea
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            rows={2}
+            className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+          />
         </label>
         {msg && <p className="md:col-span-2 text-sm text-muted-foreground">{msg}</p>}
         <div className="md:col-span-2 flex gap-2">
@@ -133,7 +186,14 @@ function ImamsAdmin() {
             {editing ? "Save changes" : "Add imam"}
           </button>
           {editing && (
-            <button type="button" onClick={() => { setEditing(null); setForm(empty); }} className="rounded-full border border-border px-4 py-2 text-sm hover:bg-accent">
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setForm(empty);
+              }}
+              className="rounded-full border border-border px-4 py-2 text-sm hover:bg-accent"
+            >
               Cancel
             </button>
           )}
@@ -160,7 +220,10 @@ function ImamsAdmin() {
                   <div className="text-xs text-muted-foreground">{r.title}</div>
                 </td>
                 <td className="px-4 py-3 text-foreground">{r.mosque ?? "—"}</td>
-                <td className="px-4 py-3 text-foreground">{r.city}{r.postcode ? `, ${r.postcode}` : ""}</td>
+                <td className="px-4 py-3 text-foreground">
+                  {r.city}
+                  {r.postcode ? `, ${r.postcode}` : ""}
+                </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   {r.phone && <div>{r.phone}</div>}
                   {r.email && <div>{r.email}</div>}
@@ -168,14 +231,28 @@ function ImamsAdmin() {
                 <td className="px-4 py-3 text-xs">{(r.languages ?? []).join(", ")}</td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => edit(r)} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent">Edit</button>
-                    <button onClick={() => remove(r.id)} className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10">Delete</button>
+                    <button
+                      onClick={() => edit(r)}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => remove(r.id)}
+                      className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
             {rows && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No imams yet. Add one above or seed examples.</td></tr>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  No imams yet. Add one above or seed examples.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -184,11 +261,26 @@ function ImamsAdmin() {
   );
 }
 
-function Field({ label, value, onChange, required }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) {
+function Field({
+  label,
+  value,
+  onChange,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+}) {
   return (
     <label className="block">
       <span className="text-xs uppercase tracking-widest text-muted-foreground">{label}</span>
-      <input required={required} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+      <input
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+      />
     </label>
   );
 }

@@ -31,9 +31,9 @@ function WaliPage() {
           The wali — a guardian, not a gatekeeper
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          The wali is the bride's guardian in the nikah — usually her father, or another
-          responsible male relative. Far from being a formality, his role protects the bride
-          and grounds the marriage in family.
+          The wali is the bride's guardian in the nikah — usually her father, or another responsible
+          male relative. Far from being a formality, his role protects the bride and grounds the
+          marriage in family.
         </p>
 
         <section className="mt-10 space-y-6">
@@ -50,8 +50,8 @@ function WaliPage() {
           <h2 className="font-display text-2xl text-foreground">When there is no wali</h2>
           <p className="text-muted-foreground">
             If a bride's father has passed away or is unavailable, the role passes to the next
-            appropriate male relative, or in some cases to a trusted imam. What matters is that
-            she is protected and represented — not left to navigate alone.
+            appropriate male relative, or in some cases to a trusted imam. What matters is that she
+            is protected and represented — not left to navigate alone.
           </p>
         </section>
       </main>

@@ -10,10 +10,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/imam-applications")({
   head: () => ({
-    meta: [
-      { title: "Imam applications — Mithaq admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Imam applications — Mithaq admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminImamApplications,
 });
@@ -25,14 +22,20 @@ function AdminImamApplications() {
   const listPairings = useServerFn(listAllPairings);
 
   const [apps, setApps] = useState<Awaited<ReturnType<typeof listImamApplications>> | null>(null);
-  const [pairings, setPairings] = useState<Awaited<ReturnType<typeof listAllPairings>> | null>(null);
+  const [pairings, setPairings] = useState<Awaited<ReturnType<typeof listAllPairings>> | null>(
+    null,
+  );
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [radius, setRadius] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
-    listApps().then(setApps).catch((e) => setError(String(e)));
-    listPairings().then(setPairings).catch(() => undefined);
+    listApps()
+      .then(setApps)
+      .catch((e) => setError(String(e)));
+    listPairings()
+      .then(setPairings)
+      .catch(() => undefined);
   };
 
   useEffect(() => {
@@ -65,12 +68,16 @@ function AdminImamApplications() {
                     {[a.city, a.postcode, a.email, a.phone].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize">{a.status}</span>
+                <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize">
+                  {a.status}
+                </span>
               </div>
               {a.credentials && (
                 <p className="mt-2 text-xs text-muted-foreground">Credentials: {a.credentials}</p>
               )}
-              {a.message && <p className="mt-1 text-xs text-muted-foreground">Message: {a.message}</p>}
+              {a.message && (
+                <p className="mt-1 text-xs text-muted-foreground">Message: {a.message}</p>
+              )}
 
               {a.status === "pending" && (
                 <div className="mt-3 space-y-2">
@@ -132,7 +139,8 @@ function AdminImamApplications() {
               {a.account && (
                 <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                   <span>
-                    Dashboard access: {a.account.active ? "active" : "revoked"} · {a.account.radius_km} km
+                    Dashboard access: {a.account.active ? "active" : "revoked"} ·{" "}
+                    {a.account.radius_km} km
                   </span>
                   <button
                     onClick={async () => {

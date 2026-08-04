@@ -6,10 +6,7 @@ import { deleteMyAccount, getMyPrivacy, updateMyPrivacy } from "@/lib/privacy.fu
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
-    meta: [
-      { title: "Privacy & settings — Mithaq" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Privacy & settings — Mithaq" }, { name: "robots", content: "noindex" }],
   }),
   component: SettingsPage,
 });
@@ -67,14 +64,17 @@ function SettingsPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="mx-auto max-w-3xl px-6 py-4">
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
+          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Dashboard
+          </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
         <h1 className="text-3xl text-foreground">Privacy & settings</h1>
         <p className="text-sm text-muted-foreground">
-          You control who can see your profile and what information is shared before you approve a match.
+          You control who can see your profile and what information is shared before you approve a
+          match.
           {savedAt && <span className="ml-2 text-primary">Saved {savedAt}</span>}
         </p>
 
@@ -129,7 +129,8 @@ function SettingsPage() {
         <section className="rounded-2xl border border-destructive/40 bg-card p-6 shadow-[var(--shadow-soft)]">
           <h2 className="text-lg text-foreground">Delete my account</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Removes your profile, all survey answers, matches, and interests permanently. This cannot be undone.
+            Removes your profile, all survey answers, matches, and interests permanently. This
+            cannot be undone.
           </p>
           {confirming ? (
             <div className="mt-4 flex gap-3">

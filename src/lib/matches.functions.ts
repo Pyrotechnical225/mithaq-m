@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { assertActiveMembership } from "./membership-guard";
 import { questions } from "./survey-questions";
 
 // Only these question ids inform matching; free-text stays server-side only
@@ -30,6 +31,7 @@ const MatchSchema = z.object({
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertActiveMembership(context);
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI Gateway not configured");
 
@@ -56,9 +58,7 @@ export const generateMatches = createServerFn({ method: "POST" })
     const { data: privacyRows } = await supabaseAdmin
       .from("privacy_settings")
       .select("user_id, visibility, show_free_text");
-    const privacyByUser = new Map(
-      (privacyRows ?? []).map((p) => [p.user_id, p]),
-    );
+    const privacyByUser = new Map((privacyRows ?? []).map((p) => [p.user_id, p]));
 
     const pool = (candidates ?? []).filter((c) => {
       const p = privacyByUser.get(c.user_id);
@@ -172,6 +172,7 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
 export const getLatestMatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertActiveMembership(context);
     const { data, error } = await context.supabase
       .from("matches")
       .select("id, results, created_at")
@@ -189,10 +190,13 @@ export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("interests").upsert(
-      { from_user: context.userId, to_user: data.to_user, status: "pending" },
-      { onConflict: "from_user,to_user" },
-    );
+    await assertActiveMembership(context);
+    const { error } = await context.supabase
+      .from("interests")
+      .upsert(
+        { from_user: context.userId, to_user: data.to_user, status: "pending" },
+        { onConflict: "from_user,to_user" },
+      );
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -235,7 +239,8 @@ export const listInterests = createServerFn({ method: "GET" })
     for (const s of sent ?? []) if (s.status === "accepted") acceptedIds.add(s.to_user);
     for (const r of received ?? []) if (r.status === "accepted") acceptedIds.add(r.from_user);
 
-    let contacts: Record<string, { display_name: string | null; contact_email: string | null }> = {};
+    let contacts: Record<string, { display_name: string | null; contact_email: string | null }> =
+      {};
     if (acceptedIds.size > 0) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: profs } = await supabaseAdmin
@@ -243,7 +248,10 @@ export const listInterests = createServerFn({ method: "GET" })
         .select("id, display_name, contact_email")
         .in("id", Array.from(acceptedIds));
       contacts = Object.fromEntries(
-        (profs ?? []).map((p) => [p.id, { display_name: p.display_name, contact_email: p.contact_email }]),
+        (profs ?? []).map((p) => [
+          p.id,
+          { display_name: p.display_name, contact_email: p.contact_email },
+        ]),
       );
     }
 

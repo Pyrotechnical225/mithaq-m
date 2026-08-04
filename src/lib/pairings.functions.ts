@@ -101,7 +101,10 @@ export const listMyPairings = createServerFn({ method: "GET" })
     const otherIds = pairings.map((p) => (p.user_a === uid ? p.user_b : p.user_a));
     const [{ data: imams }, { data: profs }] = await Promise.all([
       imamIds.length
-        ? supabaseAdmin.from("imams").select("id, name, title, mosque, city, email, phone").in("id", imamIds)
+        ? supabaseAdmin
+            .from("imams")
+            .select("id, name, title, mosque, city, email, phone")
+            .in("id", imamIds)
         : Promise.resolve({ data: [] as never[] }),
       supabaseAdmin.from("profiles").select("id, display_name, uk_city").in("id", otherIds),
     ]);

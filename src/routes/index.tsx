@@ -21,12 +21,10 @@ function Index() {
     <div className="min-h-screen">
       <SiteHeader />
 
-
       <main>
         <section className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center md:pt-24">
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-            A halal path to marriage
+            <span className="h-1.5 w-1.5 rounded-full bg-gold" />A halal path to marriage
           </div>
 
           <h1
@@ -42,11 +40,10 @@ function Index() {
           </p>
 
           <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Mithaq honors marriage as the sacred covenant it is described as in Islam.
-            Our platform matches practicing Muslims based on religious commitment,
-            family values, and life goals, with built-in respect for wali involvement
-            and Islamic marriage practices — helping you begin your journey the halal
-            way.
+            Mithaq honors marriage as the sacred covenant it is described as in Islam. Our platform
+            matches practicing Muslims based on religious commitment, family values, and life goals,
+            with built-in respect for wali involvement and Islamic marriage practices — helping you
+            begin your journey the halal way.
           </p>
 
           <div className="mt-12 flex flex-col items-center gap-4">
@@ -66,11 +63,23 @@ function Index() {
         <section id="principles" className="mx-auto max-w-5xl px-6 py-16">
           <div className="grid gap-6 md:grid-cols-3">
             {[
-              { title: "Deen first", body: "Compatibility begins with faith, practice, and shared Islamic values — not surface-level filters." },
-              { title: "Wali involved", body: "Guardians are welcomed into the process. Every conversation stays dignified and halal." },
-              { title: "Serious intentions", body: "Every profile is here for nikah, insha'Allah. No swiping, no games — only intentional matches." },
+              {
+                title: "Deen first",
+                body: "Compatibility begins with faith, practice, and shared Islamic values — not surface-level filters.",
+              },
+              {
+                title: "Wali involved",
+                body: "Guardians are welcomed into the process. Every conversation stays dignified and halal.",
+              },
+              {
+                title: "Serious intentions",
+                body: "Every profile is here for nikah, insha'Allah. No swiping, no games — only intentional matches.",
+              },
             ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+              <div
+                key={item.title}
+                className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+              >
                 <div className="mb-3 h-8 w-8 rounded-full bg-gold/30" />
                 <h3 className="mb-2 text-xl text-foreground">{item.title}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
@@ -83,9 +92,21 @@ function Index() {
           <h2 className="text-3xl text-foreground md:text-4xl">How it works</h2>
           <div className="mt-10 grid gap-8 md:grid-cols-3">
             {[
-              { n: "01", t: "Answer honestly", d: "Share your deen, values, and what you seek in a spouse." },
-              { n: "02", t: "Get matched", d: "We surface profiles aligned with your practice and life goals." },
-              { n: "03", t: "Meet with your wali", d: "Move forward the halal way, with your guardian involved." },
+              {
+                n: "01",
+                t: "Answer honestly",
+                d: "Share your deen, values, and what you seek in a spouse.",
+              },
+              {
+                n: "02",
+                t: "Get matched",
+                d: "We surface profiles aligned with your practice and life goals.",
+              },
+              {
+                n: "03",
+                t: "Meet with your wali",
+                d: "Move forward the halal way, with your guardian involved.",
+              },
             ].map((s) => (
               <div key={s.n} className="text-left">
                 <div className="font-display text-4xl text-gold">{s.n}</div>
@@ -98,7 +119,6 @@ function Index() {
       </main>
 
       <SiteFooter />
-
     </div>
   );
 }

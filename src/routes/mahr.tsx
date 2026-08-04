@@ -14,7 +14,8 @@ export const Route = createFileRoute("/mahr")({
       { property: "og:title", content: "Mahr — The Bridal Gift in Islam" },
       {
         property: "og:description",
-        content: "What mahr is, why it's the bride's right, and how to decide on an appropriate amount.",
+        content:
+          "What mahr is, why it's the bride's right, and how to decide on an appropriate amount.",
       },
     ],
   }),
@@ -31,27 +32,38 @@ function MahrPage() {
           Mahr — the bride's right
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          Mahr is the gift the groom gives to the bride as a required part of the marriage
-          contract. It belongs solely to her, not to her family, and reflects the seriousness
-          of the union.
+          Mahr is the gift the groom gives to the bride as a required part of the marriage contract.
+          It belongs solely to her, not to her family, and reflects the seriousness of the union.
         </p>
 
         <section className="mt-10 space-y-6">
           <h2 className="font-display text-2xl text-foreground">What to know</h2>
           <ul className="list-disc space-y-2 pl-6 text-muted-foreground">
-            <li><strong className="text-foreground">It's obligatory:</strong> No valid nikah exists without an agreed mahr.</li>
-            <li><strong className="text-foreground">Her right alone:</strong> Mahr is the bride's property to keep, spend, or invest.</li>
-            <li><strong className="text-foreground">Any form:</strong> Money, gold, property, or even teaching Qur'an — whatever is agreed.</li>
-            <li><strong className="text-foreground">Prompt or deferred:</strong> It can be paid at the contract or deferred; often it's a mix.</li>
+            <li>
+              <strong className="text-foreground">It's obligatory:</strong> No valid nikah exists
+              without an agreed mahr.
+            </li>
+            <li>
+              <strong className="text-foreground">Her right alone:</strong> Mahr is the bride's
+              property to keep, spend, or invest.
+            </li>
+            <li>
+              <strong className="text-foreground">Any form:</strong> Money, gold, property, or even
+              teaching Qur'an — whatever is agreed.
+            </li>
+            <li>
+              <strong className="text-foreground">Prompt or deferred:</strong> It can be paid at the
+              contract or deferred; often it's a mix.
+            </li>
           </ul>
         </section>
 
         <section className="mt-10 space-y-4">
           <h2 className="font-display text-2xl text-foreground">Choosing an amount</h2>
           <p className="text-muted-foreground">
-            The Prophet ﷺ encouraged reasonable mahr — the best marriage is the easiest one.
-            Discuss it openly, keep it within the groom's real means, and honor the bride's
-            dignity without turning it into a burden.
+            The Prophet ﷺ encouraged reasonable mahr — the best marriage is the easiest one. Discuss
+            it openly, keep it within the groom's real means, and honor the bride's dignity without
+            turning it into a burden.
           </p>
         </section>
       </main>

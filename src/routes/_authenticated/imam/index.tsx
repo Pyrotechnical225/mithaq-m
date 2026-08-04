@@ -44,10 +44,15 @@ function ImamDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
 
-  const load = () => list().then(setPairings).catch((e) => setError(String(e)));
+  const load = () =>
+    list()
+      .then(setPairings)
+      .catch((e) => setError(String(e)));
 
   useEffect(() => {
-    whoami().then(setMe).catch(() => undefined);
+    whoami()
+      .then(setMe)
+      .catch(() => undefined);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -249,7 +254,10 @@ function ImamDashboard() {
                         note: f.note || null,
                       },
                     });
-                    setMeetForm((m) => ({ ...m, [p.id]: { when: "", venue: "", address: "", wali: true, note: "" } }));
+                    setMeetForm((m) => ({
+                      ...m,
+                      [p.id]: { when: "", venue: "", address: "", wali: true, note: "" },
+                    }));
                     load();
                   }}
                   className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"

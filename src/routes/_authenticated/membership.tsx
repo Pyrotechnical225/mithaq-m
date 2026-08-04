@@ -36,7 +36,10 @@ function MembershipPage() {
   const [diagBusy, setDiagBusy] = useState(false);
 
   useEffect(() => {
-    const load = () => fetchMembership().then(setState).catch(() => setState(null));
+    const load = () =>
+      fetchMembership()
+        .then(setState)
+        .catch(() => setState(null));
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
     if (params.get("checkout") === "success" && sessionId) {
@@ -50,7 +53,9 @@ function MembershipPage() {
           ),
         )
         .catch(() =>
-          setNotice("Payment received. Your membership will activate shortly; refresh in a moment."),
+          setNotice(
+            "Payment received. Your membership will activate shortly; refresh in a moment.",
+          ),
         )
         .finally(load);
     } else {
@@ -75,7 +80,7 @@ function MembershipPage() {
   const runDiagnostic = async () => {
     setDiagBusy(true);
     try {
-      setDiag(await diagnose({ data: { origin: window.location.origin } }));
+      setDiag(await diagnose());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Diagnostic failed");
     } finally {
@@ -95,7 +100,6 @@ function MembershipPage() {
     }
   };
 
-
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-6 py-12">
@@ -114,7 +118,9 @@ function MembershipPage() {
             <p className="text-sm font-medium text-foreground">
               Your membership is active ({state.plan}).
               {state.current_period_end &&
-                ` Renews ${new Date(state.current_period_end).toLocaleDateString()}.`}
+                (state.cancel_at_period_end
+                  ? ` Access ends ${new Date(state.current_period_end).toLocaleDateString()} — cancellation scheduled.`
+                  : ` Renews ${new Date(state.current_period_end).toLocaleDateString()}.`)}
             </p>
             {state.has_billing_portal && (
               <button
@@ -127,6 +133,37 @@ function MembershipPage() {
             )}
           </div>
         )}
+
+        {state && !state.active && ["past_due", "unpaid", "incomplete"].includes(state.status) && (
+          <div className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/5 p-5 text-sm text-foreground">
+            <p className="font-medium">Your last payment didn’t go through.</p>
+            <p className="mt-1 text-muted-foreground">
+              Update your card in the billing portal to restore access.
+            </p>
+            {state.has_billing_portal && (
+              <button
+                onClick={manage}
+                disabled={busy === "portal"}
+                className="mt-3 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
+              >
+                {busy === "portal" ? "Opening…" : "Update payment method"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {state &&
+          !state.active &&
+          state.has_billing_portal &&
+          !["past_due", "unpaid", "incomplete"].includes(state.status) && (
+            <button
+              onClick={manage}
+              disabled={busy === "portal"}
+              className="mt-6 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
+            >
+              {busy === "portal" ? "Opening…" : "Manage billing"}
+            </button>
+          )}
 
         {notice && (
           <p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
@@ -151,8 +188,8 @@ function MembershipPage() {
                 {diag.key.configured ? (
                   <p>
                     Key: <strong>{diag.key.kind}</strong> ({diag.key.source}), mode{" "}
-                    <strong>{diag.key.mode}</strong>, prefix <code>{diag.key.prefix}</code> · webhook
-                    secret{" "}
+                    <strong>{diag.key.mode}</strong>, prefix <code>{diag.key.prefix}</code> ·
+                    webhook secret{" "}
                     {diag.key.webhook_secret_present
                       ? diag.key.webhook_secret_looks_valid
                         ? "saved (whsec_…)"
@@ -173,8 +210,8 @@ function MembershipPage() {
                   ))}
                 </ul>
                 <p className="pt-1">
-                  A restricted key needs write access to Checkout Sessions, Billing Portal Sessions
-                  and Products/Prices, plus read on Subscriptions and Customers.
+                  These checks are read-only. Checkout also needs <em>write</em> access to Checkout
+                  Sessions, Billing Portal Sessions, Customers and Products/Prices on the key.
                 </p>
               </div>
             )}
@@ -212,7 +249,11 @@ function MembershipPage() {
                 disabled={busy !== null || state?.active || state?.payments_configured === false}
                 className="mt-5 w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                {state?.active ? "Already a member" : busy === plan.id ? "Redirecting…" : `Choose ${plan.name.toLowerCase()}`}
+                {state?.active
+                  ? "Already a member"
+                  : busy === plan.id
+                    ? "Redirecting…"
+                    : `Choose ${plan.name.toLowerCase()}`}
               </button>
             </div>
           ))}

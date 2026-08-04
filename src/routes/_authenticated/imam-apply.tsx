@@ -39,12 +39,16 @@ function ImamApply() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    fetchApp().then(setExisting).catch(() => setExisting(null));
+    fetchApp()
+      .then(setExisting)
+      .catch(() => setExisting(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set =
+    (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +88,9 @@ function ImamApply() {
         </Link>
         <h1 className="mt-6 text-3xl text-foreground">Apply as a Mithaq imam</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Approved imams get their own dashboard to review pairings local to them, approve or decline
-          them, arrange wali-attended meetings and message both families. Our team reviews every
-          application and will arrange a meeting with you before approval.
+          Approved imams get their own dashboard to review pairings local to them, approve or
+          decline them, arrange wali-attended meetings and message both families. Our team reviews
+          every application and will arrange a meeting with you before approval.
         </p>
 
         {existing && (
@@ -98,7 +102,10 @@ function ImamApply() {
               <p className="mt-1 text-muted-foreground">Note from Mithaq: {existing.admin_notes}</p>
             )}
             {existing.status === "approved" && (
-              <Link to="/imam" className="mt-3 inline-block rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground">
+              <Link
+                to="/imam"
+                className="mt-3 inline-block rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground"
+              >
                 Open imam dashboard
               </Link>
             )}
@@ -106,7 +113,10 @@ function ImamApply() {
         )}
 
         {!done && (
-          <form onSubmit={submit} className="mt-8 space-y-3 rounded-2xl border border-border bg-card p-6">
+          <form
+            onSubmit={submit}
+            className="mt-8 space-y-3 rounded-2xl border border-border bg-card p-6"
+          >
             <Field label="Full name" value={form.name} onChange={set("name")} required />
             <Field label="Mosque / institution" value={form.mosque} onChange={set("mosque")} />
             <label className="block">
