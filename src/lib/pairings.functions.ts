@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertActiveMembership } from "./membership-guard";
 
 // -----------------------------------------------------------------------------
 // Member side: turn accepted mutual interests into pairings and assign the
@@ -9,6 +10,7 @@ import { z } from "zod";
 export const syncMyPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: accepted } = await context.supabase
       .from("interests")
@@ -80,6 +82,7 @@ export const syncMyPairings = createServerFn({ method: "POST" })
 export const listMyPairings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: pairings } = await context.supabase
       .from("pairings")
@@ -136,6 +139,7 @@ export const respondToMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondMeetupInput.parse(input))
   .handler(async ({ data, context }) => {
+    await assertActiveMembership(context);
     const { data: meetup, error } = await context.supabase
       .from("meetups")
       .select("id, pairing_id, response_a, response_b, status")
