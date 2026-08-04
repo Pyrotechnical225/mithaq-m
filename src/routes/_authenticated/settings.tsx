@@ -28,25 +28,40 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPrivacy().then((row) => {
-      setP({
-        visibility: row.visibility as Privacy["visibility"],
-        show_location: row.show_location,
-        show_occupation: row.show_occupation,
-        show_free_text: row.show_free_text,
-        reveal_contact_on_mutual: row.reveal_contact_on_mutual,
+    let active = true;
+    fetchPrivacy()
+      .then((row) => {
+        if (!active) return;
+        setP({
+          visibility: row.visibility as Privacy["visibility"],
+          show_location: row.show_location,
+          show_occupation: row.show_occupation,
+          show_free_text: row.show_free_text,
+          reveal_contact_on_mutual: row.reveal_contact_on_mutual,
+        });
+      })
+      .catch((cause) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to load settings");
       });
-    });
-  }, [fetchPrivacy]);
+    return () => {
+      active = false;
+    };
+    // Load once for this authenticated settings screen. Re-running can overwrite a fresh save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const save = async (next: Privacy) => {
     setSaving(true);
+    setError(null);
     setP(next);
     try {
       await update({ data: next });
       setSavedAt(new Date().toLocaleTimeString());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save settings");
     } finally {
       setSaving(false);
     }
@@ -58,7 +73,13 @@ function SettingsPage() {
     navigate({ to: "/" });
   };
 
-  if (!p) return <div className="p-16 text-center text-muted-foreground">Loading…</div>;
+  if (!p) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground sm:p-16">
+        {error ? "Settings could not be loaded: " + error : "Loading settings…"}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,7 +178,9 @@ function SettingsPage() {
           )}
         </section>
 
-        <p className="text-center text-xs text-muted-foreground">{saving && "Saving…"}</p>
+        <p className="text-center text-xs text-muted-foreground">
+          {saving ? "Saving…" : error ? <span className="text-destructive">{error}</span> : null}
+        </p>
       </main>
     </div>
   );
@@ -173,19 +196,22 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border p-4 hover:bg-accent">
-      <span className="text-sm text-foreground">{label}</span>
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
+      <span className="text-sm leading-5 text-foreground">{label}</span>
       <button
         type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
         onClick={() => onChange(!on)}
-        className={`h-6 w-11 rounded-full transition-colors ${on ? "bg-primary" : "bg-muted"}`}
+        className={`h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-primary" : "bg-muted"}`}
       >
         <span
-          className={`block h-5 w-5 translate-y-0.5 rounded-full bg-background shadow transition-transform ${
-            on ? "translate-x-5" : "translate-x-0.5"
+          className={`block h-6 w-6 translate-y-0.5 rounded-full bg-background shadow transition-transform ${
+            on ? "translate-x-5.5" : "translate-x-0.5"
           }`}
         />
       </button>
-    </label>
+    </div>
   );
 }
