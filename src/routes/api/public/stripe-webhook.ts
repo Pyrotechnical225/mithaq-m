@@ -1,14 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/**
- * Stripe webhook. Signature is verified against the RAW request body before
- * anything is parsed, and every event id is claimed in a ledger so repeated
- * deliveries are applied at most once.
- *
- * Events handled: checkout.session.completed,
- * customer.subscription.created/updated/deleted,
- * invoice.payment_succeeded, invoice.payment_failed.
- */
+type StripeEvent = {
+  id: string;
+  type: string;
+  data: { object: Record<string, unknown> };
+};
+
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
@@ -19,58 +16,55 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         const payload = await request.text();
         const {
           verifyStripeSignature,
+          syncSubscriptionById,
           syncSubscriptionFromSession,
           syncSubscriptionObject,
-          syncFromInvoice,
-          claimStripeEvent,
         } = await import("@/lib/membership.server");
-
-        const ok = await verifyStripeSignature(
+        const signatureValid = await verifyStripeSignature(
           payload,
           request.headers.get("stripe-signature"),
           secret,
         );
-        if (!ok) return new Response("Invalid signature", { status: 401 });
+        if (!signatureValid) return new Response("Invalid signature", { status: 400 });
 
-        let event: { id: string; type: string; data: { object: Record<string, unknown> } };
+        let event: StripeEvent;
         try {
-          event = JSON.parse(payload);
+          event = JSON.parse(payload) as StripeEvent;
         } catch {
-          return new Response("Bad payload", { status: 400 });
+          return new Response("Invalid JSON", { status: 400 });
         }
-        if (!event?.id || !event?.type) return new Response("Bad payload", { status: 400 });
-
-        const fresh = await claimStripeEvent(event.id, event.type);
-        if (!fresh) return new Response("ok (duplicate)");
-
-        const obj = event.data?.object ?? {};
 
         try {
+          const object = event.data.object;
+          const ensureSynced = (result: { ok: boolean; reason?: string }) => {
+            if (!result.ok)
+              throw new Error(`Subscription sync failed: ${result.reason ?? "unknown"}`);
+          };
           switch (event.type) {
             case "checkout.session.completed":
-              await syncSubscriptionFromSession(obj.id as string);
+              ensureSynced(await syncSubscriptionFromSession(String(object.id)));
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
-              await syncSubscriptionObject(obj);
-              break;
             case "customer.subscription.deleted":
-              await syncSubscriptionObject(obj, { deleted: true });
+              ensureSynced(await syncSubscriptionObject(object));
               break;
+            case "invoice.paid":
             case "invoice.payment_succeeded":
-              await syncFromInvoice(obj, false);
-              break;
             case "invoice.payment_failed":
-              await syncFromInvoice(obj, true);
+              if (typeof object.subscription === "string") {
+                ensureSynced(await syncSubscriptionById(object.subscription));
+              }
               break;
             default:
               break;
           }
-        } catch (err) {
-          console.error(`stripe webhook ${event.type} failed:`, err);
+        } catch (error) {
+          console.error(`Stripe webhook ${event.id}/${event.type} failed:`, error);
+          // Returning 500 asks Stripe to retry. All handlers only upsert current
+          // state, so processing the same event again is safe.
           return new Response("Handler error", { status: 500 });
         }
-
         return new Response("ok");
       },
     },
