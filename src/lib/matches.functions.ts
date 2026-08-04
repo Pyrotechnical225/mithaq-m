@@ -210,6 +210,7 @@ export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
+    await assertActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .update({ status: data.accept ? "accepted" : "declined" })
@@ -222,6 +223,7 @@ export const respondInterest = createServerFn({ method: "POST" })
 export const listInterests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: sent } = await context.supabase
       .from("interests")
