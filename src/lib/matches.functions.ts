@@ -3,8 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
-import { assertActiveMembership } from "./membership-guard";
 import { questions } from "./survey-questions";
+import { requireActiveMembership } from "./membership-access.server";
 
 // Only these question ids inform matching; free-text stays server-side only
 // unless the other person has opted in to sharing it.
@@ -31,7 +31,7 @@ const MatchSchema = z.object({
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
+    await requireActiveMembership(context);
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI Gateway not configured");
 
@@ -172,7 +172,7 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
 export const getLatestMatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
+    await requireActiveMembership(context);
     const { data, error } = await context.supabase
       .from("matches")
       .select("id, results, created_at")
@@ -190,7 +190,7 @@ export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
+    await requireActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .upsert(
@@ -210,6 +210,7 @@ export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
+    await requireActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .update({ status: data.accept ? "accepted" : "declined" })
@@ -222,6 +223,7 @@ export const respondInterest = createServerFn({ method: "POST" })
 export const listInterests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireActiveMembership(context);
     const uid = context.userId;
     const { data: sent } = await context.supabase
       .from("interests")
