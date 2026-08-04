@@ -25,6 +25,16 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+const dashboardSteps = [
+  { label: "Complete your profile", short: "Profile" },
+  { label: "Choose your privacy", short: "Privacy" },
+  { label: "Activate membership", short: "Membership" },
+  { label: "Confirm wali involvement", short: "Wali" },
+  { label: "Review your matches", short: "Matches" },
+  { label: "Manage interests", short: "Interests" },
+  { label: "Find an imam", short: "Imam" },
+] as const;
+
 type MatchRow = {
   match_user_id: string;
   score: number;
@@ -205,6 +215,40 @@ function Dashboard() {
   }, [imams]);
 
   const canMatch = completed && visibility === "discoverable";
+  const [currentStep, setCurrentStep] = useState(0);
+  const interestCount = (interests?.received.length ?? 0) + (interests?.sent.length ?? 0);
+  const stepCompletion = [
+    completed,
+    visibility === "discoverable",
+    memberActive,
+    waliConfirmed,
+    matches !== null,
+    interestCount > 0,
+    Boolean(locCity),
+  ];
+  const maxUnlockedStep = !completed
+    ? 0
+    : visibility !== "discoverable"
+      ? 1
+      : !memberActive
+        ? 2
+        : !waliConfirmed
+          ? 3
+          : matches === null
+            ? 4
+            : 6;
+
+  useEffect(() => {
+    if (!completed) setCurrentStep(0);
+    else if (visibility !== "discoverable") setCurrentStep(1);
+    else if (!memberActive) setCurrentStep(2);
+    else if (!waliConfirmed) setCurrentStep(3);
+    else if (matches === null) setCurrentStep(4);
+  }, [completed, visibility, memberActive, waliConfirmed, matches]);
+
+  const goNext = () => setCurrentStep((step) => Math.min(step + 1, 6));
+  const goBack = () => setCurrentStep((step) => Math.max(step - 1, 0));
+  const canContinue = currentStep === 5 || stepCompletion[currentStep];
 
   return (
     <div className="min-h-screen bg-background">
@@ -237,409 +281,491 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
-        {/* Status card */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
+        <section className="mb-8 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] sm:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl text-foreground">As-salamu alaykum</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Complete your survey and set your profile to Discoverable to begin matching.
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+                Your marriage journey
+              </p>
+              <h1 className="mt-2 text-3xl text-foreground">One clear step at a time</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Step {currentStep + 1} of 7 · {dashboardSteps[currentStep].label}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                to="/survey"
-                className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {completed ? "Edit my answers" : "Complete survey"}
-              </Link>
-              <Link
-                to="/settings"
-                className="rounded-full border border-border px-5 py-2 text-sm hover:bg-accent"
-              >
-                Privacy settings
-              </Link>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs">
-            <Badge label="Survey" value={completed ? "Completed" : "In progress"} ok={completed} />
-            <Badge label="Visibility" value={visibility} ok={visibility === "discoverable"} />
-          </div>
-        </section>
-
-        {/* Matches */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl text-foreground">Your matches</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ranked by our AI matchmaker across deen, values, and life goals.
-                {matchedAt && <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>}
-              </p>
-            </div>
-            <button
-              disabled={!canMatch || running}
-              onClick={runMatching}
-              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {running ? "Finding matches…" : matches ? "Refresh matches" : "Find my matches"}
-            </button>
+            <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
+              {Math.round(((currentStep + 1) / 7) * 100)}% through the journey
+            </span>
           </div>
 
-          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
-            <p className="font-medium">Please review these matches with your wali or parent.</p>
-            <p className="mt-1 text-muted-foreground">
-              Mithaq encourages family involvement from the very first step. Sit down with a parent
-              or wali (guardian) and go through the suggestions together before expressing interest
-              — their guidance is part of the halal way.
-            </p>
-            {!waliConfirmed ? (
-              <label className="mt-3 flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-input"
-                  onChange={(e) => e.target.checked && confirmWali()}
-                />
-                <span>
-                  I confirm my wali or parent is with me (or has agreed) to review these matches
-                  together.
-                </span>
-              </label>
-            ) : (
-              <div className="mt-3 flex items-center justify-between text-xs">
-                <span className="text-primary">✓ Wali / parent confirmed for this session.</span>
-                <button
-                  onClick={resetWali}
-                  className="text-muted-foreground underline hover:text-foreground"
-                >
-                  Undo
-                </button>
-              </div>
-            )}
-          </div>
-
-          {!canMatch && (
-            <p className="mt-3 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
-              {completed
-                ? "Set your visibility to Discoverable in Privacy settings to enable matching."
-                : "Finish the survey to enable matching."}
-            </p>
-          )}
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-
-          {!memberActive ? (
-            <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-6 text-center">
-              <p className="text-sm font-medium text-foreground">Membership unlocks your matches</p>
-              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-                Your survey and privacy controls are free. Become a member to see your ranked
-                matches, express interest and have a local imam arrange a wali-attended meeting.
-              </p>
-              <Link
-                to="/membership"
-                className="mt-4 inline-block rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                View membership plans
-              </Link>
-            </div>
-          ) : !waliConfirmed ? (
-            <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Confirm your wali or parent is reviewing with you to reveal your suitable matches.
-            </p>
-          ) : (
-            <div className="mt-5 space-y-4">
-              {matches?.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No compatible profiles yet. Check back as more people join.
-                </p>
-              )}
-              {matches?.map((m) => (
-                <div key={m.match_user_id} className="rounded-xl border border-border p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="text-sm text-muted-foreground">
-                      {m.age && <span className="mr-3">Age {m.age}</span>}
-                      {m.location && <span className="mr-3">{m.location}</span>}
-                      {m.madhab && <span className="mr-3">{m.madhab}</span>}
-                      {m.practice_level && <span>{m.practice_level}</span>}
-                    </div>
-                    <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                      {Math.round(m.score)}% match
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-foreground">
-                    <span className="font-medium">Strengths — </span>
-                    {m.strengths}
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Consider — </span>
-                    {m.considerations}
-                  </p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <button
-                      disabled={sentIds.has(m.match_user_id)}
-                      onClick={async () => {
-                        await sendInterest({ data: { to_user: m.match_user_id } });
-                        setSentIds((s) => new Set(s).add(m.match_user_id));
-                        fetchInterests().then(setInterests);
-                      }}
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {memberActive && <PairingsSection />}
-
-        {/* Location */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div>
-              <h2 className="text-xl text-foreground">Your location in the UK</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Set your city so we can suggest imams close to you for the nikah and guidance.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-            <label className="block">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">City</span>
-              <select
-                value={locCity}
-                onChange={(e) => setLocCity(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select…</option>
-                {UK_CITIES_FOR_UI.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                Postcode (optional)
-              </span>
-              <input
-                value={locPostcode}
-                onChange={(e) => setLocPostcode(e.target.value)}
-                placeholder="e.g. B1 1AA"
-                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <div className="flex items-end">
-              <button
-                disabled={locSaving || !locCity}
-                onClick={saveLoc}
-                className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-              >
-                {locSaving ? "Saving…" : "Save location"}
-              </button>
-            </div>
-          </div>
-          {locMsg && <p className="mt-2 text-xs text-muted-foreground">{locMsg}</p>}
-        </section>
-
-        {/* Imams near you */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div>
-              <h2 className="text-xl text-foreground">Imams near you</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {locLat != null
-                  ? "Sorted by distance from your saved location."
-                  : "Save your location above to sort by distance."}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={imamCityFilter}
-                onChange={(e) => setImamCityFilter(e.target.value)}
-                className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
-              >
-                <option value="all">All cities</option>
-                {availableImamCities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={imamRadius}
-                onChange={(e) => setImamRadius(Number(e.target.value))}
-                className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
-                disabled={locLat == null}
-              >
-                <option value={0}>Any distance</option>
-                <option value={15}>Within 15 km</option>
-                <option value={40}>Within 40 km</option>
-                <option value={80}>Within 80 km</option>
-                <option value={160}>Within 160 km</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Map of UK with imam pins */}
-          <div className="mt-4">
-            <UkImamMap
-              points={rankedImams
-                .filter(
-                  (im): im is typeof im & { lat: number; lng: number } =>
-                    im.lat != null && im.lng != null,
-                )
-                .map<ImamMapPoint>((im) => ({
-                  id: im.id,
-                  name: im.name,
-                  city: im.city,
-                  mosque: im.mosque,
-                  lat: im.lat as number,
-                  lng: im.lng as number,
-                  distKm: im.distKm ?? null,
-                }))}
-              user={locLat != null && locLng != null ? { lat: locLat, lng: locLng } : null}
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: ((currentStep + 1) / 7) * 100 + "%" }}
             />
           </div>
 
-          <div className="mt-4 space-y-3">
-            {rankedImams.length === 0 && (
-              <p className="text-sm text-muted-foreground">No imams match your filters yet.</p>
-            )}
-            {rankedImams.map((im) => (
-              <div key={im.id} className="rounded-xl border border-border p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div>
-                    <div className="text-foreground font-medium">{im.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {im.title}
-                      {im.mosque ? ` · ${im.mosque}` : ""} · {im.city}
-                      {im.postcode ? `, ${im.postcode}` : ""}
-                    </div>
-                  </div>
-                  {im.distKm != null && (
-                    <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                      {im.distKm.toFixed(1)} km{" "}
-                      <span className="opacity-60">· {kmToMiles(im.distKm).toFixed(1)} mi</span>
-                    </div>
-                  )}
-                </div>
-                {(im.languages ?? []).length > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Languages: {(im.languages ?? []).join(", ")}
-                  </div>
-                )}
-                {im.notes && <p className="mt-2 text-sm text-foreground">{im.notes}</p>}
-                <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  {im.phone && (
-                    <a href={`tel:${im.phone}`} className="text-primary hover:underline">
-                      {im.phone}
-                    </a>
-                  )}
-                  {im.email && (
-                    <a href={`mailto:${im.email}`} className="text-primary hover:underline">
-                      {im.email}
-                    </a>
-                  )}
-                  {im.website && (
-                    <a
-                      href={im.website}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      Website
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          <ol className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            {dashboardSteps.map((step, index) => {
+              const unlocked = index <= maxUnlockedStep;
+              const active = index === currentStep;
+              return (
+                <li key={step.label}>
+                  <button
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => setCurrentStep(index)}
+                    className={
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs transition " +
+                      (active
+                        ? "bg-primary text-primary-foreground"
+                        : stepCompletion[index]
+                          ? "bg-primary/10 text-primary hover:bg-primary/15"
+                          : unlocked
+                            ? "bg-muted text-foreground hover:bg-accent"
+                            : "cursor-not-allowed bg-muted/50 text-muted-foreground/50")
+                    }
+                    aria-current={active ? "step" : undefined}
+                  >
+                    <span className="font-semibold">{stepCompletion[index] ? "✓" : index + 1}</span>
+                    <span className="truncate">{step.short}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
         </section>
 
-        {/* Interests */}
-        {interests && (interests.received.length > 0 || interests.sent.length > 0) && (
-          <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-            <h2 className="text-xl text-foreground">Interests</h2>
-            <div className="mt-4 grid gap-6 md:grid-cols-2">
-              <div>
-                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">
-                  Received
-                </h3>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {interests.received.length === 0 && (
-                    <li className="text-muted-foreground">Nothing yet.</li>
-                  )}
-                  {interests.received.map((r) => (
-                    <li
-                      key={r.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3"
-                    >
-                      <div>
-                        <div>Someone expressed interest</div>
-                        <div className="text-xs text-muted-foreground">{r.status}</div>
-                        {r.status === "accepted" && interests.contacts[r.from_user] && (
-                          <div className="mt-1 text-xs text-primary">
-                            {interests.contacts[r.from_user].contact_email}
-                          </div>
-                        )}
-                      </div>
-                      {r.status === "pending" && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={async () => {
-                              await reply({ data: { interest_id: r.id, accept: true } });
-                              loadAll();
-                            }}
-                            className="rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={async () => {
-                              await reply({ data: { interest_id: r.id, accept: false } });
-                              loadAll();
-                            }}
-                            className="rounded-full border border-border px-3 py-1 text-xs"
-                          >
-                            Decline
-                          </button>
+        <div className="mx-auto max-w-4xl">
+          {currentStep === 0 ? (
+            <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 1</p>
+              <h2 className="mt-3 text-3xl text-foreground">Complete your profile</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                Answer the 50 thoughtful questions about your deen, values, family life, and what you
+                seek in a spouse. You can return and edit your answers later.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/survey"
+                  className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  {completed ? "Review my answers" : "Start the survey"}
+                </Link>
+                <Badge
+                  label="Survey"
+                  value={completed ? "Completed" : "Not completed"}
+                  ok={completed}
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {currentStep === 1 ? (
+            <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 2</p>
+              <h2 className="mt-3 text-3xl text-foreground">Choose your privacy</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                Set your profile to Discoverable when you are ready to be considered for matches.
+                Your detailed answers remain protected by your privacy settings.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/settings"
+                  className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Open privacy settings
+                </Link>
+                <Badge
+                  label="Visibility"
+                  value={visibility}
+                  ok={visibility === "discoverable"}
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {currentStep === 2 ? (
+            <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 3</p>
+              <h2 className="mt-3 text-3xl text-foreground">Activate your membership</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                Membership unlocks ranked matches, expressions of interest, and imam-supported
+                introductions. Your survey and privacy controls remain free.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/membership"
+                  className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  {memberActive ? "View my membership" : "View membership plans"}
+                </Link>
+                <Badge
+                  label="Membership"
+                  value={memberActive ? "Active" : "Not active"}
+                  ok={memberActive}
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {currentStep === 3 ? (
+            <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 4</p>
+              <h2 className="mt-3 text-3xl text-foreground">Confirm wali involvement</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                Mithaq encourages family involvement from the beginning. Please review suggested
+                matches with your wali or parent before expressing interest.
+              </p>
+              {!waliConfirmed ? (
+                <label className="mt-7 flex cursor-pointer items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-input"
+                    onChange={(event) => event.target.checked && confirmWali()}
+                  />
+                  <span className="text-sm leading-6 text-foreground">
+                    I confirm that my wali or parent has agreed to be involved while I review matches.
+                  </span>
+                </label>
+              ) : (
+                <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-primary/10 p-5">
+                  <span className="text-sm font-medium text-primary">✓ Wali or parent confirmed</span>
+                  <button
+                    type="button"
+                    onClick={resetWali}
+                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    Undo confirmation
+                  </button>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {currentStep === 4 ? (
+            <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 5</p>
+                  <h2 className="mt-3 text-3xl text-foreground">Review your matches</h2>
+                  <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                    Matches are ranked across deen, values, family expectations, and life goals.
+                    {matchedAt ? " Last generated " + new Date(matchedAt).toLocaleString() + "." : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={!canMatch || running || !memberActive || !waliConfirmed}
+                  onClick={runMatching}
+                  className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {running ? "Finding matches…" : matches ? "Refresh matches" : "Find my matches"}
+                </button>
+              </div>
+
+              {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+              {matches === null ? (
+                <div className="mt-7 rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                  Select “Find my matches” when you and your wali are ready.
+                </div>
+              ) : (
+                <div className="mt-7 space-y-4">
+                  {matches.length === 0 ? (
+                    <p className="rounded-2xl bg-muted p-6 text-sm text-muted-foreground">
+                      No compatible profiles yet. Check back as more people join.
+                    </p>
+                  ) : null}
+                  {matches.map((match) => (
+                    <article key={match.match_user_id} className="rounded-2xl border border-border p-5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <div className="text-sm text-muted-foreground">
+                          {match.age ? <span className="mr-3">Age {match.age}</span> : null}
+                          {match.location ? <span className="mr-3">{match.location}</span> : null}
+                          {match.madhab ? <span className="mr-3">{match.madhab}</span> : null}
+                          {match.practice_level ? <span>{match.practice_level}</span> : null}
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Sent</h3>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {interests.sent.length === 0 && (
-                    <li className="text-muted-foreground">Nothing yet.</li>
-                  )}
-                  {interests.sent.map((s) => (
-                    <li
-                      key={s.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3"
-                    >
-                      <div>
-                        <div>Interest sent</div>
-                        <div className="text-xs text-muted-foreground">{s.status}</div>
-                        {s.status === "accepted" && interests.contacts[s.to_user] && (
-                          <div className="mt-1 text-xs text-primary">
-                            {interests.contacts[s.to_user].contact_email}
-                          </div>
-                        )}
+                        <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                          {Math.round(match.score)}% match
+                        </div>
                       </div>
-                    </li>
+                      <p className="mt-4 text-sm text-foreground">
+                        <span className="font-medium">Strengths — </span>
+                        {match.strengths}
+                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Consider — </span>
+                        {match.considerations}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={sentIds.has(match.match_user_id)}
+                        onClick={async () => {
+                          await sendInterest({ data: { to_user: match.match_user_id } });
+                          setSentIds((ids) => new Set(ids).add(match.match_user_id));
+                          fetchInterests().then(setInterests);
+                        }}
+                        className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {sentIds.has(match.match_user_id) ? "Interest sent" : "Express interest"}
+                      </button>
+                    </article>
                   ))}
-                </ul>
-              </div>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {currentStep === 5 ? (
+            <div className="space-y-6">
+              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 6</p>
+                <h2 className="mt-3 text-3xl text-foreground">Interests and introductions</h2>
+                <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                  Review expressions of interest and manage accepted introductions in one place.
+                </p>
+
+                <div className="mt-7 grid gap-6 md:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Received</h3>
+                    <ul className="mt-3 space-y-2 text-sm">
+                      {!interests || interests.received.length === 0 ? (
+                        <li className="rounded-xl bg-muted p-4 text-muted-foreground">Nothing received yet.</li>
+                      ) : null}
+                      {interests?.received.map((interest) => (
+                        <li key={interest.id} className="rounded-xl border border-border p-4">
+                          <div>Someone expressed interest</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{interest.status}</div>
+                          {interest.status === "accepted" && interests.contacts[interest.from_user] ? (
+                            <div className="mt-2 text-xs text-primary">
+                              {interests.contacts[interest.from_user].contact_email}
+                            </div>
+                          ) : null}
+                          {interest.status === "pending" ? (
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await reply({ data: { interest_id: interest.id, accept: true } });
+                                  loadAll();
+                                }}
+                                className="rounded-full bg-primary px-3 py-1.5 text-xs text-primary-foreground"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await reply({ data: { interest_id: interest.id, accept: false } });
+                                  loadAll();
+                                }}
+                                className="rounded-full border border-border px-3 py-1.5 text-xs"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Sent</h3>
+                    <ul className="mt-3 space-y-2 text-sm">
+                      {!interests || interests.sent.length === 0 ? (
+                        <li className="rounded-xl bg-muted p-4 text-muted-foreground">Nothing sent yet.</li>
+                      ) : null}
+                      {interests?.sent.map((interest) => (
+                        <li key={interest.id} className="rounded-xl border border-border p-4">
+                          <div>Interest sent</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{interest.status}</div>
+                          {interest.status === "accepted" && interests.contacts[interest.to_user] ? (
+                            <div className="mt-2 text-xs text-primary">
+                              {interests.contacts[interest.to_user].contact_email}
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+              {memberActive ? <PairingsSection /> : null}
             </div>
-          </section>
-        )}
+          ) : null}
+
+          {currentStep === 6 ? (
+            <div className="space-y-6">
+              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 7</p>
+                <h2 className="mt-3 text-3xl text-foreground">Find an imam near you</h2>
+                <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                  Save your location to find imams who can support a wali-attended meeting, provide
+                  guidance, or help arrange the nikah.
+                </p>
+                <div className="mt-7 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground">City</span>
+                    <select
+                      value={locCity}
+                      onChange={(event) => setLocCity(event.target.value)}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm"
+                    >
+                      <option value="">Select…</option>
+                      {UK_CITIES_FOR_UI.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground">Postcode (optional)</span>
+                    <input
+                      value={locPostcode}
+                      onChange={(event) => setLocPostcode(event.target.value)}
+                      placeholder="e.g. B1 1AA"
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      disabled={locSaving || !locCity}
+                      onClick={saveLoc}
+                      className="rounded-full bg-primary px-5 py-2.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                    >
+                      {locSaving ? "Saving…" : "Save location"}
+                    </button>
+                  </div>
+                </div>
+                {locMsg ? <p className="mt-3 text-xs text-muted-foreground">{locMsg}</p> : null}
+              </section>
+
+              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-9">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-2xl text-foreground">Imams near you</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {locLat != null ? "Sorted by distance from your saved location." : "Save your location to sort by distance."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={imamCityFilter}
+                      onChange={(event) => setImamCityFilter(event.target.value)}
+                      className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
+                    >
+                      <option value="all">All cities</option>
+                      {availableImamCities.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={imamRadius}
+                      onChange={(event) => setImamRadius(Number(event.target.value))}
+                      className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
+                      disabled={locLat == null}
+                    >
+                      <option value={0}>Any distance</option>
+                      <option value={15}>Within 15 km</option>
+                      <option value={40}>Within 40 km</option>
+                      <option value={80}>Within 80 km</option>
+                      <option value={160}>Within 160 km</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <UkImamMap
+                    points={rankedImams
+                      .filter(
+                        (imam): imam is typeof imam & { lat: number; lng: number } =>
+                          imam.lat != null && imam.lng != null,
+                      )
+                      .map<ImamMapPoint>((imam) => ({
+                        id: imam.id,
+                        name: imam.name,
+                        city: imam.city,
+                        mosque: imam.mosque,
+                        lat: imam.lat,
+                        lng: imam.lng,
+                        distKm: imam.distKm ?? null,
+                      }))}
+                    user={locLat != null && locLng != null ? { lat: locLat, lng: locLng } : null}
+                  />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {rankedImams.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No imams match your filters yet.</p>
+                  ) : null}
+                  {rankedImams.map((imam) => (
+                    <article key={imam.id} className="rounded-xl border border-border p-4">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-foreground">{imam.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {imam.title}
+                            {imam.mosque ? " · " + imam.mosque : ""} · {imam.city}
+                            {imam.postcode ? ", " + imam.postcode : ""}
+                          </div>
+                        </div>
+                        {imam.distKm != null ? (
+                          <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                            {imam.distKm.toFixed(1)} km · {kmToMiles(imam.distKm).toFixed(1)} mi
+                          </div>
+                        ) : null}
+                      </div>
+                      {(imam.languages ?? []).length > 0 ? (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Languages: {(imam.languages ?? []).join(", ")}
+                        </div>
+                      ) : null}
+                      {imam.notes ? <p className="mt-2 text-sm text-foreground">{imam.notes}</p> : null}
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                        {imam.phone ? <a href={"tel:" + imam.phone} className="text-primary hover:underline">{imam.phone}</a> : null}
+                        {imam.email ? <a href={"mailto:" + imam.email} className="text-primary hover:underline">{imam.email}</a> : null}
+                        {imam.website ? (
+                          <a href={imam.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                            Website
+                          </a>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          <div className="mt-7 flex items-center justify-between gap-4">
+            <button
+              type="button"
+              disabled={currentStep === 0}
+              onClick={goBack}
+              className="rounded-full border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              Back
+            </button>
+            {currentStep < 6 ? (
+              <button
+                type="button"
+                disabled={!canContinue}
+                onClick={goNext}
+                className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentStep(4)}
+                className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Return to matches
+              </button>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
