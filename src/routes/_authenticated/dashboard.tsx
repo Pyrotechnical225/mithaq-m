@@ -226,17 +226,19 @@ function Dashboard() {
     interestCount > 0,
     Boolean(locCity),
   ];
-  const maxUnlockedStep = !completed
-    ? 0
-    : visibility !== "discoverable"
-      ? 1
-      : !memberActive
-        ? 2
-        : !waliConfirmed
-          ? 3
-          : matches === null
-            ? 4
-            : 6;
+  const maxUnlockedStep = isAdmin
+    ? 6
+    : !completed
+      ? 0
+      : visibility !== "discoverable"
+        ? 1
+        : !memberActive
+          ? 2
+          : !waliConfirmed
+            ? 3
+            : matches === null
+              ? 4
+              : 6;
 
   useEffect(() => {
     if (!completed) setCurrentStep(0);
@@ -248,7 +250,7 @@ function Dashboard() {
 
   const goNext = () => setCurrentStep((step) => Math.min(step + 1, 6));
   const goBack = () => setCurrentStep((step) => Math.max(step - 1, 0));
-  const canContinue = currentStep === 5 || stepCompletion[currentStep];
+  const canContinue = isAdmin || currentStep === 5 || stepCompletion[currentStep];
 
   return (
     <div className="min-h-screen bg-background">
@@ -282,6 +284,23 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
+        {isAdmin ? (
+          <aside className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gold/40 bg-gold/10 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Administrator testing mode</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                All seven member steps are unlocked for this admin account.
+              </p>
+            </div>
+            <Link
+              to="/admin"
+              className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Open admin dashboard
+            </Link>
+          </aside>
+        ) : null}
+
         <section className="mb-8 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] sm:p-7">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -456,7 +475,7 @@ function Dashboard() {
                 </div>
                 <button
                   type="button"
-                  disabled={!canMatch || running || !memberActive || !waliConfirmed}
+                  disabled={running || (!isAdmin && (!canMatch || !memberActive || !waliConfirmed))}
                   onClick={runMatching}
                   className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
