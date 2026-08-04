@@ -6,12 +6,13 @@ import { lovable } from "@/integrations/lovable/index";
 import { bootstrapAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    next:
+  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+    const next =
       typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
         ? s.next
-        : "",
-  }),
+        : undefined;
+    return next ? { next } : {};
+  },
   head: () => ({
     meta: [
       { title: "Sign in — Mithaq" },
