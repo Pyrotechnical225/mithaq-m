@@ -394,6 +394,13 @@ export async function claimStripeEvent(id: string, type: string) {
   return true;
 }
 
+/** Allow Stripe to retry an event whose handler failed after it was claimed. */
+export async function releaseStripeEvent(id: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("stripe_events").delete().eq("id", id);
+  if (error) console.error("stripe_events release failed:", error.message);
+}
+
 /**
  * Admin diagnostic: read-only Stripe calls only. It must never create
  * Checkout Sessions, customers or any other object.
@@ -441,15 +448,15 @@ export async function verifyStripeSignature(
   toleranceSeconds = 300,
 ) {
   if (!header) return false;
-  const parts = Object.fromEntries(
-    header.split(",").map((p) => {
-      const [k, ...rest] = p.split("=");
-      return [k.trim(), rest.join("=")];
-    }),
-  );
-  const timestamp = parts["t"];
-  const sig = parts["v1"];
-  if (!timestamp || !sig) return false;
+  let timestamp: string | null = null;
+  const signatures: string[] = [];
+  for (const part of header.split(",")) {
+    const [name, ...rest] = part.split("=");
+    const value = rest.join("=");
+    if (name.trim() === "t") timestamp = value;
+    if (name.trim() === "v1") signatures.push(value);
+  }
+  if (!timestamp || signatures.length === 0) return false;
 
   const age = Math.abs(Date.now() / 1000 - Number(timestamp));
   if (!Number.isFinite(age) || age > toleranceSeconds) return false;
@@ -466,8 +473,12 @@ export async function verifyStripeSignature(
   const expected = Array.from(new Uint8Array(mac))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  if (expected.length !== sig.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
-  return diff === 0;
+  return signatures.some((signature) => {
+    if (expected.length !== signature.length) return false;
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) {
+      diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+    }
+    return diff === 0;
+  });
 }

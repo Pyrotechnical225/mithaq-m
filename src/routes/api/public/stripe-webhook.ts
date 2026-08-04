@@ -23,6 +23,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           syncSubscriptionObject,
           syncFromInvoice,
           claimStripeEvent,
+          releaseStripeEvent,
         } = await import("@/lib/membership.server");
 
         const ok = await verifyStripeSignature(
@@ -46,28 +47,34 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         const obj = event.data?.object ?? {};
 
         try {
+          const ensureSynced = (result: { ok: boolean; reason?: string }) => {
+            if (!result.ok)
+              throw new Error(`Subscription sync failed: ${result.reason ?? "unknown"}`);
+          };
           switch (event.type) {
             case "checkout.session.completed":
-              await syncSubscriptionFromSession(obj.id as string);
+              ensureSynced(await syncSubscriptionFromSession(obj.id as string));
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
-              await syncSubscriptionObject(obj);
+              ensureSynced(await syncSubscriptionObject(obj));
               break;
             case "customer.subscription.deleted":
-              await syncSubscriptionObject(obj, { deleted: true });
+              ensureSynced(await syncSubscriptionObject(obj, { deleted: true }));
               break;
+            case "invoice.paid":
             case "invoice.payment_succeeded":
-              await syncFromInvoice(obj, false);
+              ensureSynced(await syncFromInvoice(obj, false));
               break;
             case "invoice.payment_failed":
-              await syncFromInvoice(obj, true);
+              ensureSynced(await syncFromInvoice(obj, true));
               break;
             default:
               break;
           }
         } catch (err) {
           console.error(`stripe webhook ${event.type} failed:`, err);
+          await releaseStripeEvent(event.id);
           return new Response("Handler error", { status: 500 });
         }
 
