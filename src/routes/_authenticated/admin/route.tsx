@@ -14,7 +14,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
         to="/admin"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
         activeOptions={{ exact: true }}
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Overview
@@ -22,7 +22,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/profiles"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Profiles
@@ -30,7 +30,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/new-profile"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         New profile
@@ -38,7 +38,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/imams"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Imams
@@ -46,7 +46,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/imam-applications"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Imam applications
@@ -54,7 +54,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/memberships"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Memberships
@@ -62,7 +62,7 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/admin/seed"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl px-3 py-2 bg-accent text-foreground font-medium" }}
+        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
         onClick={onNavigate}
       >
         Seed data
@@ -85,19 +85,14 @@ function AdminLayout() {
   useEffect(() => setNow(new Date().toLocaleString()), []);
 
   return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-6">
-        <div className="rounded-2xl border border-border bg-card px-8 py-6 text-center shadow-[var(--shadow-soft)]">
-          <p className="text-sm font-medium text-foreground">Checking administrator access…</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-6">
-          <Link to="/admin" className="flex min-w-0 items-center gap-2" onClick={() => setMobileOpen(false)}>
+          <Link
+            to="/admin"
+            className="flex min-w-0 items-center gap-2"
+            onClick={() => setMobileOpen(false)}
+          >
             <span className="shrink-0 rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
               Admin
             </span>
