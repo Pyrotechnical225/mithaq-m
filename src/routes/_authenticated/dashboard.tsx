@@ -18,13 +18,9 @@ import { getMyMembership } from "@/lib/membership.functions";
 import { PairingsSection } from "@/components/PairingsSection";
 import { amIAdmin } from "@/lib/admin.functions";
 
-
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
-    meta: [
-      { title: "Your Mithaq dashboard" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Your Mithaq dashboard" }, { name: "robots", content: "noindex" }],
   }),
   component: Dashboard,
 });
@@ -62,7 +58,9 @@ function Dashboard() {
   const [matchedAt, setMatchedAt] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(null);
+  const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(
+    null,
+  );
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [memberActive, setMemberActive] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -104,27 +102,28 @@ function Dashboard() {
     if (typeof window !== "undefined") window.localStorage.removeItem("mithaq:waliConfirmed");
   };
 
-
   const loadAll = () => {
     Promise.all([
-      fetchAnswers(), fetchPrivacy(), fetchMatches(), fetchInterests(),
-      fetchLocation(), fetchImams(),
-    ]).then(
-      ([a, p, m, i, loc, im]) => {
-        setCompleted(!!a?.completed);
-        setVisibility(p?.visibility ?? "hidden");
-        const results = (m?.results as { matches: MatchRow[] } | undefined)?.matches ?? null;
-        setMatches(results);
-        setMatchedAt(m?.created_at ?? null);
-        setInterests(i);
-        setSentIds(new Set(i.sent.map((s) => s.to_user)));
-        setLocCity(loc?.uk_city ?? "");
-        setLocPostcode(loc?.uk_postcode ?? "");
-        setLocLat(loc?.location_lat ?? null);
-        setLocLng(loc?.location_lng ?? null);
-        setImams(im);
-      },
-    );
+      fetchAnswers(),
+      fetchPrivacy(),
+      fetchMatches(),
+      fetchInterests(),
+      fetchLocation(),
+      fetchImams(),
+    ]).then(([a, p, m, i, loc, im]) => {
+      setCompleted(!!a?.completed);
+      setVisibility(p?.visibility ?? "hidden");
+      const results = (m?.results as { matches: MatchRow[] } | undefined)?.matches ?? null;
+      setMatches(results);
+      setMatchedAt(m?.created_at ?? null);
+      setInterests(i);
+      setSentIds(new Set(i.sent.map((s) => s.to_user)));
+      setLocCity(loc?.uk_city ?? "");
+      setLocPostcode(loc?.uk_postcode ?? "");
+      setLocLat(loc?.location_lat ?? null);
+      setLocLng(loc?.location_lng ?? null);
+      setImams(im);
+    });
   };
 
   useEffect(() => {
@@ -157,8 +156,14 @@ function Dashboard() {
     setLocSaving(true);
     setLocMsg(null);
     try {
-      const r = await saveLocation({ data: { uk_city: locCity || null, uk_postcode: locPostcode || null } });
-      setLocMsg(r.matched_city ? `Saved. Nearby imams sorted by distance from ${r.matched_city}.` : "Saved.");
+      const r = await saveLocation({
+        data: { uk_city: locCity || null, uk_postcode: locPostcode || null },
+      });
+      setLocMsg(
+        r.matched_city
+          ? `Saved. Nearby imams sorted by distance from ${r.matched_city}.`
+          : "Saved.",
+      );
       const loc = await fetchLocation();
       setLocLat(loc?.location_lat ?? null);
       setLocLng(loc?.location_lng ?? null);
@@ -172,9 +177,10 @@ function Dashboard() {
   const rankedImams = useMemo(() => {
     if (!imams) return [];
     const withDist = imams.map((im) => {
-      const distKm = locLat != null && locLng != null && im.lat != null && im.lng != null
-        ? haversineKm(locLat, locLng, im.lat, im.lng)
-        : null;
+      const distKm =
+        locLat != null && locLng != null && im.lat != null && im.lng != null
+          ? haversineKm(locLat, locLng, im.lat, im.lng)
+          : null;
       return { ...im, distKm };
     });
     const filtered = withDist.filter((im) => {
@@ -199,8 +205,6 @@ function Dashboard() {
   }, [imams]);
 
   const canMatch = completed && visibility === "discoverable";
-
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -260,11 +264,7 @@ function Dashboard() {
           </div>
           <div className="mt-4 flex flex-wrap gap-3 text-xs">
             <Badge label="Survey" value={completed ? "Completed" : "In progress"} ok={completed} />
-            <Badge
-              label="Visibility"
-              value={visibility}
-              ok={visibility === "discoverable"}
-            />
+            <Badge label="Visibility" value={visibility} ok={visibility === "discoverable"} />
           </div>
         </section>
 
@@ -275,9 +275,7 @@ function Dashboard() {
               <h2 className="text-xl text-foreground">Your matches</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Ranked by our AI matchmaker across deen, values, and life goals.
-                {matchedAt && (
-                  <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>
-                )}
+                {matchedAt && <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>}
               </p>
             </div>
             <button
@@ -289,15 +287,12 @@ function Dashboard() {
             </button>
           </div>
 
-
-
-
           <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
             <p className="font-medium">Please review these matches with your wali or parent.</p>
             <p className="mt-1 text-muted-foreground">
               Mithaq encourages family involvement from the very first step. Sit down with a parent
-              or wali (guardian) and go through the suggestions together before expressing interest —
-              their guidance is part of the halal way.
+              or wali (guardian) and go through the suggestions together before expressing interest
+              — their guidance is part of the halal way.
             </p>
             {!waliConfirmed ? (
               <label className="mt-3 flex items-start gap-2 text-sm">
@@ -314,7 +309,10 @@ function Dashboard() {
             ) : (
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-primary">✓ Wali / parent confirmed for this session.</span>
-                <button onClick={resetWali} className="text-muted-foreground underline hover:text-foreground">
+                <button
+                  onClick={resetWali}
+                  className="text-muted-foreground underline hover:text-foreground"
+                >
                   Undo
                 </button>
               </div>
@@ -332,9 +330,7 @@ function Dashboard() {
 
           {!memberActive ? (
             <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-6 text-center">
-              <p className="text-sm font-medium text-foreground">
-                Membership unlocks your matches
-              </p>
+              <p className="text-sm font-medium text-foreground">Membership unlocks your matches</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
                 Your survey and privacy controls are free. Become a member to see your ranked
                 matches, express interest and have a local imam arrange a wali-attended meeting.
@@ -358,42 +354,43 @@ function Dashboard() {
                 </p>
               )}
               {matches?.map((m) => (
-              <div key={m.match_user_id} className="rounded-xl border border-border p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-sm text-muted-foreground">
-                    {m.age && <span className="mr-3">Age {m.age}</span>}
-                    {m.location && <span className="mr-3">{m.location}</span>}
-                    {m.madhab && <span className="mr-3">{m.madhab}</span>}
-                    {m.practice_level && <span>{m.practice_level}</span>}
+                <div key={m.match_user_id} className="rounded-xl border border-border p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="text-sm text-muted-foreground">
+                      {m.age && <span className="mr-3">Age {m.age}</span>}
+                      {m.location && <span className="mr-3">{m.location}</span>}
+                      {m.madhab && <span className="mr-3">{m.madhab}</span>}
+                      {m.practice_level && <span>{m.practice_level}</span>}
+                    </div>
+                    <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                      {Math.round(m.score)}% match
+                    </div>
                   </div>
-                  <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                    {Math.round(m.score)}% match
+                  <p className="mt-3 text-sm text-foreground">
+                    <span className="font-medium">Strengths — </span>
+                    {m.strengths}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Consider — </span>
+                    {m.considerations}
+                  </p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      disabled={sentIds.has(m.match_user_id)}
+                      onClick={async () => {
+                        await sendInterest({ data: { to_user: m.match_user_id } });
+                        setSentIds((s) => new Set(s).add(m.match_user_id));
+                        fetchInterests().then(setInterests);
+                      }}
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
+                    </button>
                   </div>
                 </div>
-                <p className="mt-3 text-sm text-foreground">
-                  <span className="font-medium">Strengths — </span>{m.strengths}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Consider — </span>{m.considerations}
-                </p>
-                <div className="mt-3 flex items-center gap-3">
-                  <button
-                    disabled={sentIds.has(m.match_user_id)}
-                    onClick={async () => {
-                      await sendInterest({ data: { to_user: m.match_user_id } });
-                      setSentIds((s) => new Set(s).add(m.match_user_id));
-                      fetchInterests().then(setInterests);
-                    }}
-                    className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
             </div>
           )}
-
         </section>
 
         {memberActive && <PairingsSection />}
@@ -411,17 +408,36 @@ function Dashboard() {
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
             <label className="block">
               <span className="text-xs uppercase tracking-widest text-muted-foreground">City</span>
-              <select value={locCity} onChange={(e) => setLocCity(e.target.value)} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm">
+              <select
+                value={locCity}
+                onChange={(e) => setLocCity(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+              >
                 <option value="">Select…</option>
-                {UK_CITIES_FOR_UI.map((c) => <option key={c} value={c}>{c}</option>)}
+                {UK_CITIES_FOR_UI.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="block">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">Postcode (optional)</span>
-              <input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="e.g. B1 1AA" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                Postcode (optional)
+              </span>
+              <input
+                value={locPostcode}
+                onChange={(e) => setLocPostcode(e.target.value)}
+                placeholder="e.g. B1 1AA"
+                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+              />
             </label>
             <div className="flex items-end">
-              <button disabled={locSaving || !locCity} onClick={saveLoc} className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+              <button
+                disabled={locSaving || !locCity}
+                onClick={saveLoc}
+                className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              >
                 {locSaving ? "Saving…" : "Save location"}
               </button>
             </div>
@@ -441,11 +457,24 @@ function Dashboard() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <select value={imamCityFilter} onChange={(e) => setImamCityFilter(e.target.value)} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs">
+              <select
+                value={imamCityFilter}
+                onChange={(e) => setImamCityFilter(e.target.value)}
+                className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
+              >
                 <option value="all">All cities</option>
-                {availableImamCities.map((c) => <option key={c} value={c}>{c}</option>)}
+                {availableImamCities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
-              <select value={imamRadius} onChange={(e) => setImamRadius(Number(e.target.value))} className="rounded-full border border-input bg-background px-3 py-1.5 text-xs" disabled={locLat == null}>
+              <select
+                value={imamRadius}
+                onChange={(e) => setImamRadius(Number(e.target.value))}
+                className="rounded-full border border-input bg-background px-3 py-1.5 text-xs"
+                disabled={locLat == null}
+              >
                 <option value={0}>Any distance</option>
                 <option value={15}>Within 15 km</option>
                 <option value={40}>Within 40 km</option>
@@ -459,7 +488,10 @@ function Dashboard() {
           <div className="mt-4">
             <UkImamMap
               points={rankedImams
-                .filter((im): im is typeof im & { lat: number; lng: number } => im.lat != null && im.lng != null)
+                .filter(
+                  (im): im is typeof im & { lat: number; lng: number } =>
+                    im.lat != null && im.lng != null,
+                )
                 .map<ImamMapPoint>((im) => ({
                   id: im.id,
                   name: im.name,
@@ -483,29 +515,50 @@ function Dashboard() {
                   <div>
                     <div className="text-foreground font-medium">{im.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {im.title}{im.mosque ? ` · ${im.mosque}` : ""} · {im.city}{im.postcode ? `, ${im.postcode}` : ""}
+                      {im.title}
+                      {im.mosque ? ` · ${im.mosque}` : ""} · {im.city}
+                      {im.postcode ? `, ${im.postcode}` : ""}
                     </div>
                   </div>
                   {im.distKm != null && (
                     <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                      {im.distKm.toFixed(1)} km <span className="opacity-60">· {kmToMiles(im.distKm).toFixed(1)} mi</span>
+                      {im.distKm.toFixed(1)} km{" "}
+                      <span className="opacity-60">· {kmToMiles(im.distKm).toFixed(1)} mi</span>
                     </div>
                   )}
                 </div>
                 {(im.languages ?? []).length > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground">Languages: {(im.languages ?? []).join(", ")}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Languages: {(im.languages ?? []).join(", ")}
+                  </div>
                 )}
                 {im.notes && <p className="mt-2 text-sm text-foreground">{im.notes}</p>}
                 <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  {im.phone && <a href={`tel:${im.phone}`} className="text-primary hover:underline">{im.phone}</a>}
-                  {im.email && <a href={`mailto:${im.email}`} className="text-primary hover:underline">{im.email}</a>}
-                  {im.website && <a href={im.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">Website</a>}
+                  {im.phone && (
+                    <a href={`tel:${im.phone}`} className="text-primary hover:underline">
+                      {im.phone}
+                    </a>
+                  )}
+                  {im.email && (
+                    <a href={`mailto:${im.email}`} className="text-primary hover:underline">
+                      {im.email}
+                    </a>
+                  )}
+                  {im.website && (
+                    <a
+                      href={im.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Website
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </section>
-
 
         {/* Interests */}
         {interests && (interests.received.length > 0 || interests.sent.length > 0) && (
@@ -513,13 +566,18 @@ function Dashboard() {
             <h2 className="text-xl text-foreground">Interests</h2>
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <div>
-                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">Received</h3>
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground">
+                  Received
+                </h3>
                 <ul className="mt-2 space-y-2 text-sm">
                   {interests.received.length === 0 && (
                     <li className="text-muted-foreground">Nothing yet.</li>
                   )}
                   {interests.received.map((r) => (
-                    <li key={r.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <li
+                      key={r.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                    >
                       <div>
                         <div>Someone expressed interest</div>
                         <div className="text-xs text-muted-foreground">{r.status}</div>
@@ -562,7 +620,10 @@ function Dashboard() {
                     <li className="text-muted-foreground">Nothing yet.</li>
                   )}
                   {interests.sent.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <li
+                      key={s.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                    >
                       <div>
                         <div>Interest sent</div>
                         <div className="text-xs text-muted-foreground">{s.status}</div>

@@ -31,18 +31,29 @@ function CommunityPage() {
           Marriage within the ummah
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          Finding a spouse who shares your deen is easier when the community is involved.
-          Masjids, family networks, and platforms like Mithaq each play a role in a halal
-          search.
+          Finding a spouse who shares your deen is easier when the community is involved. Masjids,
+          family networks, and platforms like Mithaq each play a role in a halal search.
         </p>
 
         <section className="mt-10 space-y-6">
           <h2 className="font-display text-2xl text-foreground">Where to look</h2>
           <ul className="list-disc space-y-2 pl-6 text-muted-foreground">
-            <li><strong className="text-foreground">Your local masjid:</strong> Many host marriage events and have imams who facilitate introductions.</li>
-            <li><strong className="text-foreground">Family and elders:</strong> Aunties and uncles often know practicing families looking to arrange.</li>
-            <li><strong className="text-foreground">Islamic centers &amp; halaqas:</strong> Meet others who share your values naturally.</li>
-            <li><strong className="text-foreground">Platforms like Mithaq:</strong> Reach practicing Muslims beyond your immediate circle — halal from the first message.</li>
+            <li>
+              <strong className="text-foreground">Your local masjid:</strong> Many host marriage
+              events and have imams who facilitate introductions.
+            </li>
+            <li>
+              <strong className="text-foreground">Family and elders:</strong> Aunties and uncles
+              often know practicing families looking to arrange.
+            </li>
+            <li>
+              <strong className="text-foreground">Islamic centers &amp; halaqas:</strong> Meet
+              others who share your values naturally.
+            </li>
+            <li>
+              <strong className="text-foreground">Platforms like Mithaq:</strong> Reach practicing
+              Muslims beyond your immediate circle — halal from the first message.
+            </li>
           </ul>
         </section>
 
@@ -50,8 +61,8 @@ function CommunityPage() {
           <h2 className="font-display text-2xl text-foreground">Keep the community close</h2>
           <p className="text-muted-foreground">
             Whether you meet through a masjid dinner or a match on Mithaq, the same principles
-            apply: involve your wali, keep conversations dignified, and let your intention for
-            nikah lead the way.
+            apply: involve your wali, keep conversations dignified, and let your intention for nikah
+            lead the way.
           </p>
         </section>
       </main>

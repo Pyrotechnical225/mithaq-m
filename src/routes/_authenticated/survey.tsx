@@ -6,10 +6,7 @@ import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
 
 export const Route = createFileRoute("/_authenticated/survey")({
   head: () => ({
-    meta: [
-      { title: "Your Mithaq profile — 50 questions" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Your Mithaq profile — 50 questions" }, { name: "robots", content: "noindex" }],
   }),
   component: SurveyPage,
 });
@@ -56,8 +53,7 @@ function SurveyPage() {
     return Array.from(map.entries());
   }, []);
 
-  const set = (id: number, value: string) =>
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+  const set = (id: number, value: string) => setAnswers((prev) => ({ ...prev, [id]: value }));
 
   const persist = async (completed: boolean) => {
     setSaving(true);
@@ -91,7 +87,9 @@ function SurveyPage() {
     <div className="min-h-screen pb-24">
       <div className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
+          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Dashboard
+          </Link>
           <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">
               {answeredCount} / {questions.length}
@@ -114,11 +112,13 @@ function SurveyPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-6 pt-10">
-        <p className="font-arabic text-2xl text-primary" dir="rtl" lang="ar">ميثاق</p>
+        <p className="font-arabic text-2xl text-primary" dir="rtl" lang="ar">
+          ميثاق
+        </p>
         <h1 className="mt-2 text-4xl text-foreground md:text-5xl">Tell us about yourself</h1>
         <p className="mt-3 text-muted-foreground">
-          The first 30 are required; the rest help us match you more precisely. Your answers
-          are stored privately and never shared until you approve a match.
+          The first 30 are required; the rest help us match you more precisely. Your answers are
+          stored privately and never shared until you approve a match.
         </p>
       </div>
 
@@ -127,7 +127,9 @@ function SurveyPage() {
           <section key={section}>
             <div className="mb-6 flex items-baseline gap-3">
               <div className="h-px flex-1 bg-border" />
-              <h2 className="text-sm uppercase tracking-[0.25em] text-muted-foreground">{section}</h2>
+              <h2 className="text-sm uppercase tracking-[0.25em] text-muted-foreground">
+                {section}
+              </h2>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -208,7 +210,8 @@ function SurveyPage() {
         <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)]">
           {showErrors && requiredMissing.length > 0 && (
             <p className="mb-4 text-sm text-destructive">
-              {requiredMissing.length} required question{requiredMissing.length === 1 ? "" : "s"} still need answering.
+              {requiredMissing.length} required question{requiredMissing.length === 1 ? "" : "s"}{" "}
+              still need answering.
             </p>
           )}
           <button

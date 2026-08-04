@@ -7,7 +7,10 @@ import { bootstrapAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+    next:
+      typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
+        ? s.next
+        : "",
   }),
   head: () => ({
     meta: [
@@ -93,9 +96,13 @@ function AuthPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-6 py-16">
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Home
+        </Link>
         <div className="mt-8 text-center">
-          <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">ميثاق</p>
+          <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">
+            ميثاق
+          </p>
           <h1 className="mt-3 text-3xl text-foreground">
             {mode === "signup" ? "Create your account" : "Welcome back"}
           </h1>

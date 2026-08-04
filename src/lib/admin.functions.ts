@@ -64,14 +64,19 @@ export const listAllProfiles = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [{ data: profiles }, { data: privacy }, { data: surveys }, { data: usersList }, { data: roles }] =
-      await Promise.all([
-        supabaseAdmin.from("profiles").select("id, display_name, contact_email, created_at"),
-        supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
-        supabaseAdmin.from("survey_answers").select("user_id, completed, updated_at"),
-        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 }),
-        supabaseAdmin.from("user_roles").select("user_id, role"),
-      ]);
+    const [
+      { data: profiles },
+      { data: privacy },
+      { data: surveys },
+      { data: usersList },
+      { data: roles },
+    ] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, display_name, contact_email, created_at"),
+      supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
+      supabaseAdmin.from("survey_answers").select("user_id, completed, updated_at"),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 }),
+      supabaseAdmin.from("user_roles").select("user_id, role"),
+    ]);
 
     const privacyMap = new Map((privacy ?? []).map((p) => [p.user_id, p.visibility]));
     const surveyMap = new Map((surveys ?? []).map((s) => [s.user_id, s]));
@@ -87,23 +92,25 @@ export const listAllProfiles = createServerFn({ method: "GET" })
     const ids = new Set<string>((profiles ?? []).map((p) => p.id));
     for (const u of usersList?.users ?? []) ids.add(u.id);
 
-    return Array.from(ids).map((id) => {
-      const p = (profiles ?? []).find((x) => x.id === id);
-      const auth = authMap.get(id);
-      const s = surveyMap.get(id);
-      return {
-        id,
-        display_name: p?.display_name ?? null,
-        contact_email: p?.contact_email ?? auth?.email ?? null,
-        auth_email: auth?.email ?? null,
-        email_confirmed: !!auth?.email_confirmed_at,
-        created_at: p?.created_at ?? auth?.created_at ?? null,
-        visibility: privacyMap.get(id) ?? "hidden",
-        survey_completed: !!s?.completed,
-        survey_updated_at: s?.updated_at ?? null,
-        roles: roleMap.get(id) ?? [],
-      };
-    }).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+    return Array.from(ids)
+      .map((id) => {
+        const p = (profiles ?? []).find((x) => x.id === id);
+        const auth = authMap.get(id);
+        const s = surveyMap.get(id);
+        return {
+          id,
+          display_name: p?.display_name ?? null,
+          contact_email: p?.contact_email ?? auth?.email ?? null,
+          auth_email: auth?.email ?? null,
+          email_confirmed: !!auth?.email_confirmed_at,
+          created_at: p?.created_at ?? auth?.created_at ?? null,
+          visibility: privacyMap.get(id) ?? "hidden",
+          survey_completed: !!s?.completed,
+          survey_updated_at: s?.updated_at ?? null,
+          roles: roleMap.get(id) ?? [],
+        };
+      })
+      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
   });
 
 // -----------------------------------------------------------------------------
@@ -117,15 +124,29 @@ export const getProfileDetail = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profile }, { data: survey }, { data: privacy }, { data: matches }, { data: interests }, { data: authUser }] =
-      await Promise.all([
-        supabaseAdmin.from("profiles").select("*").eq("id", data.user_id).maybeSingle(),
-        supabaseAdmin.from("survey_answers").select("*").eq("user_id", data.user_id).maybeSingle(),
-        supabaseAdmin.from("privacy_settings").select("*").eq("user_id", data.user_id).maybeSingle(),
-        supabaseAdmin.from("matches").select("*").eq("user_id", data.user_id).order("created_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("interests").select("*").or(`from_user.eq.${data.user_id},to_user.eq.${data.user_id}`),
-        supabaseAdmin.auth.admin.getUserById(data.user_id),
-      ]);
+    const [
+      { data: profile },
+      { data: survey },
+      { data: privacy },
+      { data: matches },
+      { data: interests },
+      { data: authUser },
+    ] = await Promise.all([
+      supabaseAdmin.from("profiles").select("*").eq("id", data.user_id).maybeSingle(),
+      supabaseAdmin.from("survey_answers").select("*").eq("user_id", data.user_id).maybeSingle(),
+      supabaseAdmin.from("privacy_settings").select("*").eq("user_id", data.user_id).maybeSingle(),
+      supabaseAdmin
+        .from("matches")
+        .select("*")
+        .eq("user_id", data.user_id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabaseAdmin
+        .from("interests")
+        .select("*")
+        .or(`from_user.eq.${data.user_id},to_user.eq.${data.user_id}`),
+      supabaseAdmin.auth.admin.getUserById(data.user_id),
+    ]);
 
     return {
       profile,
@@ -133,12 +154,14 @@ export const getProfileDetail = createServerFn({ method: "GET" })
       privacy,
       matches: matches ?? [],
       interests: interests ?? [],
-      auth: authUser?.user ? {
-        email: authUser.user.email,
-        email_confirmed_at: authUser.user.email_confirmed_at,
-        created_at: authUser.user.created_at,
-        last_sign_in_at: authUser.user.last_sign_in_at,
-      } : null,
+      auth: authUser?.user
+        ? {
+            email: authUser.user.email,
+            email_confirmed_at: authUser.user.email_confirmed_at,
+            created_at: authUser.user.created_at,
+            last_sign_in_at: authUser.user.last_sign_in_at,
+          }
+        : null,
     };
   });
 
@@ -174,15 +197,21 @@ export const updateProfileAdmin = createServerFn({ method: "POST" })
         .upsert({ id: data.user_id, ...patch }, { onConflict: "id" });
     }
     if (data.answers !== undefined || data.completed !== undefined) {
-      const patch: { user_id: string; answers?: Record<string, string>; completed?: boolean } = { user_id: data.user_id };
+      const patch: { user_id: string; answers?: Record<string, string>; completed?: boolean } = {
+        user_id: data.user_id,
+      };
       if (data.answers !== undefined) patch.answers = data.answers;
       if (data.completed !== undefined) patch.completed = data.completed;
-      await supabaseAdmin
-        .from("survey_answers")
-        .upsert(patch, { onConflict: "user_id" });
+      await supabaseAdmin.from("survey_answers").upsert(patch, { onConflict: "user_id" });
     }
     const privPatch: Record<string, unknown> = {};
-    for (const k of ["visibility", "show_free_text", "reveal_contact_on_mutual", "show_location", "show_occupation"] as const) {
+    for (const k of [
+      "visibility",
+      "show_free_text",
+      "reveal_contact_on_mutual",
+      "show_location",
+      "show_occupation",
+    ] as const) {
       if (data[k] !== undefined) privPatch[k] = data[k];
     }
     if (Object.keys(privPatch).length > 0) {
@@ -217,18 +246,24 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     const id = created.user!.id;
-    await supabaseAdmin.from("profiles").upsert({
-      id,
-      display_name: data.display_name,
-      contact_email: data.email,
-    }, { onConflict: "id" });
+    await supabaseAdmin.from("profiles").upsert(
+      {
+        id,
+        display_name: data.display_name,
+        contact_email: data.email,
+      },
+      { onConflict: "id" },
+    );
     await supabaseAdmin.from("privacy_settings").upsert({ user_id: id }, { onConflict: "user_id" });
     if (data.answers) {
-      await supabaseAdmin.from("survey_answers").upsert({
-        user_id: id,
-        answers: data.answers,
-        completed: false,
-      }, { onConflict: "user_id" });
+      await supabaseAdmin.from("survey_answers").upsert(
+        {
+          user_id: id,
+          answers: data.answers,
+          completed: false,
+        },
+        { onConflict: "user_id" },
+      );
     }
     return { id };
   });
@@ -281,7 +316,9 @@ export const exportProfilesAdmin = createServerFn({ method: "POST" })
       privQ = privQ.eq("user_id", data.user_id);
     }
     const [{ data: profiles }, { data: surveys }, { data: privacy }] = await Promise.all([
-      profileQ, surveyQ, privQ,
+      profileQ,
+      surveyQ,
+      privQ,
     ]);
     const merged = (profiles ?? []).map((p) => {
       const s = (surveys ?? []).find((x) => x.user_id === p.id);
@@ -298,7 +335,11 @@ export const exportProfilesAdmin = createServerFn({ method: "POST" })
       };
     });
     if (data.format === "json") {
-      return { filename: `mithaq-profiles-${Date.now()}.json`, mime: "application/json", body: JSON.stringify(merged, null, 2) };
+      return {
+        filename: `mithaq-profiles-${Date.now()}.json`,
+        mime: "application/json",
+        body: JSON.stringify(merged, null, 2),
+      };
     }
     // For CSV flatten answer keys
     const flat = merged.map((m) => {
@@ -325,21 +366,34 @@ export const adminStats = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ count: profileCount }, { count: completedCount }, { count: discoverableCount }, { count: interestCount }, { data: users }] =
-      await Promise.all([
-        supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
-        supabaseAdmin.from("survey_answers").select("*", { count: "exact", head: true }).eq("completed", true),
-        supabaseAdmin.from("privacy_settings").select("*", { count: "exact", head: true }).eq("visibility", "discoverable"),
-        supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
-        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
-      ]);
+    const [
+      { count: profileCount },
+      { count: completedCount },
+      { count: discoverableCount },
+      { count: interestCount },
+      { data: users },
+    ] = await Promise.all([
+      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("survey_answers")
+        .select("*", { count: "exact", head: true })
+        .eq("completed", true),
+      supabaseAdmin
+        .from("privacy_settings")
+        .select("*", { count: "exact", head: true })
+        .eq("visibility", "discoverable"),
+      supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
+    ]);
     return {
       profileCount: profileCount ?? 0,
       completedCount: completedCount ?? 0,
       discoverableCount: discoverableCount ?? 0,
       interestCount: interestCount ?? 0,
       recentUsers: (users?.users ?? []).slice(0, 5).map((u) => ({
-        id: u.id, email: u.email, created_at: u.created_at,
+        id: u.id,
+        email: u.email,
+        created_at: u.created_at,
       })),
     };
   });
@@ -435,25 +489,23 @@ export const seedExampleImams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: existing } = await supabaseAdmin.from("imams").select("name, city");
     const have = new Set((existing ?? []).map((r) => `${r.name}::${r.city}`));
-    const toInsert = EXAMPLE_IMAMS
-      .filter((e) => !have.has(`${e.name}::${e.city}`))
-      .map((e) => {
-        const known = findUkCity(e.city);
-        return {
-          name: e.name,
-          title: e.title,
-          mosque: e.mosque,
-          city: e.city,
-          postcode: e.postcode ?? null,
-          lat: known?.lat ?? null,
-          lng: known?.lng ?? null,
-          phone: e.phone ?? null,
-          email: e.email ?? null,
-          website: e.website ?? null,
-          languages: e.languages,
-          notes: e.notes ?? null,
-        };
-      });
+    const toInsert = EXAMPLE_IMAMS.filter((e) => !have.has(`${e.name}::${e.city}`)).map((e) => {
+      const known = findUkCity(e.city);
+      return {
+        name: e.name,
+        title: e.title,
+        mosque: e.mosque,
+        city: e.city,
+        postcode: e.postcode ?? null,
+        lat: known?.lat ?? null,
+        lng: known?.lng ?? null,
+        phone: e.phone ?? null,
+        email: e.email ?? null,
+        website: e.website ?? null,
+        languages: e.languages,
+        notes: e.notes ?? null,
+      };
+    });
     if (toInsert.length === 0) return { inserted: 0, skipped: EXAMPLE_IMAMS.length };
     const { error } = await supabaseAdmin.from("imams").insert(toInsert);
     if (error) throw new Error(error.message);
@@ -469,7 +521,10 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 });
+    const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 500,
+    });
     if (listErr) throw new Error(listErr.message);
     const existing = new Map(list.users.map((u) => [u.email?.toLowerCase() ?? "", u]));
 
@@ -485,30 +540,42 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
           email_confirm: true,
           user_metadata: { display_name: ex.display_name },
         });
-        if (createErr) { skipped += 1; continue; }
+        if (createErr) {
+          skipped += 1;
+          continue;
+        }
         userId = created.user!.id;
         inserted += 1;
       } else {
         skipped += 1;
       }
       const known = findUkCity(ex.uk_city);
-      await supabaseAdmin.from("profiles").upsert({
-        id: userId,
-        display_name: ex.display_name,
-        contact_email: ex.email,
-        uk_city: ex.uk_city,
-        location_lat: known?.lat ?? null,
-        location_lng: known?.lng ?? null,
-      }, { onConflict: "id" });
-      await supabaseAdmin.from("privacy_settings").upsert({
-        user_id: userId,
-        visibility: "discoverable",
-      }, { onConflict: "user_id" });
-      await supabaseAdmin.from("survey_answers").upsert({
-        user_id: userId,
-        answers: ex.answers,
-        completed: true,
-      }, { onConflict: "user_id" });
+      await supabaseAdmin.from("profiles").upsert(
+        {
+          id: userId,
+          display_name: ex.display_name,
+          contact_email: ex.email,
+          uk_city: ex.uk_city,
+          location_lat: known?.lat ?? null,
+          location_lng: known?.lng ?? null,
+        },
+        { onConflict: "id" },
+      );
+      await supabaseAdmin.from("privacy_settings").upsert(
+        {
+          user_id: userId,
+          visibility: "discoverable",
+        },
+        { onConflict: "user_id" },
+      );
+      await supabaseAdmin.from("survey_answers").upsert(
+        {
+          user_id: userId,
+          answers: ex.answers,
+          completed: true,
+        },
+        { onConflict: "user_id" },
+      );
     }
     return { inserted, skipped, total: EXAMPLE_USERS.length };
   });

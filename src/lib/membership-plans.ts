@@ -40,5 +40,4 @@ export const MEMBERSHIP_BENEFITS = [
   "Privacy controls over every field you share",
 ] as const;
 
-export const formatPrice = (pence: number) =>
-  `£${(pence / 100).toFixed(2).replace(/\.00$/, "")}`;
+export const formatPrice = (pence: number) => `£${(pence / 100).toFixed(2).replace(/\.00$/, "")}`;

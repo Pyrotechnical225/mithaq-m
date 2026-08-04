@@ -1,11 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import {
-  deleteProfileAdmin,
-  exportProfilesAdmin,
-  listAllProfiles,
-} from "@/lib/admin.functions";
+import { deleteProfileAdmin, exportProfilesAdmin, listAllProfiles } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/profiles")({
   head: () => ({ meta: [{ title: "Profiles — Admin" }, { name: "robots", content: "noindex" }] }),
@@ -33,7 +29,9 @@ function ProfilesList() {
   const [q, setQ] = useState("");
 
   const load = () => fetchAll().then(setRows);
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
 
   const filtered = (rows ?? []).filter((r) => {
     if (!q) return true;
@@ -65,9 +63,24 @@ function ProfilesList() {
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-3xl text-foreground">Profiles</h1>
         <div className="flex gap-2">
-          <button onClick={() => exportAll("json")} className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent">Export all JSON</button>
-          <button onClick={() => exportAll("csv")} className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent">Export all CSV</button>
-          <Link to="/admin/new-profile" className="rounded-full bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">+ New profile</Link>
+          <button
+            onClick={() => exportAll("json")}
+            className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
+          >
+            Export all JSON
+          </button>
+          <button
+            onClick={() => exportAll("csv")}
+            className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
+          >
+            Export all CSV
+          </button>
+          <Link
+            to="/admin/new-profile"
+            className="rounded-full bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+          >
+            + New profile
+          </Link>
         </div>
       </div>
 
@@ -95,8 +108,12 @@ function ProfilesList() {
           <tbody className="divide-y divide-border">
             {filtered.map((r) => (
               <tr key={r.id} className="hover:bg-accent/40">
-                <td className="px-4 py-3 text-foreground">{r.display_name ?? <span className="text-muted-foreground">—</span>}</td>
-                <td className="px-4 py-3 text-foreground">{r.auth_email ?? r.contact_email ?? "—"}</td>
+                <td className="px-4 py-3 text-foreground">
+                  {r.display_name ?? <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="px-4 py-3 text-foreground">
+                  {r.auth_email ?? r.contact_email ?? "—"}
+                </td>
                 <td className="px-4 py-3">
                   <span className={r.survey_completed ? "text-primary" : "text-muted-foreground"}>
                     {r.survey_completed ? "Completed" : "In progress"}
@@ -105,19 +122,46 @@ function ProfilesList() {
                 <td className="px-4 py-3 text-foreground">{r.visibility}</td>
                 <td className="px-4 py-3">{r.email_confirmed ? "✓" : "—"}</td>
                 <td className="px-4 py-3 text-xs">{r.roles.join(", ") || "user"}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">
+                  {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
-                    <Link to="/admin/profiles/$userId" params={{ userId: r.id }} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent">Edit</Link>
-                    <button onClick={() => exportOne(r.id, "json")} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent">JSON</button>
-                    <button onClick={() => exportOne(r.id, "csv")} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent">CSV</button>
-                    <button onClick={() => remove(r.id)} className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10">Delete</button>
+                    <Link
+                      to="/admin/profiles/$userId"
+                      params={{ userId: r.id }}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => exportOne(r.id, "json")}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                    >
+                      JSON
+                    </button>
+                    <button
+                      onClick={() => exportOne(r.id, "csv")}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                    >
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => remove(r.id)}
+                      className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No profiles.</td></tr>
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  No profiles.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

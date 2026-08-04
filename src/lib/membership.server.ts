@@ -4,6 +4,9 @@ import { PLANS, type PlanId } from "./membership-plans";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
+/** Stripe statuses that mean the member should keep access. */
+export const ACCESS_STATUSES = ["active", "trialing", "complimentary"] as const;
+
 // Prefer the full secret key; fall back to a restricted key (rk_...) which
 // works for Checkout/Billing calls as long as it has write access to those
 // resources.
@@ -58,15 +61,18 @@ async function stripeCall(
   path: string,
   body?: URLSearchParams,
   method: "GET" | "POST" = "POST",
+  idempotencyKey?: string,
 ) {
   const key = stripeKey();
   if (!key) throw new StripeError(0, "Payments are not configured yet", "not_configured", null);
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API}${path}`, {
     method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers,
     body: method === "POST" ? body : undefined,
   });
   const text = await res.text();
@@ -78,8 +84,9 @@ async function stripeCall(
   }
   if (!res.ok) {
     const err = (parsed.error ?? {}) as { message?: string; code?: string; type?: string };
+    // Never log the key or the raw body — only Stripe's own error descriptors.
     console.error(
-      `Stripe ${path} failed [${res.status}] ${err.type ?? "?"}/${err.code ?? "?"}: ${err.message ?? text}`,
+      `Stripe ${method} ${path} failed [${res.status}] ${err.type ?? "?"}/${err.code ?? "?"}: ${err.message ?? "no message"}`,
     );
     throw new StripeError(
       res.status,
@@ -91,19 +98,97 @@ async function stripeCall(
   return parsed;
 }
 
+/* ------------------------------------------------------------------ */
+/* Customers                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Returns the Stripe customer for this user, reusing the stored one when we
+ * have it, then an existing Stripe customer with the same email, and only
+ * creating a new customer as a last resort.
+ */
+export async function getOrCreateCustomer(opts: {
+  userId: string;
+  email: string | null;
+  storedCustomerId: string | null;
+}) {
+  if (opts.storedCustomerId) {
+    try {
+      const existing = (await stripeCall(
+        `/customers/${opts.storedCustomerId}`,
+        undefined,
+        "GET",
+      )) as Record<string, unknown>;
+      if (!existing.deleted) return existing.id as string;
+    } catch (e) {
+      if (!(e instanceof StripeError) || e.status !== 404) throw e;
+    }
+  }
+
+  if (opts.email) {
+    try {
+      const list = (await stripeCall(
+        `/customers?limit=1&email=${encodeURIComponent(opts.email)}`,
+        undefined,
+        "GET",
+      )) as { data?: { id: string }[] };
+      const found = list.data?.[0]?.id;
+      if (found) return found;
+    } catch (e) {
+      // Missing read permission on customers must not block checkout.
+      if (!(e instanceof StripeError)) throw e;
+    }
+  }
+
+  const created = await stripeCall(
+    "/customers",
+    form({
+      email: opts.email ?? undefined,
+      "metadata[user_id]": opts.userId,
+    }),
+    "POST",
+    `customer:${opts.userId}`,
+  );
+  return created.id as string;
+}
+
+/** True when this Stripe customer already has a live (billable) subscription. */
+export async function customerHasLiveSubscription(customerId: string) {
+  try {
+    const list = (await stripeCall(
+      `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
+      undefined,
+      "GET",
+    )) as { data?: { id: string; status: string }[] };
+    return (list.data ?? []).some((s) =>
+      ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
+    );
+  } catch {
+    // If we can't check, don't block the member — Stripe Checkout and the
+    // billing portal still prevent genuine double-charging on the same plan.
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Checkout / portal                                                   */
+/* ------------------------------------------------------------------ */
+
 export async function createCheckoutSession(opts: {
   plan: PlanId;
   userId: string;
-  email: string | null;
+  customerId: string;
   origin: string;
 }) {
+  // Pricing is resolved server-side from the allowlisted plan id only.
   const plan = PLANS[opts.plan];
+  if (!plan) throw new StripeError(0, "Unknown plan", "invalid_plan", null);
   const body = form({
     mode: "subscription",
     success_url: `${opts.origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/membership?checkout=cancelled`,
     client_reference_id: opts.userId,
-    customer_email: opts.email ?? undefined,
+    customer: opts.customerId,
     "line_items[0][quantity]": 1,
     "line_items[0][price_data][currency]": plan.currency,
     "line_items[0][price_data][unit_amount]": plan.amount,
@@ -135,6 +220,99 @@ export async function retrieveCheckoutSession(id: string) {
   return stripeCall(`/checkout/sessions/${id}`, undefined, "GET");
 }
 
+/* ------------------------------------------------------------------ */
+/* Persisting subscription state                                       */
+/* ------------------------------------------------------------------ */
+
+type SubRow = {
+  user_id: string;
+  plan: string;
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  provider: string;
+  provider_customer_id: string | null;
+  provider_subscription_id: string | null;
+  stripe_updated_at: string;
+  last_payment_status?: string | null;
+};
+
+function planFromSubscription(sub: Record<string, unknown>): string {
+  const meta = (sub.metadata as Record<string, string> | undefined) ?? {};
+  if (meta.plan === "monthly" || meta.plan === "yearly") return meta.plan;
+  const items = (sub.items as { data?: { price?: { recurring?: { interval?: string } } }[] })?.data;
+  const interval = items?.[0]?.price?.recurring?.interval;
+  return interval === "year" ? "yearly" : "monthly";
+}
+
+function periodEnd(sub: Record<string, unknown>): string | null {
+  const items = (sub.items as { data?: { current_period_end?: number }[] })?.data;
+  const raw =
+    (sub.current_period_end as number | undefined) ?? items?.[0]?.current_period_end ?? undefined;
+  return raw ? new Date(raw * 1000).toISOString() : null;
+}
+
+async function upsertSubscriptionRow(row: SubRow) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin
+    .from("subscriptions")
+    .upsert(row, { onConflict: "user_id" });
+  if (error) {
+    console.error("subscription upsert failed:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/** Resolve the Mithaq user for a Stripe subscription object. */
+async function resolveUserId(sub: Record<string, unknown>): Promise<string | null> {
+  const meta = (sub.metadata as Record<string, string> | undefined) ?? {};
+  if (meta.user_id) return meta.user_id;
+  const customer = sub.customer as string | null;
+  if (!customer) return null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("subscriptions")
+    .select("user_id")
+    .eq("provider_customer_id", customer)
+    .maybeSingle();
+  return data?.user_id ?? null;
+}
+
+/**
+ * Writes a Stripe subscription object into our subscriptions table.
+ * Idempotent: the same object can be applied any number of times.
+ */
+export async function syncSubscriptionObject(
+  sub: Record<string, unknown>,
+  opts: { expectedUserId?: string; deleted?: boolean } = {},
+) {
+  const userId = opts.expectedUserId ?? (await resolveUserId(sub));
+  if (!userId) return { ok: false as const, reason: "no_user" as const };
+  if (opts.expectedUserId) {
+    const claimed = await resolveUserId(sub);
+    if (claimed && claimed !== opts.expectedUserId) {
+      return { ok: false as const, reason: "mismatch" as const };
+    }
+  }
+
+  const rawStatus = (sub.status as string) ?? "active";
+  const status = opts.deleted || rawStatus === "canceled" ? "cancelled" : rawStatus;
+
+  const ok = await upsertSubscriptionRow({
+    user_id: userId,
+    plan: status === "cancelled" ? "none" : planFromSubscription(sub),
+    status,
+    current_period_end: periodEnd(sub),
+    cancel_at_period_end: !!sub.cancel_at_period_end,
+    provider: "stripe",
+    provider_customer_id: (sub.customer as string | null) ?? null,
+    provider_subscription_id: (sub.id as string | null) ?? null,
+    stripe_updated_at: new Date().toISOString(),
+  });
+  return ok ? { ok: true as const, status } : { ok: false as const, reason: "db_error" as const };
+}
+
 /**
  * Reads a completed Checkout Session straight from Stripe and writes the
  * matching subscription row. Used by the webhook and as a fallback when the
@@ -145,46 +323,88 @@ export async function syncSubscriptionFromSession(sessionId: string, expectedUse
   const session = (await retrieveCheckoutSession(sessionId)) as Record<string, unknown>;
   const meta = (session.metadata as Record<string, string> | undefined) ?? {};
   const userId = (session.client_reference_id as string | null) ?? meta.user_id ?? null;
-  if (!userId) return { ok: false as const, reason: "no_user" };
-  if (expectedUserId && userId !== expectedUserId) return { ok: false as const, reason: "mismatch" };
-  if (session.payment_status !== "paid" && session.status !== "complete") {
-    return { ok: false as const, reason: "not_paid" };
+  if (!userId) return { ok: false as const, reason: "no_user" as const };
+  if (expectedUserId && userId !== expectedUserId) {
+    return { ok: false as const, reason: "mismatch" as const };
   }
+  if (session.payment_status !== "paid" && session.status !== "complete") {
+    return { ok: false as const, reason: "not_paid" as const };
+  }
+
   const subId = session.subscription as string | null;
-  let status = "active";
-  let periodEnd: string | null = null;
   if (subId) {
     const sub = (await retrieveSubscription(subId)) as Record<string, unknown>;
-    status = (sub.status as string) ?? "active";
-    periodEnd = sub.current_period_end
-      ? new Date((sub.current_period_end as number) * 1000).toISOString()
-      : null;
+    if (!sub.metadata || !(sub.metadata as Record<string, string>).user_id) {
+      sub.metadata = { ...(sub.metadata as Record<string, string> | undefined), user_id: userId };
+    }
+    return syncSubscriptionObject(sub, { expectedUserId: userId });
   }
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("subscriptions").upsert(
-    {
-      user_id: userId,
-      plan: meta.plan ?? "monthly",
-      status,
-      current_period_end: periodEnd,
-      provider: "stripe",
-      provider_customer_id: (session.customer as string | null) ?? null,
-      provider_subscription_id: subId,
-    },
-    { onConflict: "user_id" },
-  );
-  if (error) {
-    console.error("subscription upsert failed:", error.message);
-    return { ok: false as const, reason: "db_error" };
-  }
-  return { ok: true as const, status };
+
+  const ok = await upsertSubscriptionRow({
+    user_id: userId,
+    plan: meta.plan ?? "monthly",
+    status: "active",
+    current_period_end: null,
+    cancel_at_period_end: false,
+    provider: "stripe",
+    provider_customer_id: (session.customer as string | null) ?? null,
+    provider_subscription_id: null,
+    stripe_updated_at: new Date().toISOString(),
+  });
+  return ok
+    ? { ok: true as const, status: "active" }
+    : { ok: false as const, reason: "db_error" as const };
 }
 
-/** Admin diagnostic: exercises the real Stripe API and reports what it says. */
-export async function diagnoseStripeKey(origin: string) {
+/** invoice.payment_succeeded / invoice.payment_failed handling. */
+export async function syncFromInvoice(invoice: Record<string, unknown>, failed: boolean) {
+  const subId =
+    (invoice.subscription as string | null) ??
+    (invoice.parent as { subscription_details?: { subscription?: string } } | undefined)
+      ?.subscription_details?.subscription ??
+    null;
+  if (subId) {
+    const sub = (await retrieveSubscription(subId)) as Record<string, unknown>;
+    const result = await syncSubscriptionObject(sub);
+    if (result.ok) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const userId = await resolveUserId(sub);
+      if (userId) {
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({ last_payment_status: failed ? "failed" : "succeeded" })
+          .eq("user_id", userId);
+      }
+    }
+    return result;
+  }
+  return { ok: false as const, reason: "no_subscription" as const };
+}
+
+/** Idempotency ledger: returns true when this event has not been seen before. */
+export async function claimStripeEvent(id: string, type: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("stripe_events").insert({ id, type });
+  if (error) {
+    // Unique violation = already processed.
+    if (error.code === "23505") return false;
+    console.error("stripe_events insert failed:", error.message);
+    return true; // fail open so a ledger problem doesn't drop real events
+  }
+  return true;
+}
+
+/**
+ * Admin diagnostic: read-only Stripe calls only. It must never create
+ * Checkout Sessions, customers or any other object.
+ */
+export async function diagnoseStripeKey() {
   const info = stripeKeyInfo();
   if (!info.configured) {
-    return { key: info, checks: [{ name: "Key present", ok: false, detail: "No Stripe key saved" }] };
+    return {
+      key: info,
+      checks: [{ name: "Key present", ok: false, detail: "No Stripe key saved" }],
+    };
   }
   const checks: { name: string; ok: boolean; detail: string }[] = [];
 
@@ -204,13 +424,10 @@ export async function diagnoseStripeKey(origin: string) {
   };
 
   await run("Read subscriptions", () => stripeCall("/subscriptions?limit=1", undefined, "GET"));
-  await run("Create Checkout Session (write)", () =>
-    createCheckoutSession({
-      plan: "monthly",
-      userId: "diagnostic",
-      email: null,
-      origin,
-    }),
+  await run("Read customers", () => stripeCall("/customers?limit=1", undefined, "GET"));
+  await run("Read prices", () => stripeCall("/prices?limit=1", undefined, "GET"));
+  await run("Read checkout sessions", () =>
+    stripeCall("/checkout/sessions?limit=1", undefined, "GET"),
   );
 
   return { key: info, checks };
@@ -221,6 +438,7 @@ export async function verifyStripeSignature(
   payload: string,
   header: string | null,
   secret: string,
+  toleranceSeconds = 300,
 ) {
   if (!header) return false;
   const parts = Object.fromEntries(
@@ -232,6 +450,9 @@ export async function verifyStripeSignature(
   const timestamp = parts["t"];
   const sig = parts["v1"];
   if (!timestamp || !sig) return false;
+
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > toleranceSeconds) return false;
 
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(

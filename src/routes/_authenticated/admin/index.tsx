@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 import { adminStats } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Admin overview — Mithaq" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Admin overview — Mithaq" }, { name: "robots", content: "noindex" }],
+  }),
   component: AdminHome,
 });
 
 function AdminHome() {
   const fetchStats = useServerFn(adminStats);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null);
-  useEffect(() => { fetchStats().then(setStats); }, [fetchStats]);
+  useEffect(() => {
+    fetchStats().then(setStats);
+  }, [fetchStats]);
 
   if (!stats) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
@@ -40,7 +44,9 @@ function AdminHome() {
           {stats.recentUsers.map((u) => (
             <li key={u.id} className="flex items-center justify-between py-2">
               <span className="text-foreground">{u.email}</span>
-              <span className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleString() : ""}</span>
+              <span className="text-xs text-muted-foreground">
+                {u.created_at ? new Date(u.created_at).toLocaleString() : ""}
+              </span>
             </li>
           ))}
           {stats.recentUsers.length === 0 && (
@@ -111,8 +117,6 @@ function AdminHome() {
           />
         </div>
       </section>
-
-
     </div>
   );
 }
@@ -142,7 +146,6 @@ function ControlCard({ title, body, actions }: { title: string; body: string; ac
     </div>
   );
 }
-
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (

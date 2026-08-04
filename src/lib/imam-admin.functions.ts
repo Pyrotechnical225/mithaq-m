@@ -13,10 +13,7 @@ export const listImamApplications = createServerFn({ method: "GET" })
     if (!isAdmin) throw new Error("Forbidden: admin only");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: apps }, { data: accounts }] = await Promise.all([
-      supabaseAdmin
-        .from("imam_applications")
-        .select("*")
-        .order("created_at", { ascending: false }),
+      supabaseAdmin.from("imam_applications").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("imam_accounts").select("user_id, imam_id, radius_km, active"),
     ]);
     const accountByUser = new Map((accounts ?? []).map((a) => [a.user_id, a]));
@@ -63,7 +60,10 @@ export const reviewImamApplication = createServerFn({ method: "POST" })
         })
         .eq("id", app.id);
       if (app.user_id) {
-        await supabaseAdmin.from("imam_accounts").update({ active: false }).eq("user_id", app.user_id);
+        await supabaseAdmin
+          .from("imam_accounts")
+          .update({ active: false })
+          .eq("user_id", app.user_id);
       }
       return { ok: true, imam_id: null };
     }

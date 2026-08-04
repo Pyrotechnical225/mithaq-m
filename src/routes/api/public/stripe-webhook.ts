@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/**
+ * Stripe webhook. Signature is verified against the RAW request body before
+ * anything is parsed, and every event id is claimed in a ledger so repeated
+ * deliveries are applied at most once.
+ *
+ * Events handled: checkout.session.completed,
+ * customer.subscription.created/updated/deleted,
+ * invoice.payment_succeeded, invoice.payment_failed.
+ */
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
@@ -8,9 +17,14 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
         const payload = await request.text();
-        const { verifyStripeSignature, syncSubscriptionFromSession } = await import(
-          "@/lib/membership.server"
-        );
+        const {
+          verifyStripeSignature,
+          syncSubscriptionFromSession,
+          syncSubscriptionObject,
+          syncFromInvoice,
+          claimStripeEvent,
+        } = await import("@/lib/membership.server");
+
         const ok = await verifyStripeSignature(
           payload,
           request.headers.get("stripe-signature"),
@@ -18,49 +32,42 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         );
         if (!ok) return new Response("Invalid signature", { status: 401 });
 
-        const event = JSON.parse(payload) as {
-          type: string;
-          data: { object: Record<string, unknown> };
-        };
-        const obj = event.data.object;
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        let event: { id: string; type: string; data: { object: Record<string, unknown> } };
+        try {
+          event = JSON.parse(payload);
+        } catch {
+          return new Response("Bad payload", { status: 400 });
+        }
+        if (!event?.id || !event?.type) return new Response("Bad payload", { status: 400 });
 
-        const upsert = async (row: Record<string, unknown>) => {
-          const { error } = await supabaseAdmin
-            .from("subscriptions")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .upsert(row as any, { onConflict: "user_id" });
-          if (error) console.error("subscription upsert failed:", error.message);
-        };
+        const fresh = await claimStripeEvent(event.id, event.type);
+        if (!fresh) return new Response("ok (duplicate)");
+
+        const obj = event.data?.object ?? {};
 
         try {
-          if (event.type === "checkout.session.completed") {
-            await syncSubscriptionFromSession(obj.id as string);
-          } else if (
-
-            event.type === "customer.subscription.updated" ||
-            event.type === "customer.subscription.deleted"
-          ) {
-            const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
-            if (meta.user_id) {
-              await upsert({
-                user_id: meta.user_id,
-                plan: meta.plan ?? "monthly",
-                status:
-                  event.type === "customer.subscription.deleted"
-                    ? "cancelled"
-                    : ((obj.status as string) ?? "active"),
-                current_period_end: obj.current_period_end
-                  ? new Date((obj.current_period_end as number) * 1000).toISOString()
-                  : null,
-                provider: "stripe",
-                provider_customer_id: obj.customer as string | null,
-                provider_subscription_id: obj.id as string,
-              });
-            }
+          switch (event.type) {
+            case "checkout.session.completed":
+              await syncSubscriptionFromSession(obj.id as string);
+              break;
+            case "customer.subscription.created":
+            case "customer.subscription.updated":
+              await syncSubscriptionObject(obj);
+              break;
+            case "customer.subscription.deleted":
+              await syncSubscriptionObject(obj, { deleted: true });
+              break;
+            case "invoice.payment_succeeded":
+              await syncFromInvoice(obj, false);
+              break;
+            case "invoice.payment_failed":
+              await syncFromInvoice(obj, true);
+              break;
+            default:
+              break;
           }
         } catch (err) {
-          console.error("stripe webhook handling failed:", err);
+          console.error(`stripe webhook ${event.type} failed:`, err);
           return new Response("Handler error", { status: 500 });
         }
 

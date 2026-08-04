@@ -87,14 +87,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Mithaq — Building homes, the halal way" },
       {
         property: "og:description",
-        content: "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+        content:
+          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Mithaq — Building homes, the halal way" },
-      { name: "twitter:description", content: "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5fda5e24-946e-4578-803d-8d2a7ebb1edc" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5fda5e24-946e-4578-803d-8d2a7ebb1edc" },
+      {
+        name: "twitter:description",
+        content:
+          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5fda5e24-946e-4578-803d-8d2a7ebb1edc",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5fda5e24-946e-4578-803d-8d2a7ebb1edc",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -111,7 +124,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         crossOrigin: "",
       },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,

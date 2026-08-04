@@ -85,7 +85,9 @@ function Consent() {
   return (
     <main className="mx-auto max-w-md px-6 py-16">
       <div className="text-center">
-        <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">ميثاق</p>
+        <p className="font-arabic text-4xl text-primary" dir="rtl" lang="ar">
+          ميثاق
+        </p>
         <h1 className="mt-3 text-2xl font-semibold text-foreground">
           Connect {clientName} to your Mithaq account
         </h1>
@@ -97,7 +99,9 @@ function Consent() {
       <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
         {scopes.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Requested access</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              Requested access
+            </p>
             <ul className="mt-2 space-y-1 text-sm text-foreground">
               {scopes.map((s: string) => (
                 <li key={s}>• {s}</li>
