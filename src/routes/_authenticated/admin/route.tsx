@@ -1,8 +1,6 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { amIAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -81,35 +79,12 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function AdminLayout() {
-  const navigate = useNavigate();
-  const checkAdmin = useServerFn(amIAdmin);
-  const [allowed, setAllowed] = useState<boolean | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    checkAdmin()
-      .then((result) => {
-        if (!active) return;
-        if (result.isAdmin) {
-          setAllowed(true);
-        } else {
-          navigate({ to: "/dashboard", replace: true });
-        }
-      })
-      .catch(() => {
-        if (active) navigate({ to: "/dashboard", replace: true });
-      });
-    return () => {
-      active = false;
-    };
-  }, [checkAdmin, navigate]);
-
   useEffect(() => setNow(new Date().toLocaleString()), []);
 
-  if (allowed === null) {
-    return (
+  return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6">
         <div className="rounded-2xl border border-border bg-card px-8 py-6 text-center shadow-[var(--shadow-soft)]">
           <p className="text-sm font-medium text-foreground">Checking administrator access…</p>
