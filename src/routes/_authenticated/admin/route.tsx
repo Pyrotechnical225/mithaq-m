@@ -1,16 +1,25 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { amIAdmin } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
   beforeLoad: async () => {
-    try {
-      const res = await amIAdmin();
-      if (!res.isAdmin) throw redirect({ to: "/dashboard" });
-    } catch (e) {
-      // Any error -> not admin
-      if (e && typeof e === "object" && "to" in e) throw e;
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const user = authData.user;
+
+    if (authError || !user) {
+      throw redirect({ to: "/auth" });
+    }
+
+    const { data: adminRole, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (roleError || !adminRole) {
       throw redirect({ to: "/dashboard" });
     }
   },
