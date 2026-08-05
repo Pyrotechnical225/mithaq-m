@@ -113,7 +113,10 @@ function AdminLayout() {
 
   if (access === "checking") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-6" role="status">
+      <div
+        className="flex min-h-screen items-center justify-center bg-background px-6"
+        role="status"
+      >
         <div className="text-center">
           <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-primary border-r-transparent" />
           <p className="mt-3 text-sm text-muted-foreground">Checking admin access…</p>
@@ -130,7 +133,10 @@ function AdminLayout() {
           <p className="mt-2 text-sm text-muted-foreground">
             {accessError ?? "This account does not have permission to open the admin dashboard."}
           </p>
-          <Link to="/dashboard" className="mt-6 inline-flex rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground">
+          <Link
+            to="/dashboard"
+            className="mt-6 inline-flex rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground"
+          >
             Return to member dashboard
           </Link>
         </div>
