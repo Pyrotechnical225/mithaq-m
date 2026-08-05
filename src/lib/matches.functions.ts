@@ -1,30 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { questions } from "./survey-questions";
-
-// Only these question ids inform matching; free-text stays server-side only
-// unless the other person has opted in to sharing it.
-const CORE_IDS = questions.filter((q) => q.required).map((q) => q.id);
-
-function summarizeAnswers(answers: Record<string, string>) {
-  return questions
-    .filter((q) => answers[q.id] && answers[q.id].trim() !== "")
-    .map((q) => `${q.section} — ${q.question}: ${answers[q.id]}`)
-    .join("\n");
-}
-
-const MatchSchema = z.object({
-  matches: z.array(
-    z.object({
-      candidate_id: z.string(),
-      score: z.number(),
-      strengths: z.string(),
-      considerations: z.string(),
-    }),
-  ),
-});
+import { calculateCompatibility } from "./compatibility-score";
 
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -71,87 +48,19 @@ export const generateMatches = createServerFn({ method: "POST" })
       return saved;
     }
 
-    // Anonymize candidate payloads
-    const anonPool = pool.map((c, idx) => {
-      const answers = c.answers as Record<string, string>;
-      const showFreeText = privacyByUser.get(c.user_id)?.show_free_text ?? false;
-      const filtered: Record<string, string> = {};
-      for (const q of questions) {
-        const val = answers[q.id];
-        if (!val) continue;
-        if (q.type === "text" && !showFreeText && !CORE_IDS.includes(q.id)) continue;
-        filtered[q.id] = val;
-      }
-      return {
-        candidate_id: `cand_${idx}`,
-        real_id: c.user_id,
-        summary: summarizeAnswers(filtered),
-      };
-    });
-
-    const idMap = new Map(anonPool.map((c) => [c.candidate_id, c.real_id]));
-
-    const prompt = `You help match practicing Muslims for halal marriage on the Mithaq platform.
-
-USER PROFILE:
-${summarizeAnswers(mine.answers as Record<string, string>)}
-
-CANDIDATES:
-${anonPool.map((c) => `--- ${c.candidate_id} ---\n${c.summary}`).join("\n\n")}
-
-Score each candidate 0-100 for compatibility with the USER, weighting:
-1) Deen (madhab, level of practice, prayer, hijab/beard, halal diet)
-2) Marriage intentions & timeline
-3) Family plans (children, in-laws, gender roles)
-4) Values, lifestyle, and location feasibility
-
-For each candidate return:
-- candidate_id (exactly as given)
-- score (0-100)
-- strengths: 1-2 sentences on why this is a good match
-- considerations: 1-2 sentences on genuine differences or things to discuss
-
-Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
-
-    let output;
-    try {
-      const res = await generateText({
-        // Vercel deployments authenticate to AI Gateway automatically using
-        // their short-lived OIDC token. No provider secret is exposed here.
-        model: "google/gemini-3-flash",
-        prompt,
-        output: Output.object({ schema: MatchSchema }),
-        providerOptions: {
-          gateway: {
-            models: ["openai/gpt-5.4"],
-            user: context.userId,
-            tags: ["feature:compatibility-scoring", "privacy:imam-only"],
-          },
-        },
-      });
-      output = res.output;
-    } catch (err) {
-      if (NoObjectGeneratedError.isInstance(err)) {
-        output = { matches: [] };
-      } else {
-        console.error("Private compatibility analysis failed", err);
-        throw new Error("Private matching is temporarily unavailable. Please try again shortly.");
-      }
-    }
-
-    // Enrich with public candidate info (id + score/reasoning). Real ids stay
-    // server-side; we surface only what the recipient needs to decide.
-    const enriched = output.matches
-      .map((m) => {
-        const realId = idMap.get(m.candidate_id);
-        if (!realId) return null;
-        const cand = pool.find((p) => p.user_id === realId);
-        const answers = (cand?.answers ?? {}) as Record<string, string>;
+    // The rubric is deterministic and runs entirely on the server. No survey
+    // answers are sent to an external AI provider.
+    const myAnswers = mine.answers as Record<string, string>;
+    const enriched = pool
+      .map((candidate) => {
+        const answers = candidate.answers as Record<string, string>;
+        const compatibility = calculateCompatibility(myAnswers, answers);
         return {
-          match_user_id: realId,
-          score: m.score,
-          strengths: m.strengths,
-          considerations: m.considerations,
+          match_user_id: candidate.user_id,
+          score: compatibility.score,
+          strengths: compatibility.strengths,
+          considerations: compatibility.considerations,
+          categories: compatibility.categories,
           age: answers["1"] ?? null,
           location: answers["3"] ?? null,
           practice_level: answers["11"] ?? null,
@@ -159,7 +68,9 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
           timeline: answers["19"] ?? null,
         };
       })
-      .filter((match): match is NonNullable<typeof match> => !!match && match.score >= 70);
+      .filter((match) => match.score >= 70)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
 
     const { data: saved, error: saveErr } = await context.supabase
       .from("matches")
@@ -197,6 +108,8 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
           compatibility_summary: {
             strengths: match.strengths,
             considerations: match.considerations,
+            categories: match.categories,
+            scoring_method: "fixed-rubric-v1",
             location_context: [myCity, candidateCity].filter(
               (city): city is string => typeof city === "string" && city.length > 0,
             ),
