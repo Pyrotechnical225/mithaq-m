@@ -97,7 +97,7 @@ export const generateMatches = createServerFn({ method: "POST" })
       if (existing.data) continue;
       const candidateCity = profiles?.find((p) => p.id === match.match_user_id)?.uk_city;
       const imamAccount = imamAccounts?.[0] ?? null;
-      const { data: pairing } = await supabaseAdmin
+      const { data: pairing, error: pairingError } = await supabaseAdmin
         .from("pairings")
         .insert({
           user_a: userA,
@@ -117,6 +117,14 @@ export const generateMatches = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
+      if (pairingError) {
+        console.error("Could not create imam review pairing", {
+          code: pairingError.code,
+          message: pairingError.message,
+          details: pairingError.details,
+        });
+        throw new Error("Could not submit this match for imam review. Please try again.");
+      }
       if (pairing && imamAccount?.user_id) {
         await supabaseAdmin.from("notifications").insert({
           user_id: imamAccount.user_id,
