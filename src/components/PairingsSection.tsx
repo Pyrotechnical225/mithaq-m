@@ -1,203 +1,225 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+  confirmIntroductionPayment,
+  listMyNotifications,
   listMyPairings,
-  listPairingMessages,
-  postPairingMessage,
-  respondToMeetup,
-  syncMyPairings,
+  respondToPairing,
+  setMeetingPreference,
+  startIntroductionCheckout,
 } from "@/lib/pairings.functions";
 
 type Pairing = Awaited<ReturnType<typeof listMyPairings>>[number];
-type Message = Awaited<ReturnType<typeof listPairingMessages>>[number];
+
+const labels: Record<string, string> = {
+  member_review: "Your private response",
+  awaiting_payment: "Both accepted — payment due",
+  payment_pending: "Waiting for both payments",
+  ready_to_schedule: "Ready for the imam to arrange",
+  scheduled: "Meeting scheduled",
+  declined: "Not taken forward",
+};
 
 export function PairingsSection() {
-  const sync = useServerFn(syncMyPairings);
   const list = useServerFn(listMyPairings);
-  const respond = useServerFn(respondToMeetup);
-  const fetchMessages = useServerFn(listPairingMessages);
-  const send = useServerFn(postPairingMessage);
-
+  const listNotifications = useServerFn(listMyNotifications);
+  const respond = useServerFn(respondToPairing);
+  const checkout = useServerFn(startIntroductionCheckout);
+  const confirm = useServerFn(confirmIntroductionPayment);
+  const savePreference = useServerFn(setMeetingPreference);
   const [pairings, setPairings] = useState<Pairing[] | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const load = () => list().then(setPairings).catch(() => setPairings([]));
+  const [notifications, setNotifications] = useState<
+    Awaited<ReturnType<typeof listMyNotifications>>
+  >([]);
+  const load = () =>
+    Promise.all([list(), listNotifications()])
+      .then(([rows, notices]) => {
+        setPairings(rows);
+        setNotifications(notices);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Could not load introductions"));
 
   useEffect(() => {
-    sync()
-      .catch(() => undefined)
-      .then(load);
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get("session_id");
+    if (params.get("introduction") === "success" && session) {
+      confirm({ data: { session_id: session } }).finally(load);
+    } else load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openThread = async (id: string) => {
-    setOpenId(id);
-    setMessages(await fetchMessages({ data: { pairing_id: id } }));
-  };
-
-  const submitMessage = async () => {
-    if (!openId || !draft.trim()) return;
+  const act = async (fn: () => Promise<unknown>) => {
+    setError(null);
     try {
-      await send({ data: { pairing_id: openId, body: draft } });
-      setDraft("");
-      setMessages(await fetchMessages({ data: { pairing_id: openId } }));
+      await fn();
+      await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send message");
+      setError(e instanceof Error ? e.message : "Could not update introduction");
     }
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <h2 className="text-xl text-foreground">Imam-arranged meetings</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Once both sides accept an interest, a local imam reviews the pairing and arranges a
-        wali-attended meeting. You can message the imam and the other family here.
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+        Private introductions
       </p>
-
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-
-      {pairings === null ? (
-        <p className="mt-5 text-sm text-muted-foreground">Loading…</p>
-      ) : pairings.length === 0 ? (
-        <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No pairings yet. When an interest is accepted on both sides, it appears here for imam
-          review.
-        </p>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {pairings.map((p) => (
-            <div key={p.id} className="rounded-xl border border-border p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {p.other.display_name ?? "Member"}
-                    {p.other.uk_city ? ` · ${p.other.uk_city}` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.imam
-                      ? `Imam ${p.imam.name}${p.imam.mosque ? ` · ${p.imam.mosque}` : ""} · ${p.imam.city}`
-                      : "Awaiting imam assignment"}
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    p.status === "approved"
-                      ? "bg-primary/10 text-primary"
-                      : p.status === "declined"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {p.status === "approved"
-                    ? "Approved by imam"
-                    : p.status === "declined"
-                      ? "Not taken forward"
-                      : "Awaiting imam review"}
-                </span>
-              </div>
-
-              {p.decision_note && (
-                <p className="mt-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                  Imam’s note: {p.decision_note}
-                </p>
-              )}
-
-              {p.meetups.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {p.meetups.map((m) => {
-                    const mine = p.i_am === "a" ? m.response_a : m.response_b;
-                    return (
-                      <div key={m.id} className="rounded-lg border border-border/70 p-3 text-sm">
-                        <p className="font-medium text-foreground">
-                          {new Date(m.scheduled_at).toLocaleString()} · {m.venue}
-                        </p>
-                        {m.address && <p className="text-xs text-muted-foreground">{m.address}</p>}
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {m.wali_required ? "Wali attendance required." : "Wali attendance optional."}
-                          {m.note ? ` ${m.note}` : ""}
-                        </p>
-                        <div className="mt-2 flex items-center gap-2 text-xs">
-                          <span className="rounded-full bg-muted px-2 py-0.5">{m.status}</span>
-                          {m.status !== "cancelled" && mine === "pending" && (
-                            <>
-                              <button
-                                onClick={async () => {
-                                  await respond({ data: { meetup_id: m.id, accept: true } });
-                                  load();
-                                }}
-                                className="rounded-full bg-primary px-3 py-1 font-medium text-primary-foreground hover:bg-primary/90"
-                              >
-                                Accept
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  await respond({ data: { meetup_id: m.id, accept: false } });
-                                  load();
-                                }}
-                                className="rounded-full border border-border px-3 py-1 hover:bg-accent"
-                              >
-                                Decline
-                              </button>
-                            </>
-                          )}
-                          {mine !== "pending" && (
-                            <span className="text-muted-foreground">You: {mine}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <button
-                onClick={() => (openId === p.id ? setOpenId(null) : openThread(p.id))}
-                className="mt-3 text-xs text-primary underline"
-              >
-                {openId === p.id ? "Hide messages" : "Messages with the imam"}
-              </button>
-
-              {openId === p.id && (
-                <div className="mt-3 rounded-lg bg-muted/50 p-3">
-                  <div className="max-h-56 space-y-2 overflow-y-auto">
-                    {messages.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No messages yet.</p>
-                    )}
-                    {messages.map((m) => (
-                      <div
-                        key={m.id}
-                        className={`rounded-lg px-3 py-2 text-sm ${
-                          m.mine ? "bg-primary/10 text-foreground" : "bg-card text-foreground"
-                        }`}
-                      >
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                          {m.mine ? "You" : m.sender_role} · {new Date(m.created_at).toLocaleString()}
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Write a message…"
-                      className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                    />
-                    <button
-                      onClick={submitMessage}
-                      className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-                    >
-                      Send
-                    </button>
-                  </div>
-                </div>
-              )}
+      <h2 className="mt-2 text-2xl text-foreground">Imam-reviewed matches</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+        AI scores are shown only to the imam. You will see an anonymous profile only after the imam
+        approves it. Names and searchable contact details stay hidden.
+      </p>
+      {error && (
+        <p className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
+      )}
+      {notifications.length > 0 && (
+        <div className="mt-5 space-y-2" aria-label="Recent notifications">
+          {notifications.slice(0, 3).map((notice) => (
+            <div key={notice.id} className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <p className="text-sm font-medium text-foreground">{notice.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{notice.body}</p>
             </div>
           ))}
+        </div>
+      )}
+      {pairings === null ? (
+        <p className="mt-6 text-sm text-muted-foreground">Loading introductions…</p>
+      ) : pairings.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          No imam-approved introductions yet. We will notify you when one is ready.
+        </p>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {pairings.map((p) => {
+            const mine = p.i_am === "a" ? p.member_a_response : p.member_b_response;
+            const payment = p.i_am === "a" ? p.payment_a_status : p.payment_b_status;
+            const preference = p.i_am === "a" ? p.meeting_preference_a : p.meeting_preference_b;
+            const details = [
+              ["Age", p.other.age],
+              ["City", p.other.uk_city],
+              ["Background", p.other.ethnicity],
+              ["Marital status", p.other.marital_status],
+              ["Children", p.other.children],
+              ["Education", p.other.education],
+              ["Field of work", p.other.occupation_field],
+              ["Religious practice", p.other.practice_level],
+              ["Languages", p.other.languages],
+              ["Marriage timeline", p.other.marriage_timeline],
+              ["Relocation", p.other.relocation],
+            ].filter((x) => x[1]);
+            return (
+              <article key={p.id} className="rounded-2xl border border-border p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      Anonymous profile {p.other.reference}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Reviewed by {p.imam ? `Imam ${p.imam.name}` : "a Mithaq imam"}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    {labels[p.status] ?? p.status}
+                  </span>
+                </div>
+                <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {details.map(([label, value]) => (
+                    <div key={String(label)} className="rounded-xl bg-muted/60 p-3">
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {label}
+                      </dt>
+                      <dd className="mt-1 text-sm text-foreground">{String(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {p.status === "member_review" && mine === "pending" && (
+                  <div className="mt-5 flex gap-3">
+                    <button
+                      onClick={() =>
+                        act(() => respond({ data: { pairing_id: p.id, accept: true } }))
+                      }
+                      className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
+                    >
+                      Accept privately
+                    </button>
+                    <button
+                      onClick={() =>
+                        act(() => respond({ data: { pairing_id: p.id, accept: false } }))
+                      }
+                      className="rounded-full border border-border px-5 py-2 text-sm"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                )}
+                {p.status === "member_review" && mine !== "pending" && (
+                  <p className="mt-5 text-sm text-muted-foreground">
+                    Your response: {mine}. The other member cannot see your identity while they
+                    decide.
+                  </p>
+                )}
+                {["awaiting_payment", "payment_pending"].includes(p.status) &&
+                  payment !== "paid" && (
+                    <div className="mt-5 rounded-2xl border border-gold/40 bg-gold/10 p-4">
+                      <p className="font-medium text-foreground">Both members accepted</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Pay £39 to continue to the imam-arranged meeting. Both members pay
+                        separately.
+                      </p>
+                      <button
+                        onClick={() =>
+                          act(async () => {
+                            const r = await checkout({
+                              data: { pairing_id: p.id, origin: window.location.origin },
+                            });
+                            window.location.href = r.url;
+                          })
+                        }
+                        className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
+                      >
+                        Pay securely
+                      </button>
+                    </div>
+                  )}
+                {payment === "paid" && !preference && (
+                  <div className="mt-5">
+                    <p className="text-sm font-medium text-foreground">
+                      Payment received. Choose your meeting preference:
+                    </p>
+                    <div className="mt-3 flex gap-3">
+                      <button
+                        onClick={() =>
+                          act(() =>
+                            savePreference({ data: { pairing_id: p.id, preference: "online" } }),
+                          )
+                        }
+                        className="rounded-full border border-border px-4 py-2 text-sm"
+                      >
+                        Online
+                      </button>
+                      <button
+                        onClick={() =>
+                          act(() =>
+                            savePreference({
+                              data: { pairing_id: p.id, preference: "face_to_face" },
+                            }),
+                          )
+                        }
+                        className="rounded-full border border-border px-4 py-2 text-sm"
+                      >
+                        Face-to-face
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {preference && (
+                  <p className="mt-5 text-sm text-primary">
+                    ✓ Your preference: {preference === "face_to_face" ? "Face-to-face" : "Online"}
+                  </p>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
