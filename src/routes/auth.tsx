@@ -123,7 +123,11 @@ function AuthPage() {
             ميثاق
           </p>
           <h1 className="mt-3 text-3xl text-foreground">
-            {recovery ? "Choose a new password" : mode === "signup" ? "Create your account" : "Welcome back"}
+            {recovery
+              ? "Choose a new password"
+              : mode === "signup"
+                ? "Create your account"
+                : "Welcome back"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Your answers stay private and are only used for matchmaking.
@@ -131,27 +135,33 @@ function AuthPage() {
         </div>
 
         <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          {!recovery ? <button
-            type="button"
-            onClick={google}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground hover:bg-accent"
-          >
-            Continue with Google
-          </button> : null}
+          {!recovery ? (
+            <button
+              type="button"
+              onClick={google}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              Continue with Google
+            </button>
+          ) : null}
 
-          {!recovery ? <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-          </div> : null}
+          {!recovery ? (
+            <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground">
+              <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
+            </div>
+          ) : null}
 
           <form onSubmit={submit} className="space-y-3">
-            {!recovery ? <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
-            /> : null}
+            {!recovery ? (
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
+              />
+            ) : null}
             <input
               type="password"
               required
@@ -167,19 +177,33 @@ function AuthPage() {
               disabled={loading}
               className="w-full rounded-xl bg-primary px-4 py-3 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              {loading ? "…" : recovery ? "Save new password" : mode === "signup" ? "Create account" : "Sign in"}
+              {loading
+                ? "…"
+                : recovery
+                  ? "Save new password"
+                  : mode === "signup"
+                    ? "Create account"
+                    : "Sign in"}
             </button>
           </form>
 
-          {!recovery ? <button
-            type="button"
-            onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
-          </button> : null}
+          {!recovery ? (
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+              className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {mode === "signup"
+                ? "Already have an account? Sign in"
+                : "New here? Create an account"}
+            </button>
+          ) : null}
           {!recovery && mode === "signin" ? (
-            <button type="button" onClick={sendReset} className="mt-3 w-full text-center text-sm text-primary hover:underline">
+            <button
+              type="button"
+              onClick={sendReset}
+              className="mt-3 w-full text-center text-sm text-primary hover:underline"
+            >
               Forgot your password?
             </button>
           ) : null}
