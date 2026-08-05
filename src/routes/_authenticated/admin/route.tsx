@@ -87,6 +87,15 @@ function AdminLayout() {
   const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!mobileOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
+
+  useEffect(() => {
     let active = true;
     checkAdmin()
       .then(({ isAdmin }) => {
@@ -153,6 +162,7 @@ function AdminLayout() {
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground lg:hidden"
             aria-label={mobileOpen ? "Close admin menu" : "Open admin menu"}
             aria-expanded={mobileOpen}
+            aria-controls="admin-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
           >
             {mobileOpen ? <X size={19} /> : <Menu size={19} />}
@@ -161,6 +171,7 @@ function AdminLayout() {
 
         {mobileOpen ? (
           <nav
+            id="admin-mobile-menu"
             className="border-t border-border bg-card px-5 py-4 text-sm shadow-[var(--shadow-soft)] lg:hidden"
             aria-label="Mobile admin navigation"
           >
