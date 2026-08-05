@@ -44,13 +44,13 @@ const steps = [
   },
   {
     number: "02",
-    title: "Private AI compatibility review",
-    body: "AI compares eligible profiles. Only scores of 70% or more are shown privately to an imam — never to members.",
+    title: "Private compatibility review",
+    body: "A consistent weighted rubric compares eligible profiles. Only scores of 70% or more are shown privately to an imam first.",
   },
   {
     number: "03",
     title: "Imam approval",
-    body: "The imam reviews both full profiles and the compatibility reasoning, then approves or declines the proposed match.",
+    body: "The imam reviews both full profiles and the compatibility breakdown, then approves or declines the proposed match.",
   },
   {
     number: "04",
