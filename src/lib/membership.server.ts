@@ -98,6 +98,91 @@ async function stripeCall(
   return parsed;
 }
 
+export const INTRODUCTION_FEE_PENCE = 3900;
+export const IMAM_MEETING_FEE_PENCE = 4500;
+
+export async function createIntroductionCheckout(opts: {
+  pairingId: string;
+  userId: string;
+  customerId: string;
+  origin: string;
+}) {
+  const session = await stripeCall(
+    "/checkout/sessions",
+    form({
+      mode: "payment",
+      success_url: `${opts.origin}/dashboard?introduction=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${opts.origin}/dashboard?introduction=cancelled`,
+      client_reference_id: opts.userId,
+      customer: opts.customerId,
+      "line_items[0][quantity]": 1,
+      "line_items[0][price_data][currency]": "gbp",
+      "line_items[0][price_data][unit_amount]": INTRODUCTION_FEE_PENCE,
+      "line_items[0][price_data][product_data][name]": "Mithaq imam-supported introduction",
+      "metadata[kind]": "introduction",
+      "metadata[user_id]": opts.userId,
+      "metadata[pairing_id]": opts.pairingId,
+    }),
+    "POST",
+    `introduction:${opts.pairingId}:${opts.userId}`,
+  );
+  return { url: session.url as string };
+}
+
+export async function syncIntroductionPaymentFromSession(
+  sessionId: string,
+  expectedUserId?: string,
+) {
+  const session = await retrieveCheckoutSession(sessionId);
+  const metadata = (session.metadata ?? {}) as Record<string, string>;
+  if (metadata.kind !== "introduction" || !metadata.pairing_id || !metadata.user_id) {
+    return { ok: false as const, reason: "not_introduction" as const };
+  }
+  if (expectedUserId && metadata.user_id !== expectedUserId) {
+    return { ok: false as const, reason: "wrong_user" as const };
+  }
+  if (session.payment_status !== "paid" && session.status !== "complete") {
+    return { ok: false as const, reason: "not_paid" as const };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: pairing } = await supabaseAdmin
+    .from("pairings")
+    .select("id,user_a,user_b,imam_id,payment_a_status,payment_b_status")
+    .eq("id", metadata.pairing_id)
+    .maybeSingle();
+  if (!pairing || ![pairing.user_a, pairing.user_b].includes(metadata.user_id)) {
+    return { ok: false as const, reason: "pairing_not_found" as const };
+  }
+  const side = pairing.user_a === metadata.user_id ? "a" : "b";
+  const otherPaid =
+    side === "a" ? pairing.payment_b_status === "paid" : pairing.payment_a_status === "paid";
+  const patch =
+    side === "a"
+      ? { payment_a_status: "paid", payment_session_a: sessionId }
+      : { payment_b_status: "paid", payment_session_b: sessionId };
+  await supabaseAdmin
+    .from("pairings")
+    .update({ ...patch, status: otherPaid ? "ready_to_schedule" : "payment_pending" })
+    .eq("id", pairing.id);
+  if (otherPaid && pairing.imam_id) {
+    const { data: account } = await supabaseAdmin
+      .from("imam_accounts")
+      .select("user_id")
+      .eq("imam_id", pairing.imam_id)
+      .eq("active", true)
+      .maybeSingle();
+    if (account?.user_id)
+      await supabaseAdmin.from("notifications").insert({
+        user_id: account.user_id,
+        pairing_id: pairing.id,
+        kind: "both_paid",
+        title: "Both members have paid",
+        body: "Both members have paid their introduction fee. Review their meeting preferences and schedule the meeting.",
+      });
+  }
+  return { ok: true as const, both_paid: otherPaid };
+}
+
 /* ------------------------------------------------------------------ */
 /* Customers                                                           */
 /* ------------------------------------------------------------------ */
