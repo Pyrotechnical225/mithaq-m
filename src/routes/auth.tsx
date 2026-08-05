@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { bootstrapAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => {
@@ -26,7 +24,6 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
-  const ensureAdmin = useServerFn(bootstrapAdmin);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,14 +53,6 @@ function AuthPage() {
     setError(null);
     setLoading(true);
     try {
-      // Special dev/admin shortcut: typing "admin" (or admin@mithaq.com) as email
-      const normalized = email.trim().toLowerCase();
-      if (mode === "signin" && (normalized === "admin" || normalized === "admin@mithaq.com")) {
-        const { email: adminEmail } = await ensureAdmin();
-        const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
-        if (error) throw error;
-        return;
-      }
       if (mode === "signup") {
         const emailRedirectTo = next
           ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
