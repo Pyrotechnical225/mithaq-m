@@ -33,7 +33,7 @@ export const PLANS: Record<
 };
 
 export const MEMBERSHIP_BENEFITS = [
-  "AI-matched profiles ranked on deen, intentions and life goals",
+  "Compatibility-matched profiles ranked on deen, intentions and life goals",
   "Express interest and reveal contact details on a mutual match",
   "Imam finder with distance in km and a map of the UK",
   "Request an imam-arranged, wali-attended meeting",
