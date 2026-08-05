@@ -120,9 +120,9 @@ function Dashboard() {
           </p>
           <h1 className="mt-3 text-3xl sm:text-4xl">The imam sees compatibility before you do.</h1>
           <p className="mt-4 max-w-3xl leading-7 text-primary-foreground/80">
-            AI compares completed opposite-gender profiles. Only scores of 70% or more reach an
-            imam. The imam reviews both full profiles first; members only see anonymous profiles
-            after approval.
+            Our private compatibility rubric compares completed opposite-gender profiles. Only
+            scores of 70% or more reach an imam. After approval, both members see the score with the
+            anonymous profile.
           </p>
         </section>
         <section className="grid gap-4 md:grid-cols-3">
@@ -136,7 +136,7 @@ function Dashboard() {
               Open privacy settings
             </Link>
           </Step>
-          <Step n="3" title="Private AI analysis" done={false}>
+          <Step n="3" title="Private compatibility analysis" done={false}>
             <button
               disabled={!completed || !discoverable || running}
               onClick={begin}
@@ -155,8 +155,8 @@ function Dashboard() {
         <section className="rounded-3xl border border-border bg-card p-6">
           <h2 className="text-xl text-foreground">What happens next?</h2>
           <ol className="mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-            <li>1. Imam approves or declines the private AI suggestion.</li>
-            <li>2. Both members independently review anonymous profiles.</li>
+            <li>1. Imam approves or declines the private compatibility suggestion.</li>
+            <li>2. Both members review the score and anonymous profile independently.</li>
             <li>3. If both accept, each pays £39 securely.</li>
             <li>4. Each selects online or face-to-face.</li>
             <li>5. The imam arranges the meeting with both families.</li>
