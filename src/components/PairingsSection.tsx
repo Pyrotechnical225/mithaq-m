@@ -66,8 +66,8 @@ export function PairingsSection() {
       </p>
       <h2 className="mt-2 text-2xl text-foreground">Imam-reviewed matches</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-        AI scores are shown only to the imam. You will see an anonymous profile only after the imam
-        approves it. Names and searchable contact details stay hidden.
+        You will see the compatibility score and anonymous profile only after the imam approves the
+        match. Names and searchable contact details stay hidden.
       </p>
       {error && (
         <p className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
@@ -111,9 +111,16 @@ export function PairingsSection() {
               <article key={p.id} className="rounded-2xl border border-border p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-foreground">
-                      Anonymous profile {p.other.reference}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">
+                        Anonymous profile {p.other.reference}
+                      </p>
+                      {p.compatibility_score != null && (
+                        <span className="rounded-full bg-gold/15 px-3 py-1 text-sm font-semibold text-foreground">
+                          {p.compatibility_score}% compatible
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Reviewed by {p.imam ? `Imam ${p.imam.name}` : "a Mithaq imam"}
                     </p>
