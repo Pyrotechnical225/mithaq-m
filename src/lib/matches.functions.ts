@@ -3,7 +3,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
-import { assertActiveMembership } from "./membership-guard";
 import { questions } from "./survey-questions";
 
 // Only these question ids inform matching; free-text stays server-side only
@@ -31,7 +30,6 @@ const MatchSchema = z.object({
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI Gateway not configured");
 
@@ -158,7 +156,7 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
           timeline: answers["19"] ?? null,
         };
       })
-      .filter(Boolean);
+      .filter((match): match is NonNullable<typeof match> => !!match && match.score >= 70);
 
     const { data: saved, error: saveErr } = await context.supabase
       .from("matches")
@@ -166,22 +164,64 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
       .select()
       .single();
     if (saveErr) throw new Error(saveErr.message);
+
+    // Scores are private working information for the imam. Members never receive
+    // this payload; they only see an anonymous profile after imam approval.
+    const [{ data: imamAccounts }, { data: profiles }] = await Promise.all([
+      supabaseAdmin.from("imam_accounts").select("user_id, imam_id").eq("active", true),
+      supabaseAdmin.from("profiles").select("id, uk_city"),
+    ]);
+    const myCity = profiles?.find((p) => p.id === context.userId)?.uk_city;
+    for (const match of enriched) {
+      const [userA, userB] = [context.userId, match.match_user_id].sort();
+      const existing = await supabaseAdmin
+        .from("pairings")
+        .select("id")
+        .eq("user_a", userA)
+        .eq("user_b", userB)
+        .maybeSingle();
+      if (existing.data) continue;
+      const candidateCity = profiles?.find((p) => p.id === match.match_user_id)?.uk_city;
+      const imamAccount = imamAccounts?.[0] ?? null;
+      const { data: pairing } = await supabaseAdmin
+        .from("pairings")
+        .insert({
+          user_a: userA,
+          user_b: userB,
+          imam_id: imamAccount?.imam_id ?? null,
+          status: "imam_review",
+          compatibility_score: Math.round(match.score),
+          compatibility_summary: {
+            strengths: match.strengths,
+            considerations: match.considerations,
+            location_context: [myCity, candidateCity].filter(
+              (city): city is string => typeof city === "string" && city.length > 0,
+            ),
+          },
+        })
+        .select("id")
+        .single();
+      if (pairing && imamAccount?.user_id) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: imamAccount.user_id,
+          pairing_id: pairing.id,
+          kind: "imam_match_review",
+          title: "New compatibility review",
+          body: `A ${Math.round(match.score)}% compatibility match is ready for your review.`,
+        });
+      }
+    }
     return saved;
   });
 
 export const getLatestMatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
-    const { data, error } = await context.supabase
-      .from("matches")
-      .select("id, results, created_at")
-      .eq("user_id", context.userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { count, error } = await context.supabase
+      .from("pairings")
+      .select("id", { count: "exact", head: true });
     if (error) throw new Error(error.message);
-    return data;
+    return { submitted: true, active_introductions: count ?? 0 };
   });
 
 const InterestInput = z.object({ to_user: z.string().uuid() });
@@ -190,7 +230,6 @@ export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .upsert(
@@ -210,7 +249,6 @@ export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .update({ status: data.accept ? "accepted" : "declined" })
@@ -223,7 +261,6 @@ export const respondInterest = createServerFn({ method: "POST" })
 export const listInterests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: sent } = await context.supabase
       .from("interests")
