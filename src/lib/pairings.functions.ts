@@ -218,6 +218,39 @@ export const respondToPairing = createServerFn({ method: "POST" })
           body: "Both members accepted the anonymous introduction. Pay the £39 introduction fee to continue.",
         })),
       );
+
+    if (data.accept) {
+      const otherUserId = side === "a" ? pairing.user_b : pairing.user_a;
+      const emailRecipients = status === "awaiting_payment" ? recipients : [otherUserId];
+      const { data: members } = await supabaseAdmin
+        .from("profiles")
+        .select("id,contact_email")
+        .in("id", emailRecipients);
+      const { sendMithaqEmail } = await import("./email.server");
+      await Promise.allSettled(
+        (members ?? [])
+          .filter((member) => member.contact_email)
+          .map((member) => {
+            const bothAccepted = status === "awaiting_payment";
+            return sendMithaqEmail({
+              to: member.contact_email as string,
+              subject: bothAccepted
+                ? "You both accepted the introduction | Mithaq"
+                : "The other member accepted your introduction | Mithaq",
+              heading: bothAccepted
+                ? "You both accepted"
+                : "The other member has accepted",
+              message: bothAccepted
+                ? "Both of you accepted the anonymous introduction. Sign in to complete the introduction fee and choose your preferred meeting format."
+                : "The other member has accepted your anonymous introduction. Sign in to review it and respond privately when you are ready.",
+              ctaLabel: bothAccepted ? "Continue to payment" : "Review introduction",
+              idempotencyKey: `pairing/${pairing.id}/${
+                bothAccepted ? "mutual-acceptance" : "other-accepted"
+              }/${member.id}`,
+            });
+          }),
+      );
+    }
     return { ok: true, status };
   });
 
