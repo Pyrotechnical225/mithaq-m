@@ -21,7 +21,7 @@ const SaveInput = z.object({
 
 export const saveMyAnswers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => SaveInput.parse(input))
+  .validator((input: unknown) => SaveInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("survey_answers").upsert({
       user_id: context.userId,
