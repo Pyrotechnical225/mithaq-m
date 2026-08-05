@@ -98,7 +98,7 @@ export const listMyPairings = createServerFn({ method: "GET" })
     const { data: pairings } = await context.supabase
       .from("pairings")
       .select(
-        "id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at, member_a_response, member_b_response, payment_a_status, payment_b_status, meeting_preference_a, meeting_preference_b",
+        "id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at, compatibility_score, member_a_response, member_b_response, payment_a_status, payment_b_status, meeting_preference_a, meeting_preference_b",
       )
       .order("created_at", { ascending: false });
     if (!pairings || pairings.length === 0) return [];
@@ -135,6 +135,18 @@ export const listMyPairings = createServerFn({ method: "GET" })
       const otherId = p.user_a === uid ? p.user_b : p.user_a;
       return {
         ...p,
+        // Member RLS exposes pairings only after imam approval. Keep an
+        // application-level status guard as an additional privacy boundary.
+        compatibility_score: [
+          "member_review",
+          "awaiting_payment",
+          "payment_pending",
+          "ready_to_schedule",
+          "scheduled",
+          "completed",
+        ].includes(p.status)
+          ? p.compatibility_score
+          : null,
         i_am: p.user_a === uid ? ("a" as const) : ("b" as const),
         other: {
           id: otherId,
