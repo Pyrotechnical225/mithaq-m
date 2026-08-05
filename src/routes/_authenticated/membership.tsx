@@ -69,7 +69,7 @@ function MembershipPage() {
     setError(null);
     setBusy(plan);
     try {
-      const { url } = await checkout({ data: { plan, origin: window.location.origin } });
+      const { url } = await checkout({ data: { plan } });
       window.location.href = url;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start checkout");
@@ -92,7 +92,7 @@ function MembershipPage() {
     setError(null);
     setBusy("portal");
     try {
-      const { url } = await portal({ data: { origin: window.location.origin } });
+      const { url } = await portal();
       window.location.href = url;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not open billing");
