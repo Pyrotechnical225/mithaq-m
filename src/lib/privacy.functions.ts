@@ -33,7 +33,7 @@ const UpdateInput = z.object({
 
 export const updateMyPrivacy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateInput.parse(input))
+  .validator((input: unknown) => UpdateInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("privacy_settings").upsert({
       user_id: context.userId,
