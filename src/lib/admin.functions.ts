@@ -96,7 +96,7 @@ const IdInput = z.object({ user_id: z.string().uuid() });
 
 export const getProfileDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -159,7 +159,7 @@ const UpdateProfileInput = z.object({
 
 export const updateProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateProfileInput.parse(input))
+  .validator((input: unknown) => UpdateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -213,7 +213,7 @@ const CreateProfileInput = z.object({
 
 export const createProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CreateProfileInput.parse(input))
+  .validator((input: unknown) => CreateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -253,7 +253,7 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
 // -----------------------------------------------------------------------------
 export const deleteProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -284,7 +284,7 @@ const ExportInput = z.object({
 
 export const exportProfilesAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ExportInput.parse(input))
+  .validator((input: unknown) => ExportInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -428,7 +428,7 @@ function withCityCoords(input: z.infer<typeof ImamInput>) {
 
 export const createImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ImamInput.parse(input))
+  .validator((input: unknown) => ImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -446,7 +446,7 @@ const UpdateImamInput = ImamInput.partial().extend({ id: z.string().uuid() });
 
 export const updateImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateImamInput.parse(input))
+  .validator((input: unknown) => UpdateImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -458,7 +458,7 @@ export const updateImam = createServerFn({ method: "POST" })
 
 export const deleteImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
