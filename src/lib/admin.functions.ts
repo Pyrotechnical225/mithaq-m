@@ -2,9 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "admin@mithaq.com";
-const ADMIN_PASSWORD = "Malikmalik1@";
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
@@ -14,46 +11,6 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: admin only");
 }
-
-// -----------------------------------------------------------------------------
-// Public bootstrap: ensures the built-in admin user exists.
-// Idempotent — safe to call before every sign-in attempt with "admin".
-// -----------------------------------------------------------------------------
-export const bootstrapAdmin = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // Look for existing user
-  const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
-  });
-  if (listErr) throw new Error(listErr.message);
-  let user = list.users.find((u) => u.email?.toLowerCase() === ADMIN_EMAIL);
-
-  if (!user) {
-    const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-      user_metadata: { display_name: "Admin" },
-    });
-    if (createErr) throw new Error(createErr.message);
-    user = created.user!;
-  } else {
-    // Ensure password is set and email is confirmed
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-    });
-  }
-
-  // Ensure admin role
-  await supabaseAdmin
-    .from("user_roles")
-    .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
-
-  return { email: ADMIN_EMAIL };
-});
 
 // -----------------------------------------------------------------------------
 // Admin: list all profiles with auth email + status flags
