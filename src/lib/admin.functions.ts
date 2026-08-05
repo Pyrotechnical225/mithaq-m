@@ -323,31 +323,36 @@ export const adminStats = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [
-      { count: profileCount },
-      { count: completedCount },
-      { count: discoverableCount },
-      { count: interestCount },
-      { data: users },
-    ] = await Promise.all([
-      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("survey_answers")
-        .select("*", { count: "exact", head: true })
-        .eq("completed", true),
-      supabaseAdmin
-        .from("privacy_settings")
-        .select("*", { count: "exact", head: true })
-        .eq("visibility", "discoverable"),
-      supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
-    ]);
+    const [profilesResult, completedResult, discoverableResult, interestsResult, usersResult] =
+      await Promise.all([
+        supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
+        supabaseAdmin
+          .from("survey_answers")
+          .select("*", { count: "exact", head: true })
+          .eq("completed", true),
+        supabaseAdmin
+          .from("privacy_settings")
+          .select("*", { count: "exact", head: true })
+          .eq("visibility", "discoverable"),
+        supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
+        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
+      ]);
+
+    const firstError = [
+      profilesResult.error,
+      completedResult.error,
+      discoverableResult.error,
+      interestsResult.error,
+      usersResult.error,
+    ].find(Boolean);
+    if (firstError) throw new Error(firstError.message);
+
     return {
-      profileCount: profileCount ?? 0,
-      completedCount: completedCount ?? 0,
-      discoverableCount: discoverableCount ?? 0,
-      interestCount: interestCount ?? 0,
-      recentUsers: (users?.users ?? []).slice(0, 5).map((u) => ({
+      profileCount: profilesResult.count ?? 0,
+      completedCount: completedResult.count ?? 0,
+      discoverableCount: discoverableResult.count ?? 0,
+      interestCount: interestsResult.count ?? 0,
+      recentUsers: (usersResult.data?.users ?? []).slice(0, 5).map((u) => ({
         id: u.id,
         email: u.email,
         created_at: u.created_at,
