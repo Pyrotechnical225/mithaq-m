@@ -36,7 +36,7 @@ const SaveLocationInput = z.object({
 
 export const saveMyLocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => SaveLocationInput.parse(input))
+  .validator((input: unknown) => SaveLocationInput.parse(input))
   .handler(async ({ data, context }) => {
     const city = data.uk_city?.trim() || null;
     const postcode = data.uk_postcode?.trim() || null;
