@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { questions } from "./survey-questions";
 
 // Only these question ids inform matching; free-text stays server-side only
@@ -30,9 +29,6 @@ const MatchSchema = z.object({
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI Gateway not configured");
-
     // Load own answers
     const { data: mine } = await context.supabase
       .from("survey_answers")
@@ -95,9 +91,6 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const idMap = new Map(anonPool.map((c) => [c.candidate_id, c.real_id]));
 
-    const gateway = createLovableAiGatewayProvider(apiKey);
-    const model = gateway("google/gemini-2.5-flash");
-
     const prompt = `You help match practicing Muslims for halal marriage on the Mithaq platform.
 
 USER PROFILE:
@@ -123,16 +116,26 @@ Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
     let output;
     try {
       const res = await generateText({
-        model,
+        // Vercel deployments authenticate to AI Gateway automatically using
+        // their short-lived OIDC token. No provider secret is exposed here.
+        model: "google/gemini-3-flash",
         prompt,
         output: Output.object({ schema: MatchSchema }),
+        providerOptions: {
+          gateway: {
+            models: ["openai/gpt-5.4"],
+            user: context.userId,
+            tags: ["feature:compatibility-scoring", "privacy:imam-only"],
+          },
+        },
       });
       output = res.output;
     } catch (err) {
       if (NoObjectGeneratedError.isInstance(err)) {
         output = { matches: [] };
       } else {
-        throw err;
+        console.error("Private compatibility analysis failed", err);
+        throw new Error("Private matching is temporarily unavailable. Please try again shortly.");
       }
     }
 
