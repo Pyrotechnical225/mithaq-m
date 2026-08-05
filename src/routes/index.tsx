@@ -49,14 +49,14 @@ const steps = [
   },
   {
     number: "03",
-    title: "Move forward respectfully",
-    body: "Connect with clear intentions and bring your wali into the process from the beginning.",
+    title: "Move forward with an imam",
+    body: "A trusted imam acts as the intermediary, supports both families, oversees respectful communication, and helps arrange the next steps towards nikah.",
   },
 ] as const;
 
 const safeguards = [
   "Built for marriage, not casual dating",
-  "Wali-friendly communication",
+  "Imam-mediated introductions and communication",
   "Private information stays protected",
   "Clear reporting and moderation tools",
 ] as const;
@@ -101,7 +101,7 @@ function MatchPreview() {
 
         <div className="mt-5 flex items-center gap-3 rounded-2xl bg-primary px-4 py-3.5 text-primary-foreground">
           <ShieldCheck size={19} className="shrink-0 text-gold" aria-hidden="true" />
-          <p className="text-sm">Respectful, private, and designed for wali involvement.</p>
+          <p className="text-sm">Respectful, private, and guided by trusted imams and families.</p>
         </div>
       </div>
 
@@ -146,7 +146,8 @@ function Index() {
 
               <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Mithaq helps practicing Muslims find marriage-minded matches through shared deen,
-                family values, and life goals — with respect for wali involvement at every step.
+                family values, and life goals — with trusted imams acting as intermediaries between
+                both sides and their families throughout the marriage arrangement.
               </p>
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -187,7 +188,7 @@ function Index() {
                 Marriage deserves a better beginning.
               </h2>
               <p className="mt-5 text-base leading-7 text-muted-foreground">
-                Every part of Mithaq is designed around Islamic values, clear intentions, and the dignity of everyone involved.
+                Every part of Mithaq is designed around Islamic values, clear intentions, trusted imam involvement, and the dignity of everyone involved.
               </p>
             </div>
 
