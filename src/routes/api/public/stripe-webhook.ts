@@ -53,7 +53,13 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           };
           switch (event.type) {
             case "checkout.session.completed":
-              ensureSynced(await syncSubscriptionFromSession(obj.id as string));
+              if (((obj.metadata ?? {}) as Record<string, string>).kind === "introduction") {
+                const { syncIntroductionPaymentFromSession } =
+                  await import("@/lib/membership.server");
+                ensureSynced(await syncIntroductionPaymentFromSession(obj.id as string));
+              } else {
+                ensureSynced(await syncSubscriptionFromSession(obj.id as string));
+              }
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
