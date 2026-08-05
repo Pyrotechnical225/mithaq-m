@@ -12,6 +12,24 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
+async function writeAdminAudit(
+  actorUserId: string,
+  action: string,
+  targetType: string,
+  targetId: string | null,
+  details: Record<string, unknown> = {},
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("admin_audit_log").insert({
+    actor_user_id: actorUserId,
+    action,
+    target_type: targetType,
+    target_id: targetId,
+    details,
+  });
+  if (error) console.error("[admin-audit] Failed to record action", { action, targetId, error });
+}
+
 // -----------------------------------------------------------------------------
 // Admin: list all profiles with auth email + status flags
 // -----------------------------------------------------------------------------
@@ -176,6 +194,9 @@ export const updateProfileAdmin = createServerFn({ method: "POST" })
         .from("privacy_settings")
         .upsert({ user_id: data.user_id, ...privPatch }, { onConflict: "user_id" });
     }
+    await writeAdminAudit(context.userId, "profile.update", "profile", data.user_id, {
+      fields: Object.keys(data).filter((key) => key !== "user_id" && key !== "answers"),
+    });
     return { ok: true };
   });
 
@@ -222,6 +243,7 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
         { onConflict: "user_id" },
       );
     }
+    await writeAdminAudit(context.userId, "profile.create", "profile", id, { email: data.email });
     return { id };
   });
 
@@ -236,6 +258,7 @@ export const deleteProfileAdmin = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    await writeAdminAudit(context.userId, "profile.delete", "profile", data.user_id);
     return { ok: true };
   });
 
