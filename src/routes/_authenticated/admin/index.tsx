@@ -135,7 +135,6 @@ function AdminHome() {
             body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
             actions={[
               { to: "/admin/memberships", label: "Manage memberships", primary: true },
-              { to: "/membership", label: "Member-facing plans" },
             ]}
           />
 
