@@ -1,6 +1,8 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { amIAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -80,9 +82,52 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [now, setNow] = useState("");
+  const checkAdmin = useServerFn(amIAdmin);
+  const [access, setAccess] = useState<"checking" | "allowed" | "denied">("checking");
+  const [accessError, setAccessError] = useState<string | null>(null);
 
-  useEffect(() => setNow(new Date().toLocaleString()), []);
+  useEffect(() => {
+    let active = true;
+    checkAdmin()
+      .then(({ isAdmin }) => {
+        if (active) setAccess(isAdmin ? "allowed" : "denied");
+      })
+      .catch((cause) => {
+        if (!active) return;
+        setAccessError(cause instanceof Error ? cause.message : "Unable to verify admin access");
+        setAccess("denied");
+      });
+    return () => {
+      active = false;
+    };
+  }, [checkAdmin]);
+
+  if (access === "checking") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6" role="status">
+        <div className="text-center">
+          <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-primary border-r-transparent" />
+          <p className="mt-3 text-sm text-muted-foreground">Checking admin access…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (access === "denied") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+          <h1 className="text-2xl text-foreground">Admin access required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {accessError ?? "This account does not have permission to open the admin dashboard."}
+          </p>
+          <Link to="/dashboard" className="mt-6 inline-flex rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground">
+            Return to member dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,7 +173,6 @@ function AdminLayout() {
 
       <div className="mx-auto max-w-6xl px-5 py-6 sm:px-6 sm:py-8">
         <Outlet />
-        <p className="mt-8 text-right text-[10px] text-muted-foreground">{now}</p>
       </div>
     </div>
   );
