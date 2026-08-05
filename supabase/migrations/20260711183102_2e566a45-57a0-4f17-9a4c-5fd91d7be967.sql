@@ -42,7 +42,7 @@ GRANT ALL ON public.privacy_settings TO service_role;
 ALTER TABLE public.privacy_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own privacy all" ON public.privacy_settings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- matches (cached AI results for the current user)
+-- matches (cached compatibility results for the current user)
 CREATE TABLE public.matches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
