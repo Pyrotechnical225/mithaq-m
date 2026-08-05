@@ -10,6 +10,16 @@ alter table public.pairings
   add column if not exists meeting_preference_a text,
   add column if not exists meeting_preference_b text;
 
+-- Replace the legacy pending/approved/declined/closed-only constraint with
+-- every state used by the imam-led introduction journey.
+alter table public.pairings drop constraint if exists pairings_status_check;
+alter table public.pairings add constraint pairings_status_check
+  check (status in (
+    'pending', 'approved', 'closed',
+    'imam_review', 'member_review', 'awaiting_payment', 'payment_pending',
+    'ready_to_schedule', 'scheduled', 'completed', 'declined'
+  ));
+
 alter table public.pairings drop constraint if exists pairings_compatibility_score_check;
 alter table public.pairings add constraint pairings_compatibility_score_check
   check (compatibility_score is null or compatibility_score between 70 and 100);
