@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
+import { LayoutDashboard, UserPlus } from "lucide-react";
 import { amIImam } from "@/lib/imam.functions";
 
 export const Route = createFileRoute("/_authenticated/imam")({
@@ -35,9 +36,33 @@ function ImamLayout() {
           </Link>
         </div>
       </header>
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6">
         <Outlet />
       </div>
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl"
+        aria-label="Imam dashboard"
+      >
+        <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
+          <Link
+            to="/imam"
+            activeOptions={{ exact: true }}
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm text-muted-foreground"
+            activeProps={{ className: "bg-primary/10 font-medium text-primary" }}
+          >
+            <LayoutDashboard size={18} aria-hidden="true" />
+            Dashboard
+          </Link>
+          <Link
+            to="/imam/refer"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm text-muted-foreground"
+            activeProps={{ className: "bg-primary/10 font-medium text-primary" }}
+          >
+            <UserPlus size={18} aria-hidden="true" />
+            Refer imam
+          </Link>
+        </div>
+      </nav>
     </div>
   );
 }

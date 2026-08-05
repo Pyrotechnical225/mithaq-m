@@ -71,7 +71,7 @@ function ImamDashboard() {
   const decided = (pairings ?? []).filter((p) => p.status !== "imam_review");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-20">
       <section className="rounded-2xl border border-border bg-card p-6">
         <h1 className="text-2xl text-foreground">
           As-salamu alaykum{me?.imam?.name ? `, ${me.imam.name}` : ""}

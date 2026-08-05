@@ -141,6 +141,65 @@ export type Database = {
           },
         ];
       };
+      imam_referrals: {
+        Row: {
+          admin_notes: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          invitation_expires_at: string | null;
+          invitation_token_hash: string | null;
+          referred_email: string;
+          referred_name: string;
+          referrer_imam_id: string;
+          referrer_user_id: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          admin_notes?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invitation_expires_at?: string | null;
+          invitation_token_hash?: string | null;
+          referred_email: string;
+          referred_name: string;
+          referrer_imam_id: string;
+          referrer_user_id: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          admin_notes?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invitation_expires_at?: string | null;
+          invitation_token_hash?: string | null;
+          referred_email?: string;
+          referred_name?: string;
+          referrer_imam_id?: string;
+          referrer_user_id?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "imam_referrals_referrer_imam_id_fkey";
+            columns: ["referrer_imam_id"];
+            isOneToOne: false;
+            referencedRelation: "imams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       imams: {
         Row: {
           city: string;
@@ -537,51 +596,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      subscriptions: {
-        Row: {
-          cancel_at_period_end: boolean;
-          created_at: string;
-          current_period_end: string | null;
-          last_payment_status: string | null;
-          plan: string;
-          provider: string | null;
-          provider_customer_id: string | null;
-          provider_subscription_id: string | null;
-          status: string;
-          stripe_updated_at: string | null;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          cancel_at_period_end?: boolean;
-          created_at?: string;
-          current_period_end?: string | null;
-          last_payment_status?: string | null;
-          plan?: string;
-          provider?: string | null;
-          provider_customer_id?: string | null;
-          provider_subscription_id?: string | null;
-          status?: string;
-          stripe_updated_at?: string | null;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          cancel_at_period_end?: boolean;
-          created_at?: string;
-          current_period_end?: string | null;
-          last_payment_status?: string | null;
-          plan?: string;
-          provider?: string | null;
-          provider_customer_id?: string | null;
-          provider_subscription_id?: string | null;
-          status?: string;
-          stripe_updated_at?: string | null;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       survey_answers: {
         Row: {
           answers: Json;
@@ -636,7 +650,6 @@ export type Database = {
         Args: { _pairing_id: string; _user_id: string };
         Returns: boolean;
       };
-      has_active_membership: { Args: { _user_id: string }; Returns: boolean };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];

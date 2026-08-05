@@ -54,14 +54,6 @@ function AdminLinks({ onNavigate }: { onNavigate?: () => void }) {
         Imam applications
       </Link>
       <Link
-        to="/admin/memberships"
-        className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-        activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}
-        onClick={onNavigate}
-      >
-        Memberships
-      </Link>
-      <Link
         to="/admin/seed"
         className="rounded-xl px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
         activeProps={{ className: "rounded-xl bg-accent px-3 py-2 font-medium text-foreground" }}

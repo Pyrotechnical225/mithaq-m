@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { adminStats } from "@/lib/admin.functions";
+import { ImamReferralQueue } from "@/components/admin/ImamReferralQueue";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
@@ -131,14 +132,6 @@ function AdminHome() {
           />
 
           <ControlCard
-            title="Memberships & billing"
-            body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
-            actions={[
-              { to: "/admin/memberships", label: "Manage memberships", primary: true },
-            ]}
-          />
-
-          <ControlCard
             title="Example & demo data"
             body="Seed example members and imams for testing, then clear them out again in one click."
             actions={[{ to: "/admin/seed", label: "Seed data tools", primary: true }]}
@@ -155,6 +148,8 @@ function AdminHome() {
           />
         </div>
       </section>
+
+      <ImamReferralQueue />
     </div>
   );
 }

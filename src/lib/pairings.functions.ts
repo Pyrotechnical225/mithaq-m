@@ -242,27 +242,11 @@ export const startIntroductionCheckout = createServerFn({ method: "POST" })
     const side = pairing.user_a === context.userId ? "a" : "b";
     if ((side === "a" ? pairing.payment_a_status : pairing.payment_b_status) === "paid")
       throw new Error("You have already paid");
-    const { data: sub } = await supabaseAdmin
-      .from("subscriptions")
-      .select("provider_customer_id")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    const { getOrCreateCustomer, createIntroductionCheckout } = await import("./membership.server");
-    const customerId = await getOrCreateCustomer({
-      userId: context.userId,
-      email: (context.claims as { email?: string })?.email ?? null,
-      storedCustomerId: sub?.provider_customer_id ?? null,
-    });
-    await supabaseAdmin
-      .from("subscriptions")
-      .upsert(
-        { user_id: context.userId, provider: "stripe", provider_customer_id: customerId },
-        { onConflict: "user_id" },
-      );
+    const { createIntroductionCheckout } = await import("./membership.server");
     return createIntroductionCheckout({
       pairingId: data.pairing_id,
       userId: context.userId,
-      customerId,
+      email: (context.claims as { email?: string })?.email ?? null,
     });
   });
 
