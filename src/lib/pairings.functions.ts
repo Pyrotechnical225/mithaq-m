@@ -21,7 +21,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
 export const syncMyPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Legacy mutual interests are still converted, but new AI-led pairings are
+    // Legacy mutual interests are still converted, but new compatibility-led pairings are
     // created directly by the private matching process.
     const uid = context.userId;
     const { data: accepted } = await context.supabase
