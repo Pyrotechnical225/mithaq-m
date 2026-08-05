@@ -34,7 +34,7 @@ const ReviewInput = z.object({
 // Admin: approve (creates the imam directory entry + grants dashboard access) or decline.
 export const reviewImamApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ReviewInput.parse(input))
+  .validator((input: unknown) => ReviewInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: isAdmin } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
@@ -127,7 +127,7 @@ const ToggleInput = z.object({
 
 export const setImamAccountActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ToggleInput.parse(input))
+  .validator((input: unknown) => ToggleInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: isAdmin } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
