@@ -197,6 +197,27 @@ export const decidePairing = createServerFn({ method: "POST" })
             body: "An imam has reviewed this potential match. Review the anonymous profile and respond privately.",
           })),
         );
+
+      const { data: members } = await supabaseAdmin
+        .from("profiles")
+        .select("id,contact_email")
+        .in("id", [pairing.user_a, pairing.user_b]);
+      const { sendMithaqEmail } = await import("./email.server");
+      await Promise.allSettled(
+        (members ?? [])
+          .filter((member) => member.contact_email)
+          .map((member) =>
+            sendMithaqEmail({
+              to: member.contact_email as string,
+              subject: "A new anonymous introduction is ready | Mithaq",
+              heading: "An imam has approved a new introduction",
+              message:
+                "A new anonymous profile is ready for you to review privately. Sign in to see the compatibility score and decide when you are ready.",
+              ctaLabel: "Review introduction",
+              idempotencyKey: `pairing/${data.pairing_id}/new-match/${member.id}`,
+            }),
+          ),
+      );
     }
     return { ok: true };
   });
