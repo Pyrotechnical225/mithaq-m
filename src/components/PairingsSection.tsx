@@ -177,7 +177,7 @@ export function PairingsSection() {
                         onClick={() =>
                           act(async () => {
                             const r = await checkout({
-                              data: { pairing_id: p.id, origin: window.location.origin },
+                              data: { pairing_id: p.id },
                             });
                             window.location.href = r.url;
                           })
