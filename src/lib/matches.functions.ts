@@ -48,8 +48,8 @@ export const generateMatches = createServerFn({ method: "POST" })
       return saved;
     }
 
-    // The rubric is deterministic and runs entirely on the server. No survey
-    // answers are sent to an external AI provider.
+    // The compatibility rubric is deterministic and runs entirely on the server.
+    // Survey answers are not sent to an external scoring provider.
     const myAnswers = mine.answers as Record<string, string>;
     const enriched = pool
       .map((candidate) => {
