@@ -1,6 +1,7 @@
 // Server-only Stripe helpers. Uses the REST API over fetch so it works in the
 // edge/Worker runtime (no Node-only SDK).
 import { PLANS, type PlanId } from "./membership-plans";
+import { getRequest } from "@tanstack/react-start/server";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
@@ -101,18 +102,24 @@ async function stripeCall(
 export const INTRODUCTION_FEE_PENCE = 3900;
 export const IMAM_MEETING_FEE_PENCE = 4500;
 
+function requestOrigin() {
+  const request = getRequest();
+  if (!request?.url) throw new Error("Could not determine the secure return address");
+  return new URL(request.url).origin;
+}
+
 export async function createIntroductionCheckout(opts: {
   pairingId: string;
   userId: string;
   customerId: string;
-  origin: string;
 }) {
+  const origin = requestOrigin();
   const session = await stripeCall(
     "/checkout/sessions",
     form({
       mode: "payment",
-      success_url: `${opts.origin}/dashboard?introduction=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${opts.origin}/dashboard?introduction=cancelled`,
+      success_url: `${origin}/dashboard?introduction=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard?introduction=cancelled`,
       client_reference_id: opts.userId,
       customer: opts.customerId,
       "line_items[0][quantity]": 1,
@@ -122,6 +129,7 @@ export async function createIntroductionCheckout(opts: {
       "metadata[kind]": "introduction",
       "metadata[user_id]": opts.userId,
       "metadata[pairing_id]": opts.pairingId,
+      "managed_payments[enabled]": false,
     }),
     "POST",
     `introduction:${opts.pairingId}:${opts.userId}`,
@@ -263,15 +271,15 @@ export async function createCheckoutSession(opts: {
   plan: PlanId;
   userId: string;
   customerId: string;
-  origin: string;
 }) {
   // Pricing is resolved server-side from the allowlisted plan id only.
   const plan = PLANS[opts.plan];
   if (!plan) throw new StripeError(0, "Unknown plan", "invalid_plan", null);
+  const origin = requestOrigin();
   const body = form({
     mode: "subscription",
-    success_url: `${opts.origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${opts.origin}/membership?checkout=cancelled`,
+    success_url: `${origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/membership?checkout=cancelled`,
     client_reference_id: opts.userId,
     customer: opts.customerId,
     "line_items[0][quantity]": 1,
@@ -284,12 +292,14 @@ export async function createCheckoutSession(opts: {
     "metadata[user_id]": opts.userId,
     "metadata[plan]": plan.id,
     allow_promotion_codes: true,
+    "managed_payments[enabled]": false,
   });
   const session = await stripeCall("/checkout/sessions", body);
   return { url: session.url as string };
 }
 
-export async function createBillingPortalSession(customerId: string, origin: string) {
+export async function createBillingPortalSession(customerId: string) {
+  const origin = requestOrigin();
   const session = await stripeCall(
     "/billing_portal/sessions",
     form({ customer: customerId, return_url: `${origin}/membership` }),
