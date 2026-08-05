@@ -44,7 +44,7 @@ const ApplyInput = z.object({
 
 export const applyAsImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ApplyInput.parse(input))
+  .validator((input: unknown) => ApplyInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("imam_applications").insert({
       user_id: context.userId,
@@ -163,7 +163,7 @@ const DecideInput = z.object({
 
 export const decidePairing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => DecideInput.parse(input))
+  .validator((input: unknown) => DecideInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: imamId } = await context.supabase.rpc("my_imam_id", { _user_id: context.userId });
     if (!imamId) throw new Error("Forbidden: imam only");
@@ -186,37 +186,14 @@ export const decidePairing = createServerFn({ method: "POST" })
       .eq("id", data.pairing_id);
     if (error) throw new Error(error.message);
     if (data.decision === "approved") {
-      await supabaseAdmin
-        .from("notifications")
-        .insert(
-          [pairing.user_a, pairing.user_b].map((user_id) => ({
-            user_id,
-            pairing_id: data.pairing_id,
-            kind: "anonymous_profile_ready",
-            title: "An anonymous match is ready",
-            body: "An imam has reviewed this potential match. Review the anonymous profile and respond privately.",
-          })),
-        );
-
-      const { data: members } = await supabaseAdmin
-        .from("profiles")
-        .select("id,contact_email")
-        .in("id", [pairing.user_a, pairing.user_b]);
-      const { sendMithaqEmail } = await import("./email.server");
-      await Promise.allSettled(
-        (members ?? [])
-          .filter((member) => member.contact_email)
-          .map((member) =>
-            sendMithaqEmail({
-              to: member.contact_email as string,
-              subject: "A new anonymous introduction is ready | Mithaq",
-              heading: "An imam has approved a new introduction",
-              message:
-                "A new anonymous profile is ready for you to review privately. Sign in to see the compatibility score and decide when you are ready.",
-              ctaLabel: "Review introduction",
-              idempotencyKey: `pairing/${data.pairing_id}/new-match/${member.id}`,
-            }),
-          ),
+      await supabaseAdmin.from("notifications").insert(
+        [pairing.user_a, pairing.user_b].map((user_id) => ({
+          user_id,
+          pairing_id: data.pairing_id,
+          kind: "anonymous_profile_ready",
+          title: "An anonymous match is ready",
+          body: "An imam has reviewed this potential match. Review the anonymous profile and respond privately.",
+        })),
       );
     }
     return { ok: true };
@@ -233,7 +210,7 @@ const MeetupInput = z.object({
 
 export const proposeMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => MeetupInput.parse(input))
+  .validator((input: unknown) => MeetupInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: imamId } = await context.supabase.rpc("my_imam_id", {
       _user_id: context.userId,
@@ -264,7 +241,7 @@ const CancelInput = z.object({ meetup_id: z.string().uuid() });
 
 export const cancelMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CancelInput.parse(input))
+  .validator((input: unknown) => CancelInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("meetups")
