@@ -96,7 +96,7 @@ function ImamDashboard() {
         {pairings === null && <p className="text-sm text-muted-foreground">Loading…</p>}
         {pairings?.length === 0 && (
           <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No AI suggestions above 70% are awaiting review.
+            No compatibility suggestions above 70% are awaiting review.
           </p>
         )}
         {(pairings ?? []).map((p) => (
@@ -141,7 +141,7 @@ function ImamDashboard() {
             {p.compatibility_summary && (
               <div className="mt-4 grid gap-3 rounded-xl bg-primary/5 p-4 text-sm md:grid-cols-2">
                 <div>
-                  <p className="font-medium text-foreground">AI strengths</p>
+                  <p className="font-medium text-foreground">Compatibility strengths</p>
                   <p className="mt-1 text-muted-foreground">
                     {String(
                       (p.compatibility_summary as Record<string, unknown>).strengths ??
