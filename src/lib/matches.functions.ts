@@ -152,7 +152,7 @@ const InterestInput = z.object({ to_user: z.string().uuid() });
 
 export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => InterestInput.parse(input))
+  .validator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("interests")
@@ -171,7 +171,7 @@ const RespondInput = z.object({
 
 export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => RespondInput.parse(input))
+  .validator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("interests")
