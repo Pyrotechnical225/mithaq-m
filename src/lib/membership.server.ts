@@ -34,6 +34,18 @@ function form(obj: Record<string, string | number | boolean | undefined>) {
   return body;
 }
 
+async function checkoutIdempotencyKey(prefix: string, body: URLSearchParams) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(body.toString()),
+  );
+  const fingerprint = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
+  return `${prefix}:${fingerprint}`;
+}
+
 async function stripeCall(path: string, body?: URLSearchParams, idempotencyKey?: string) {
   const key = stripeKey();
   if (!key) throw new StripeError(0, "Payments are not configured yet", "not_configured", null);
@@ -86,24 +98,28 @@ export async function createIntroductionCheckout(opts: {
   email: string | null;
 }) {
   const origin = requestOrigin();
+  const body = form({
+    mode: "payment",
+    success_url: `${origin}/dashboard?introduction=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/dashboard?introduction=cancelled`,
+    client_reference_id: opts.userId,
+    customer_email: opts.email ?? undefined,
+    "line_items[0][quantity]": 1,
+    "line_items[0][price_data][currency]": "gbp",
+    "line_items[0][price_data][unit_amount]": INTRODUCTION_FEE_PENCE,
+    "line_items[0][price_data][product_data][name]": "Mithaq imam-supported introduction",
+    "metadata[kind]": "introduction",
+    "metadata[user_id]": opts.userId,
+    "metadata[pairing_id]": opts.pairingId,
+    "managed_payments[enabled]": false,
+  });
   const session = await stripeCall(
     "/checkout/sessions",
-    form({
-      mode: "payment",
-      success_url: `${origin}/dashboard?introduction=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/dashboard?introduction=cancelled`,
-      client_reference_id: opts.userId,
-      customer_email: opts.email ?? undefined,
-      "line_items[0][quantity]": 1,
-      "line_items[0][price_data][currency]": "gbp",
-      "line_items[0][price_data][unit_amount]": INTRODUCTION_FEE_PENCE,
-      "line_items[0][price_data][product_data][name]": "Mithaq imam-supported introduction",
-      "metadata[kind]": "introduction",
-      "metadata[user_id]": opts.userId,
-      "metadata[pairing_id]": opts.pairingId,
-      "managed_payments[enabled]": false,
-    }),
-    `introduction:${opts.pairingId}:${opts.userId}`,
+    body,
+    await checkoutIdempotencyKey(
+      `introduction:${opts.pairingId}:${opts.userId}`,
+      body,
+    ),
   );
   return { url: session.url as string };
 }
