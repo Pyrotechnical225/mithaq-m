@@ -67,11 +67,11 @@ function ImamDashboard() {
     setMessages(await fetchMessages({ data: { pairing_id: id } }));
   };
 
-  const pending = (pairings ?? []).filter((p) => p.status === "pending");
-  const decided = (pairings ?? []).filter((p) => p.status !== "pending");
+  const pending = (pairings ?? []).filter((p) => p.status === "imam_review");
+  const decided = (pairings ?? []).filter((p) => p.status !== "imam_review");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-20">
       <section className="rounded-2xl border border-border bg-card p-6">
         <h1 className="text-2xl text-foreground">
           As-salamu alaykum{me?.imam?.name ? `, ${me.imam.name}` : ""}
@@ -96,7 +96,7 @@ function ImamDashboard() {
         {pairings === null && <p className="text-sm text-muted-foreground">Loading…</p>}
         {pairings?.length === 0 && (
           <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No pairings assigned to you yet. Mutual matches near you will appear here.
+            No compatibility suggestions above 70% are awaiting review.
           </p>
         )}
         {(pairings ?? []).map((p) => (
@@ -132,11 +132,36 @@ function ImamDashboard() {
                       : "bg-muted text-muted-foreground"
                 }`}
               >
-                {p.status}
+                {p.status === "imam_review"
+                  ? `${p.compatibility_score}% compatibility`
+                  : p.status.replaceAll("_", " ")}
               </span>
             </div>
 
-            {p.status === "pending" && (
+            {p.compatibility_summary && (
+              <div className="mt-4 grid gap-3 rounded-xl bg-primary/5 p-4 text-sm md:grid-cols-2">
+                <div>
+                  <p className="font-medium text-foreground">Compatibility strengths</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {String(
+                      (p.compatibility_summary as Record<string, unknown>).strengths ??
+                        "Not provided",
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Points to review</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {String(
+                      (p.compatibility_summary as Record<string, unknown>).considerations ??
+                        "Not provided",
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {p.status === "imam_review" && (
               <div className="mt-4 space-y-2">
                 <textarea
                   value={note[p.id] ?? ""}
@@ -199,9 +224,15 @@ function ImamDashboard() {
               </div>
             )}
 
-            {p.status === "approved" && (
+            {p.status === "ready_to_schedule" && (
               <div className="mt-4 rounded-xl border border-border/70 p-3">
-                <p className="text-sm font-medium text-foreground">Arrange a meeting</p>
+                <p className="text-sm font-medium text-foreground">
+                  Both members paid — arrange the meeting
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Member A prefers {p.meeting_preference_a?.replaceAll("_", " ") ?? "not selected"};
+                  member B prefers {p.meeting_preference_b?.replaceAll("_", " ") ?? "not selected"}.
+                </p>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <input
                     type="datetime-local"

@@ -5,9 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
  * anything is parsed, and every event id is claimed in a ledger so repeated
  * deliveries are applied at most once.
  *
- * Events handled: checkout.session.completed,
- * customer.subscription.created/updated/deleted,
- * invoice.payment_succeeded, invoice.payment_failed.
+ * Only one-off introduction Checkout payments are handled here. Legacy
+ * subscription billing has been removed from Mithaq.
  */
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
@@ -17,14 +16,8 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
         const payload = await request.text();
-        const {
-          verifyStripeSignature,
-          syncSubscriptionFromSession,
-          syncSubscriptionObject,
-          syncFromInvoice,
-          claimStripeEvent,
-          releaseStripeEvent,
-        } = await import("@/lib/membership.server");
+        const { verifyStripeSignature, claimStripeEvent, releaseStripeEvent } =
+          await import("@/lib/membership.server");
 
         const ok = await verifyStripeSignature(
           payload,
@@ -53,21 +46,11 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           };
           switch (event.type) {
             case "checkout.session.completed":
-              ensureSynced(await syncSubscriptionFromSession(obj.id as string));
-              break;
-            case "customer.subscription.created":
-            case "customer.subscription.updated":
-              ensureSynced(await syncSubscriptionObject(obj));
-              break;
-            case "customer.subscription.deleted":
-              ensureSynced(await syncSubscriptionObject(obj, { deleted: true }));
-              break;
-            case "invoice.paid":
-            case "invoice.payment_succeeded":
-              ensureSynced(await syncFromInvoice(obj, false));
-              break;
-            case "invoice.payment_failed":
-              ensureSynced(await syncFromInvoice(obj, true));
+              if (((obj.metadata ?? {}) as Record<string, string>).kind === "introduction") {
+                const { syncIntroductionPaymentFromSession } =
+                  await import("@/lib/membership.server");
+                ensureSynced(await syncIntroductionPaymentFromSession(obj.id as string));
+              }
               break;
             default:
               break;

@@ -44,7 +44,7 @@ const ApplyInput = z.object({
 
 export const applyAsImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ApplyInput.parse(input))
+  .validator((input: unknown) => ApplyInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("imam_applications").insert({
       user_id: context.userId,
@@ -88,7 +88,9 @@ export const listImamPairings = createServerFn({ method: "GET" })
 
     const { data: pairings, error } = await context.supabase
       .from("pairings")
-      .select("id, user_a, user_b, status, decision_note, decided_at, created_at")
+      .select(
+        "id, user_a, user_b, status, decision_note, decided_at, created_at, compatibility_score, compatibility_summary, member_a_response, member_b_response, payment_a_status, payment_b_status, meeting_preference_a, meeting_preference_b",
+      )
       .eq("imam_id", imamId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -135,6 +137,13 @@ export const listImamPairings = createServerFn({ method: "GET" })
         gender: a["2"] ?? null,
         residence: a["3"] ?? null,
         wali: a["20"] ?? null,
+        ethnicity: a["5"] ?? null,
+        marital_status: a["6"] ?? null,
+        children: a["7"] ?? null,
+        education: a["8"] ?? null,
+        occupation: a["9"] ?? null,
+        practice: a["11"] ?? null,
+        timeline: a["19"] ?? null,
       };
     };
 
@@ -154,17 +163,39 @@ const DecideInput = z.object({
 
 export const decidePairing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => DecideInput.parse(input))
+  .validator((input: unknown) => DecideInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: imamId } = await context.supabase.rpc("my_imam_id", { _user_id: context.userId });
+    if (!imamId) throw new Error("Forbidden: imam only");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("user_a,user_b")
+      .eq("id", data.pairing_id)
+      .eq("imam_id", imamId)
+      .maybeSingle();
+    if (!pairing) throw new Error("Pairing not found");
+    const nextStatus = data.decision === "approved" ? "member_review" : "declined";
+    const { error } = await supabaseAdmin
       .from("pairings")
       .update({
-        status: data.decision,
+        status: nextStatus,
         decision_note: data.note?.trim() || null,
         decided_at: new Date().toISOString(),
       })
       .eq("id", data.pairing_id);
     if (error) throw new Error(error.message);
+    if (data.decision === "approved") {
+      await supabaseAdmin.from("notifications").insert(
+        [pairing.user_a, pairing.user_b].map((user_id) => ({
+          user_id,
+          pairing_id: data.pairing_id,
+          kind: "anonymous_profile_ready",
+          title: "An anonymous match is ready",
+          body: "An imam has reviewed this potential match. Review the anonymous profile and respond privately.",
+        })),
+      );
+    }
     return { ok: true };
   });
 
@@ -179,12 +210,20 @@ const MeetupInput = z.object({
 
 export const proposeMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => MeetupInput.parse(input))
+  .validator((input: unknown) => MeetupInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: imamId } = await context.supabase.rpc("my_imam_id", {
       _user_id: context.userId,
     });
     if (!imamId) throw new Error("Forbidden: imam only");
+    const { data: pairing } = await context.supabase
+      .from("pairings")
+      .select("status")
+      .eq("id", data.pairing_id)
+      .eq("imam_id", imamId)
+      .maybeSingle();
+    if (pairing?.status !== "ready_to_schedule")
+      throw new Error("Both members must pay before a meeting can be scheduled");
     const { error } = await context.supabase.from("meetups").insert({
       pairing_id: data.pairing_id,
       imam_id: imamId,
@@ -202,7 +241,7 @@ const CancelInput = z.object({ meetup_id: z.string().uuid() });
 
 export const cancelMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CancelInput.parse(input))
+  .validator((input: unknown) => CancelInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("meetups")

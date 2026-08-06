@@ -5,9 +5,7 @@
   "auth": {
     "type": "oauth",
     "issuer": "https://ezczqpvlsnrgpdhqzcpi.supabase.co/auth/v1",
-    "accepted_audiences": [
-      "authenticated"
-    ]
+    "accepted_audiences": ["authenticated"]
   },
   "mcp": {
     "server": {
@@ -76,10 +74,7 @@
               "description": "Whether the survey is fully completed."
             }
           },
-          "required": [
-            "answers",
-            "completed"
-          ]
+          "required": ["answers", "completed"]
         },
         "outputSchema": null
       },
@@ -114,11 +109,7 @@
           "properties": {
             "visibility": {
               "type": "string",
-              "enum": [
-                "discoverable",
-                "paused",
-                "hidden"
-              ]
+              "enum": ["discoverable", "paused", "hidden"]
             },
             "show_location": {
               "type": "boolean"
@@ -195,9 +186,7 @@
               "description": "Recipient user id (uuid)."
             }
           },
-          "required": [
-            "to_user"
-          ]
+          "required": ["to_user"]
         },
         "outputSchema": null
       },
@@ -223,10 +212,7 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "interest_id",
-            "accept"
-          ]
+          "required": ["interest_id", "accept"]
         },
         "outputSchema": null
       }

@@ -15,6 +15,7 @@ Add a temporary admin-only diagnostic that calls Stripe with the saved key and r
 ## Step 3 — Make failures readable instead of raw
 
 Right now a Stripe failure surfaces as a raw provider dump. Change checkout so that:
+
 - The membership page shows a plain-language reason ("payments not connected", "payment setup incomplete — contact support") and keeps the full detail in server logs only.
 - Admins (your account) additionally see the underlying Stripe message, so you can self-diagnose without me.
 

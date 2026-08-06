@@ -1,9 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-
-const ADMIN_EMAIL = "admin@mithaq.com";
-const ADMIN_PASSWORD = "Malikmalik1@";
+import type { Json } from "@/integrations/supabase/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
@@ -15,45 +13,23 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
-// -----------------------------------------------------------------------------
-// Public bootstrap: ensures the built-in admin user exists.
-// Idempotent — safe to call before every sign-in attempt with "admin".
-// -----------------------------------------------------------------------------
-export const bootstrapAdmin = createServerFn({ method: "POST" }).handler(async () => {
+async function writeAdminAudit(
+  actorUserId: string,
+  action: string,
+  targetType: string,
+  targetId: string | null,
+  details: Json = {},
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // Look for existing user
-  const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
+  const { error } = await supabaseAdmin.from("admin_audit_log").insert({
+    actor_user_id: actorUserId,
+    action,
+    target_type: targetType,
+    target_id: targetId,
+    details,
   });
-  if (listErr) throw new Error(listErr.message);
-  let user = list.users.find((u) => u.email?.toLowerCase() === ADMIN_EMAIL);
-
-  if (!user) {
-    const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-      user_metadata: { display_name: "Admin" },
-    });
-    if (createErr) throw new Error(createErr.message);
-    user = created.user!;
-  } else {
-    // Ensure password is set and email is confirmed
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-    });
-  }
-
-  // Ensure admin role
-  await supabaseAdmin
-    .from("user_roles")
-    .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
-
-  return { email: ADMIN_EMAIL };
-});
+  if (error) console.error("[admin-audit] Failed to record action", { action, targetId, error });
+}
 
 // -----------------------------------------------------------------------------
 // Admin: list all profiles with auth email + status flags
@@ -120,7 +96,7 @@ const IdInput = z.object({ user_id: z.string().uuid() });
 
 export const getProfileDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -183,7 +159,7 @@ const UpdateProfileInput = z.object({
 
 export const updateProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateProfileInput.parse(input))
+  .validator((input: unknown) => UpdateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -219,6 +195,9 @@ export const updateProfileAdmin = createServerFn({ method: "POST" })
         .from("privacy_settings")
         .upsert({ user_id: data.user_id, ...privPatch }, { onConflict: "user_id" });
     }
+    await writeAdminAudit(context.userId, "profile.update", "profile", data.user_id, {
+      fields: Object.keys(data).filter((key) => key !== "user_id" && key !== "answers"),
+    });
     return { ok: true };
   });
 
@@ -234,7 +213,7 @@ const CreateProfileInput = z.object({
 
 export const createProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CreateProfileInput.parse(input))
+  .validator((input: unknown) => CreateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -265,6 +244,7 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
         { onConflict: "user_id" },
       );
     }
+    await writeAdminAudit(context.userId, "profile.create", "profile", id, { email: data.email });
     return { id };
   });
 
@@ -273,12 +253,13 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
 // -----------------------------------------------------------------------------
 export const deleteProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    await writeAdminAudit(context.userId, "profile.delete", "profile", data.user_id);
     return { ok: true };
   });
 
@@ -303,7 +284,7 @@ const ExportInput = z.object({
 
 export const exportProfilesAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ExportInput.parse(input))
+  .validator((input: unknown) => ExportInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -366,31 +347,36 @@ export const adminStats = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [
-      { count: profileCount },
-      { count: completedCount },
-      { count: discoverableCount },
-      { count: interestCount },
-      { data: users },
-    ] = await Promise.all([
-      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("survey_answers")
-        .select("*", { count: "exact", head: true })
-        .eq("completed", true),
-      supabaseAdmin
-        .from("privacy_settings")
-        .select("*", { count: "exact", head: true })
-        .eq("visibility", "discoverable"),
-      supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
-    ]);
+    const [profilesResult, completedResult, discoverableResult, interestsResult, usersResult] =
+      await Promise.all([
+        supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
+        supabaseAdmin
+          .from("survey_answers")
+          .select("*", { count: "exact", head: true })
+          .eq("completed", true),
+        supabaseAdmin
+          .from("privacy_settings")
+          .select("*", { count: "exact", head: true })
+          .eq("visibility", "discoverable"),
+        supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
+        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
+      ]);
+
+    const firstError = [
+      profilesResult.error,
+      completedResult.error,
+      discoverableResult.error,
+      interestsResult.error,
+      usersResult.error,
+    ].find(Boolean);
+    if (firstError) throw new Error(firstError.message);
+
     return {
-      profileCount: profileCount ?? 0,
-      completedCount: completedCount ?? 0,
-      discoverableCount: discoverableCount ?? 0,
-      interestCount: interestCount ?? 0,
-      recentUsers: (users?.users ?? []).slice(0, 5).map((u) => ({
+      profileCount: profilesResult.count ?? 0,
+      completedCount: completedResult.count ?? 0,
+      discoverableCount: discoverableResult.count ?? 0,
+      interestCount: interestsResult.count ?? 0,
+      recentUsers: (usersResult.data?.users ?? []).slice(0, 5).map((u) => ({
         id: u.id,
         email: u.email,
         created_at: u.created_at,
@@ -442,7 +428,7 @@ function withCityCoords(input: z.infer<typeof ImamInput>) {
 
 export const createImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ImamInput.parse(input))
+  .validator((input: unknown) => ImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -460,7 +446,7 @@ const UpdateImamInput = ImamInput.partial().extend({ id: z.string().uuid() });
 
 export const updateImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateImamInput.parse(input))
+  .validator((input: unknown) => UpdateImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -472,7 +458,7 @@ export const updateImam = createServerFn({ method: "POST" })
 
 export const deleteImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

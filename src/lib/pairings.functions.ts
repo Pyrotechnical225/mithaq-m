@@ -1,7 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { assertActiveMembership } from "./membership-guard";
+
+export const listMyNotifications = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("notifications")
+      .select("id,kind,title,body,read_at,created_at,pairing_id")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
 
 // -----------------------------------------------------------------------------
 // Member side: turn accepted mutual interests into pairings and assign the
@@ -10,7 +21,8 @@ import { assertActiveMembership } from "./membership-guard";
 export const syncMyPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
+    // Legacy mutual interests are still converted, but new compatibility-led pairings are
+    // created directly by the private matching process.
     const uid = context.userId;
     const { data: accepted } = await context.supabase
       .from("interests")
@@ -82,11 +94,12 @@ export const syncMyPairings = createServerFn({ method: "POST" })
 export const listMyPairings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: pairings } = await context.supabase
       .from("pairings")
-      .select("id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at")
+      .select(
+        "id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at, compatibility_score, member_a_response, member_b_response, payment_a_status, payment_b_status, meeting_preference_a, meeting_preference_b",
+      )
       .order("created_at", { ascending: false });
     if (!pairings || pairings.length === 0) return [];
 
@@ -102,32 +115,181 @@ export const listMyPairings = createServerFn({ method: "GET" })
       new Set(pairings.map((p) => p.imam_id).filter((x): x is string => !!x)),
     );
     const otherIds = pairings.map((p) => (p.user_a === uid ? p.user_b : p.user_a));
-    const [{ data: imams }, { data: profs }] = await Promise.all([
+    const [{ data: imams }, { data: profs }, { data: surveys }] = await Promise.all([
       imamIds.length
         ? supabaseAdmin
             .from("imams")
             .select("id, name, title, mosque, city, email, phone")
             .in("id", imamIds)
         : Promise.resolve({ data: [] as never[] }),
-      supabaseAdmin.from("profiles").select("id, display_name, uk_city").in("id", otherIds),
+      supabaseAdmin.from("profiles").select("id, uk_city").in("id", otherIds),
+      supabaseAdmin.from("survey_answers").select("user_id,answers").in("user_id", otherIds),
     ]);
     const imamMap = new Map((imams ?? []).map((i) => [i.id, i]));
     const profMap = new Map((profs ?? []).map((p) => [p.id, p]));
+    const surveyMap = new Map(
+      (surveys ?? []).map((s) => [s.user_id, (s.answers ?? {}) as Record<string, string>]),
+    );
 
     return pairings.map((p) => {
       const otherId = p.user_a === uid ? p.user_b : p.user_a;
       return {
         ...p,
+        // Member RLS exposes pairings only after imam approval. Keep an
+        // application-level status guard as an additional privacy boundary.
+        compatibility_score: [
+          "member_review",
+          "awaiting_payment",
+          "payment_pending",
+          "ready_to_schedule",
+          "scheduled",
+          "completed",
+        ].includes(p.status)
+          ? p.compatibility_score
+          : null,
         i_am: p.user_a === uid ? ("a" as const) : ("b" as const),
         other: {
           id: otherId,
-          display_name: profMap.get(otherId)?.display_name ?? null,
+          reference: `MTH-${otherId.slice(0, 6).toUpperCase()}`,
           uk_city: profMap.get(otherId)?.uk_city ?? null,
+          age: surveyMap.get(otherId)?.["1"] ?? null,
+          ethnicity: surveyMap.get(otherId)?.["5"] ?? null,
+          marital_status: surveyMap.get(otherId)?.["6"] ?? null,
+          children: surveyMap.get(otherId)?.["7"] ?? null,
+          education: surveyMap.get(otherId)?.["8"] ?? null,
+          occupation_field: surveyMap.get(otherId)?.["9"] ?? null,
+          practice_level: surveyMap.get(otherId)?.["11"] ?? null,
+          languages: surveyMap.get(otherId)?.["27"] ?? null,
+          marriage_timeline: surveyMap.get(otherId)?.["19"] ?? null,
+          relocation: surveyMap.get(otherId)?.["4"] ?? null,
         },
         imam: p.imam_id ? (imamMap.get(p.imam_id) ?? null) : null,
         meetups: (meetups ?? []).filter((m) => m.pairing_id === p.id),
       };
     });
+  });
+
+const PairingResponseInput = z.object({ pairing_id: z.string().uuid(), accept: z.boolean() });
+
+export const respondToPairing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => PairingResponseInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("id,user_a,user_b,status,member_a_response,member_b_response")
+      .eq("id", data.pairing_id)
+      .maybeSingle();
+    if (
+      !pairing ||
+      ![pairing.user_a, pairing.user_b].includes(context.userId) ||
+      pairing.status !== "member_review"
+    )
+      throw new Error("This introduction is not awaiting your response");
+    const side = pairing.user_a === context.userId ? "a" : "b";
+    const value = data.accept ? "accepted" : "declined";
+    const a = side === "a" ? value : pairing.member_a_response;
+    const b = side === "b" ? value : pairing.member_b_response;
+    const status =
+      a === "declined" || b === "declined"
+        ? "declined"
+        : a === "accepted" && b === "accepted"
+          ? "awaiting_payment"
+          : "member_review";
+    await supabaseAdmin
+      .from("pairings")
+      .update({
+        [side === "a" ? "member_a_response" : "member_b_response"]: value,
+        status,
+        ...(status === "awaiting_payment"
+          ? { payment_a_status: "due", payment_b_status: "due" }
+          : {}),
+      })
+      .eq("id", pairing.id);
+    const recipients = status === "awaiting_payment" ? [pairing.user_a, pairing.user_b] : [];
+    if (recipients.length)
+      await supabaseAdmin.from("notifications").insert(
+        recipients.map((user_id) => ({
+          user_id,
+          pairing_id: pairing.id,
+          kind: "mutual_acceptance",
+          title: "You both accepted",
+          body: "Both members accepted the anonymous introduction. Pay the £39 introduction fee to continue.",
+        })),
+      );
+
+    return { ok: true, status };
+  });
+
+const CheckoutInput = z.object({ pairing_id: z.string().uuid() });
+export const startIntroductionCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => CheckoutInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("user_a,user_b,status,payment_a_status,payment_b_status")
+      .eq("id", data.pairing_id)
+      .maybeSingle();
+    if (
+      !pairing ||
+      ![pairing.user_a, pairing.user_b].includes(context.userId) ||
+      !["awaiting_payment", "payment_pending"].includes(pairing.status)
+    )
+      throw new Error("Payment is not available for this introduction");
+    const side = pairing.user_a === context.userId ? "a" : "b";
+    if ((side === "a" ? pairing.payment_a_status : pairing.payment_b_status) === "paid")
+      throw new Error("You have already paid");
+    const { createIntroductionCheckout } = await import("./membership.server");
+    return createIntroductionCheckout({
+      pairingId: data.pairing_id,
+      userId: context.userId,
+      email: (context.claims as { email?: string })?.email ?? null,
+    });
+  });
+
+const ConfirmPaymentInput = z.object({ session_id: z.string().min(10) });
+export const confirmIntroductionPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => ConfirmPaymentInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { syncIntroductionPaymentFromSession } = await import("./membership.server");
+    return syncIntroductionPaymentFromSession(data.session_id, context.userId);
+  });
+
+const PreferenceInput = z.object({
+  pairing_id: z.string().uuid(),
+  preference: z.enum(["online", "face_to_face"]),
+});
+export const setMeetingPreference = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => PreferenceInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("user_a,user_b,payment_a_status,payment_b_status")
+      .eq("id", data.pairing_id)
+      .maybeSingle();
+    if (!pairing || ![pairing.user_a, pairing.user_b].includes(context.userId))
+      throw new Error("Introduction not found");
+    const side = pairing.user_a === context.userId ? "a" : "b";
+    if ((side === "a" ? pairing.payment_a_status : pairing.payment_b_status) !== "paid")
+      throw new Error("Complete payment first");
+    if (side === "a") {
+      await supabaseAdmin
+        .from("pairings")
+        .update({ meeting_preference_a: data.preference })
+        .eq("id", data.pairing_id);
+    } else {
+      await supabaseAdmin
+        .from("pairings")
+        .update({ meeting_preference_b: data.preference })
+        .eq("id", data.pairing_id);
+    }
+    return { ok: true };
   });
 
 const RespondMeetupInput = z.object({
@@ -137,9 +299,8 @@ const RespondMeetupInput = z.object({
 
 export const respondToMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => RespondMeetupInput.parse(input))
+  .validator((input: unknown) => RespondMeetupInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { data: meetup, error } = await context.supabase
       .from("meetups")
       .select("id, pairing_id, response_a, response_b, status")
@@ -180,7 +341,7 @@ const ThreadInput = z.object({ pairing_id: z.string().uuid() });
 
 export const listPairingMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ThreadInput.parse(input))
+  .validator((input: unknown) => ThreadInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("pairing_messages")
@@ -198,7 +359,7 @@ const PostMessageInput = z.object({
 
 export const postPairingMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => PostMessageInput.parse(input))
+  .validator((input: unknown) => PostMessageInput.parse(input))
   .handler(async ({ data, context }) => {
     const { data: isImam } = await context.supabase.rpc("is_imam", {
       _user_id: context.userId,

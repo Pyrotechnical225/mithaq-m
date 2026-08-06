@@ -4,7 +4,7 @@ import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-us
 export default defineTool({
   name: "list_latest_matches",
   title: "List latest matches",
-  description: "Return the signed-in user's most recent AI-generated match results.",
+  description: "Return the signed-in user's most recent compatibility match results.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

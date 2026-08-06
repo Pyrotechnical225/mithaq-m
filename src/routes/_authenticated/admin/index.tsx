@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { adminStats } from "@/lib/admin.functions";
+import { ImamReferralQueue } from "@/components/admin/ImamReferralQueue";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
@@ -13,11 +14,50 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 function AdminHome() {
   const fetchStats = useServerFn(adminStats);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null);
-  useEffect(() => {
-    fetchStats().then(setStats);
-  }, [fetchStats]);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  if (!stats) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  useEffect(() => {
+    let active = true;
+    setError(null);
+    fetchStats()
+      .then((nextStats) => {
+        if (active) setStats(nextStats);
+      })
+      .catch((cause) => {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Unable to load the admin overview");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [fetchStats, reloadKey]);
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-destructive/30 bg-card p-6 text-center">
+        <h1 className="text-xl text-foreground">Admin overview could not load</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((key) => key + 1)}
+          className="mt-5 rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+        Loading admin overview…
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -92,15 +132,6 @@ function AdminHome() {
           />
 
           <ControlCard
-            title="Memberships & billing"
-            body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
-            actions={[
-              { to: "/admin/memberships", label: "Manage memberships", primary: true },
-              { to: "/membership", label: "Member-facing plans" },
-            ]}
-          />
-
-          <ControlCard
             title="Example & demo data"
             body="Seed example members and imams for testing, then clear them out again in one click."
             actions={[{ to: "/admin/seed", label: "Seed data tools", primary: true }]}
@@ -117,6 +148,8 @@ function AdminHome() {
           />
         </div>
       </section>
+
+      <ImamReferralQueue />
     </div>
   );
 }

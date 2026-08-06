@@ -16,7 +16,7 @@ export default defineMcp({
   title: "Mithaq",
   version: "0.1.0",
   instructions:
-    "Tools for the Mithaq halal marriage platform. Callers act as the signed-in Mithaq user: read/update their survey answers and privacy settings, view AI-generated matches, and manage interests.",
+    "Tools for the Mithaq halal marriage platform. Callers act as the signed-in Mithaq user: read/update their survey answers and privacy settings, view compatibility matches, and manage interests.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
