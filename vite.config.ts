@@ -15,22 +15,5 @@ export default defineConfig({
   },
   vite: {
     plugins: [mcpPlugin()],
-    build: {
-      rolldownOptions: {
-        output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: "vendor",
-                test: /node_modules/,
-                minSize: 20_000,
-                maxSize: 250_000,
-                priority: 10,
-              },
-            ],
-          },
-        },
-      },
-    },
   },
 });
