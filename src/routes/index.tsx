@@ -45,7 +45,7 @@ const steps = [
   {
     number: "02",
     title: "Discover aligned matches",
-    body: "Explore people whose practice, priorities, and long-term goals genuinely fit yours.",
+    body: "Explore OpenAI-scored, imam-reviewed matches grounded in shared practice, priorities, and long-term goals.",
   },
   {
     number: "03",
@@ -68,8 +68,12 @@ function MatchPreview() {
       <div className="relative overflow-hidden rounded-[2rem] border border-white/50 bg-card/95 p-5 shadow-[var(--shadow-elevated)] sm:p-7">
         <div className="flex items-center justify-between border-b border-border pb-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Your journey</p>
-            <p className="mt-1 font-display text-2xl font-semibold text-foreground">A thoughtful match</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+              Your journey
+            </p>
+            <p className="mt-1 font-display text-2xl font-semibold text-foreground">
+              A thoughtful match
+            </p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <HeartHandshake size={22} aria-hidden="true" />
@@ -92,7 +96,10 @@ function MatchPreview() {
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           {["Deen & practice", "Family values", "Life goals", "Marriage timeline"].map((label) => (
-            <div key={label} className="flex items-center gap-2 rounded-xl bg-secondary/65 px-3 py-3 text-xs font-medium text-secondary-foreground">
+            <div
+              key={label}
+              className="flex items-center gap-2 rounded-xl bg-secondary/65 px-3 py-3 text-xs font-medium text-secondary-foreground"
+            >
               <Check size={14} className="text-primary" aria-hidden="true" />
               {label}
             </div>
@@ -107,7 +114,9 @@ function MatchPreview() {
 
       <div className="absolute -bottom-5 -left-3 hidden items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-soft)] sm:flex">
         <Sparkles size={17} className="text-gold" aria-hidden="true" />
-        <span className="text-sm font-medium text-foreground">Compatibility beyond appearances</span>
+        <span className="text-sm font-medium text-foreground">
+          Compatibility beyond appearances
+        </span>
       </div>
     </div>
   );
@@ -118,7 +127,9 @@ function Index() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(!!session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
+      setSignedIn(!!session),
+    );
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -135,8 +146,7 @@ function Index() {
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-32 lg:pt-24">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-[var(--shadow-soft)]">
-                <span className="h-2 w-2 rounded-full bg-gold" />
-                A halal path to marriage
+                <span className="h-2 w-2 rounded-full bg-gold" />A halal path to marriage
               </div>
 
               <h1 className="mt-7 max-w-2xl font-display text-5xl font-semibold leading-[0.98] text-foreground sm:text-6xl lg:text-7xl">
@@ -145,7 +155,7 @@ function Index() {
               </h1>
 
               <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Mithaq helps practicing Muslims find marriage-minded matches through shared deen,
+                MeetHaq helps practicing Muslims find marriage-minded matches through shared deen,
                 family values, and life goals — with respect for wali involvement at every step.
               </p>
 
@@ -155,7 +165,11 @@ function Index() {
                   className="group inline-flex items-center justify-center gap-3 rounded-full bg-primary px-7 py-4 font-semibold text-primary-foreground shadow-[var(--shadow-elevated)] transition hover:-translate-y-0.5 hover:bg-primary/90"
                 >
                   {ctaLabel}
-                  <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                  <ArrowRight
+                    size={18}
+                    className="transition-transform group-hover:translate-x-1"
+                    aria-hidden="true"
+                  />
                 </Link>
                 <a
                   href="#how"
@@ -182,12 +196,15 @@ function Index() {
         <section id="principles" className="scroll-mt-28 border-y border-border/70 bg-card/45">
           <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-24">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Our principles</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                Our principles
+              </p>
               <h2 className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
                 Marriage deserves a better beginning.
               </h2>
               <p className="mt-5 text-base leading-7 text-muted-foreground">
-                Every part of Mithaq is designed around Islamic values, clear intentions, and the dignity of everyone involved.
+                Every part of MeetHaq is designed around Islamic values, clear intentions, and the
+                dignity of everyone involved.
               </p>
             </div>
 
@@ -202,7 +219,9 @@ function Index() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
                       <Icon size={22} aria-hidden="true" />
                     </div>
-                    <h3 className="mt-6 text-2xl font-semibold text-foreground">{principle.title}</h3>
+                    <h3 className="mt-6 text-2xl font-semibold text-foreground">
+                      {principle.title}
+                    </h3>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">{principle.body}</p>
                   </article>
                 );
@@ -215,12 +234,15 @@ function Index() {
           <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
             <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">How it works</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  How it works
+                </p>
                 <h2 className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
                   From intention to introduction.
                 </h2>
                 <p className="mt-5 text-base leading-7 text-muted-foreground">
-                  A calm, structured process that helps you focus on the things that make a marriage last.
+                  A calm, structured process that helps you focus on the things that make a marriage
+                  last.
                 </p>
                 <Link
                   to={ctaTo}
@@ -232,8 +254,13 @@ function Index() {
 
               <ol className="grid gap-4">
                 {steps.map((step) => (
-                  <li key={step.number} className="grid grid-cols-[auto_1fr] gap-5 rounded-3xl border border-border bg-card p-6 sm:p-7">
-                    <span className="font-display text-4xl font-semibold text-gold">{step.number}</span>
+                  <li
+                    key={step.number}
+                    className="grid grid-cols-[auto_1fr] gap-5 rounded-3xl border border-border bg-card p-6 sm:p-7"
+                  >
+                    <span className="font-display text-4xl font-semibold text-gold">
+                      {step.number}
+                    </span>
                     <div>
                       <h3 className="text-2xl font-semibold text-foreground">{step.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.body}</p>
@@ -251,15 +278,21 @@ function Index() {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-gold">
                 <LockKeyhole size={23} aria-hidden="true" />
               </div>
-              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-gold">Safety and dignity</p>
+              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                Safety and dignity
+              </p>
               <h2 className="mt-4 text-4xl font-semibold sm:text-5xl">Your trust comes first.</h2>
               <p className="mt-5 max-w-xl leading-7 text-primary-foreground/75">
-                We are building a respectful environment where people can search seriously without the pressure and behaviour of conventional dating apps.
+                We are building a respectful environment where people can search seriously without
+                the pressure and behaviour of conventional dating apps.
               </p>
             </div>
             <div className="grid content-center gap-3 bg-black/10 p-8 sm:p-12 lg:p-16">
               {safeguards.map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
+                >
                   <ShieldCheck size={19} className="shrink-0 text-gold" aria-hidden="true" />
                   <span className="font-medium">{item}</span>
                 </div>
@@ -270,23 +303,34 @@ function Index() {
 
         <section className="border-t border-border/70 bg-card/50">
           <div className="mx-auto max-w-4xl px-5 py-20 text-center lg:py-28">
-            <p dir="rtl" lang="ar" className="font-arabic text-6xl leading-none text-primary sm:text-7xl">
+            <p
+              dir="rtl"
+              lang="ar"
+              className="font-arabic text-6xl leading-none text-primary sm:text-7xl"
+            >
               ميثاق
             </p>
             <h2 className="mt-6 text-4xl font-semibold text-foreground sm:text-5xl">
               Begin with sincere intention.
             </h2>
             <p className="mx-auto mt-5 max-w-2xl leading-7 text-muted-foreground">
-              Create your profile, answer 50 thoughtful questions, and start looking for a spouse whose deen and direction align with yours.
+              Create your profile, answer 50 thoughtful questions, and start looking for a spouse
+              whose deen and direction align with yours.
             </p>
             <Link
               to={ctaTo}
               className="group mt-9 inline-flex items-center gap-3 rounded-full bg-primary px-8 py-4 font-semibold text-primary-foreground shadow-[var(--shadow-elevated)] transition hover:-translate-y-0.5 hover:bg-primary/90"
             >
               {ctaLabel}
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              <ArrowRight
+                size={18}
+                className="transition-transform group-hover:translate-x-1"
+                aria-hidden="true"
+              />
             </Link>
-            <p className="mt-4 text-xs text-muted-foreground">About 10 minutes · Your answers remain private</p>
+            <p className="mt-4 text-xs text-muted-foreground">
+              About 10 minutes · Your answers remain private
+            </p>
           </div>
         </section>
       </main>

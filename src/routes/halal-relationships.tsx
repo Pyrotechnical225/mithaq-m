@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 export const Route = createFileRoute("/halal-relationships")({
   head: () => ({
     meta: [
-      { title: "Halal Relationships — Boundaries Before Marriage | Mithaq" },
+      { title: "Halal Relationships — Boundaries Before Marriage | MeetHaq" },
       {
         name: "description",
         content:

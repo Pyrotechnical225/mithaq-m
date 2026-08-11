@@ -2,9 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "admin@mithaq.com";
-const ADMIN_PASSWORD = "Malikmalik1@";
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
@@ -14,46 +11,6 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: admin only");
 }
-
-// -----------------------------------------------------------------------------
-// Public bootstrap: ensures the built-in admin user exists.
-// Idempotent — safe to call before every sign-in attempt with "admin".
-// -----------------------------------------------------------------------------
-export const bootstrapAdmin = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // Look for existing user
-  const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
-  });
-  if (listErr) throw new Error(listErr.message);
-  let user = list.users.find((u) => u.email?.toLowerCase() === ADMIN_EMAIL);
-
-  if (!user) {
-    const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-      user_metadata: { display_name: "Admin" },
-    });
-    if (createErr) throw new Error(createErr.message);
-    user = created.user!;
-  } else {
-    // Ensure password is set and email is confirmed
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      password: ADMIN_PASSWORD,
-      email_confirm: true,
-    });
-  }
-
-  // Ensure admin role
-  await supabaseAdmin
-    .from("user_roles")
-    .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
-
-  return { email: ADMIN_EMAIL };
-});
 
 // -----------------------------------------------------------------------------
 // Admin: list all profiles with auth email + status flags
@@ -396,6 +353,73 @@ export const adminStats = createServerFn({ method: "GET" })
         created_at: u.created_at,
       })),
     };
+  });
+
+type StoredCompatibilityMatch = {
+  match_user_id?: string;
+  score?: number;
+  fixed_score?: number;
+  openai_score?: number | null;
+  scoring_method?: string;
+  strengths?: string;
+  considerations?: string;
+};
+
+export const listCompatibilityComparisonsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: generations, error } = await supabaseAdmin
+      .from("matches")
+      .select("id, user_id, results, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+
+    const profileIds = new Set<string>();
+    for (const generation of generations ?? []) {
+      profileIds.add(generation.user_id);
+      const result = generation.results as { matches?: StoredCompatibilityMatch[] } | null;
+      for (const match of result?.matches ?? []) {
+        if (match.match_user_id) profileIds.add(match.match_user_id);
+      }
+    }
+
+    const { data: profiles } = profileIds.size
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id, display_name, contact_email")
+          .in("id", Array.from(profileIds))
+      : { data: [] };
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+    return (generations ?? []).flatMap((generation) => {
+      const result = generation.results as { matches?: StoredCompatibilityMatch[] } | null;
+      return (result?.matches ?? []).map((match, index) => {
+        const member = profileById.get(generation.user_id);
+        const candidate = match.match_user_id ? profileById.get(match.match_user_id) : undefined;
+        const finalScore = Math.round(match.score ?? 0);
+        const fixedScore = Math.round(match.fixed_score ?? finalScore);
+        const openAIScore =
+          typeof match.openai_score === "number" ? Math.round(match.openai_score) : null;
+
+        return {
+          id: `${generation.id}-${match.match_user_id ?? index}`,
+          generated_at: generation.created_at,
+          member: member?.display_name || member?.contact_email || generation.user_id,
+          candidate:
+            candidate?.display_name || candidate?.contact_email || match.match_user_id || "Unknown",
+          final_score: finalScore,
+          fixed_score: fixedScore,
+          openai_score: openAIScore,
+          difference: openAIScore === null ? null : openAIScore - fixedScore,
+          scoring_method: match.scoring_method ?? "legacy",
+          strengths: match.strengths ?? "",
+          considerations: match.considerations ?? "",
+        };
+      });
+    });
   });
 
 // -----------------------------------------------------------------------------

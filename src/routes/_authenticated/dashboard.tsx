@@ -17,10 +17,11 @@ import UkImamMap, { type ImamMapPoint } from "@/components/UkImamMap";
 import { getMyMembership } from "@/lib/membership.functions";
 import { PairingsSection } from "@/components/PairingsSection";
 import { amIAdmin } from "@/lib/admin.functions";
+import { BrandName } from "@/components/BrandName";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
-    meta: [{ title: "Your Mithaq dashboard" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Your MeetHaq dashboard" }, { name: "robots", content: "noindex" }],
   }),
   component: Dashboard,
 });
@@ -28,6 +29,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 type MatchRow = {
   match_user_id: string;
   score: number;
+  fixed_score?: number;
+  openai_score?: number | null;
+  scoring_method?: string;
   strengths: string;
   considerations: string;
   age: string | null;
@@ -57,6 +61,7 @@ function Dashboard() {
   const [matches, setMatches] = useState<MatchRow[] | null>(null);
   const [matchedAt, setMatchedAt] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [openAIConsent, setOpenAIConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [interests, setInterests] = useState<Awaited<ReturnType<typeof listInterests>> | null>(
     null,
@@ -141,7 +146,7 @@ function Dashboard() {
     setError(null);
     setRunning(true);
     try {
-      const saved = await runMatch();
+      const saved = await runMatch({ data: { openaiConsent: true } });
       const results = (saved?.results as { matches: MatchRow[] } | undefined)?.matches ?? [];
       setMatches(results);
       setMatchedAt(saved?.created_at ?? new Date().toISOString());
@@ -212,7 +217,7 @@ function Dashboard() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
             <span className="font-arabic text-2xl text-primary">م</span>
-            <span className="font-display text-lg text-foreground">Mithaq</span>
+            <BrandName className="text-lg" />
           </Link>
           <div className="flex items-center gap-3 text-sm">
             {isAdmin && (
@@ -274,12 +279,13 @@ function Dashboard() {
             <div>
               <h2 className="text-xl text-foreground">Your matches</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ranked by our AI matchmaker across deen, values, and life goals.
+                Ranked through OpenAI-assisted compatibility scoring across deen, values, and life
+                goals.
                 {matchedAt && <span> Last generated {new Date(matchedAt).toLocaleString()}.</span>}
               </p>
             </div>
             <button
-              disabled={!canMatch || running}
+              disabled={!canMatch || running || !openAIConsent}
               onClick={runMatching}
               className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
@@ -287,10 +293,24 @@ function Dashboard() {
             </button>
           </div>
 
+          <label className="mt-4 flex items-start gap-3 rounded-xl border border-gold/30 bg-gold/5 p-4 text-sm">
+            <input
+              type="checkbox"
+              checked={openAIConsent}
+              onChange={(event) => setOpenAIConsent(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-input"
+            />
+            <span>
+              I consent to MeetHaq sending anonymised multiple-choice survey answers to OpenAI for a
+              20% compatibility review. Names, email addresses, phone numbers, account IDs and
+              free-text answers are excluded. If OpenAI is unavailable, the fixed rubric is used.
+            </span>
+          </label>
+
           <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
             <p className="font-medium">Please review these matches with your wali or parent.</p>
             <p className="mt-1 text-muted-foreground">
-              Mithaq encourages family involvement from the very first step. Sit down with a parent
+              MeetHaq encourages family involvement from the very first step. Sit down with a parent
               or wali (guardian) and go through the suggestions together before expressing interest
               — their guidance is part of the halal way.
             </p>
@@ -363,7 +383,7 @@ function Dashboard() {
                       {m.practice_level && <span>{m.practice_level}</span>}
                     </div>
                     <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                      {Math.round(m.score)}% match
+                      {Math.round(m.score)}% OpenAI-assisted match
                     </div>
                   </div>
                   <p className="mt-3 text-sm text-foreground">

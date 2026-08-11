@@ -32,12 +32,14 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as AuthenticatedImamIndexRouteImport } from './routes/_authenticated/imam/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
+import { Route as ApiPublicCompatibilityStatusRouteImport } from './routes/api/public/compatibility-status'
 import { Route as AuthenticatedAdminSeedRouteImport } from './routes/_authenticated/admin/seed'
 import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
 import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
 import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin/memberships'
 import { Route as AuthenticatedAdminImamsRouteImport } from './routes/_authenticated/admin/imams'
 import { Route as AuthenticatedAdminImamApplicationsRouteImport } from './routes/_authenticated/admin/imam-applications'
+import { Route as AuthenticatedAdminCompatibilityRouteImport } from './routes/_authenticated/admin/compatibility'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
@@ -158,6 +160,12 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   path: '/api/public/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCompatibilityStatusRoute =
+  ApiPublicCompatibilityStatusRouteImport.update({
+    id: '/api/public/compatibility-status',
+    path: '/api/public/compatibility-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminSeedRoute = AuthenticatedAdminSeedRouteImport.update({
   id: '/seed',
   path: '/seed',
@@ -190,6 +198,12 @@ const AuthenticatedAdminImamApplicationsRoute =
   AuthenticatedAdminImamApplicationsRouteImport.update({
     id: '/imam-applications',
     path: '/imam-applications',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminCompatibilityRoute =
+  AuthenticatedAdminCompatibilityRouteImport.update({
+    id: '/compatibility',
+    path: '/compatibility',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -232,12 +246,14 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin/seed': typeof AuthenticatedAdminSeedRoute
+  '/api/public/compatibility-status': typeof ApiPublicCompatibilityStatusRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/imam/': typeof AuthenticatedImamIndexRoute
@@ -263,12 +279,14 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/admin/seed': typeof AuthenticatedAdminSeedRoute
+  '/api/public/compatibility-status': typeof ApiPublicCompatibilityStatusRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/imam': typeof AuthenticatedImamIndexRoute
@@ -298,98 +316,14 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
   '/_authenticated/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/_authenticated/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/_authenticated/admin/seed': typeof AuthenticatedAdminSeedRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
-  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
-  '/_authenticated/imam/': typeof AuthenticatedImamIndexRoute
-  '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
-}
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/community'
-    | '/halal-relationships'
-    | '/mahr'
-    | '/mcp'
-    | '/nikah'
-    | '/verify-email'
-    | '/wali'
-    | '/admin'
-    | '/imam'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
-    | '/dashboard'
-    | '/imam-apply'
-    | '/membership'
-    | '/settings'
-    | '/survey'
-    | '/auth/callback'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
-    | '/admin/imam-applications'
-    | '/admin/imams'
-    | '/admin/memberships'
-    | '/admin/new-profile'
-    | '/admin/profiles'
-    | '/admin/seed'
-    | '/api/public/stripe-webhook'
-    | '/admin/'
-    | '/imam/'
-    | '/admin/profiles/$userId'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/community'
-    | '/halal-relationships'
-    | '/mahr'
-    | '/mcp'
-    | '/nikah'
-    | '/verify-email'
-    | '/wali'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
-    | '/dashboard'
-    | '/imam-apply'
-    | '/membership'
-    | '/settings'
-    | '/survey'
-    | '/auth/callback'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
-    | '/admin/imam-applications'
-    | '/admin/imams'
-    | '/admin/memberships'
-    | '/admin/new-profile'
-    | '/admin/profiles'
-    | '/admin/seed'
-    | '/api/public/stripe-webhook'
-    | '/admin'
-    | '/imam'
-    | '/admin/profiles/$userId'
-  id:
-    | '__root__'
-    | '/'
-    | '/_authenticated'
-    | '/auth'
-    | '/community'
-    | '/halal-relationships'
-    | '/mahr'
-    | '/mcp'
-    | '/nikah'
-    | '/verify-email'
-    | '/wali'
-    | '/_authenticated/admin'
-    | '/_authenticated/imam'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
+  '/api/publicÔè-¢Gß≤⁄Óù∆≠y‹-known/oauth-protected-resource'
     | '/_authenticated/dashboard'
     | '/_authenticated/imam-apply'
     | '/_authenticated/membership'
@@ -398,12 +332,14 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/admin/compatibility'
     | '/_authenticated/admin/imam-applications'
     | '/_authenticated/admin/imams'
     | '/_authenticated/admin/memberships'
     | '/_authenticated/admin/new-profile'
     | '/_authenticated/admin/profiles'
     | '/_authenticated/admin/seed'
+    | '/api/public/compatibility-status'
     | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
     | '/_authenticated/imam/'
@@ -425,6 +361,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicCompatibilityStatusRoute: typeof ApiPublicCompatibilityStatusRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
@@ -591,6 +528,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/compatibility-status': {
+      id: '/api/public/compatibility-status'
+      path: '/api/public/compatibility-status'
+      fullPath: '/api/public/compatibility-status'
+      preLoaderRoute: typeof ApiPublicCompatibilityStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/seed': {
       id: '/_authenticated/admin/seed'
       path: '/seed'
@@ -633,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminImamApplicationsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/compatibility': {
+      id: '/_authenticated/admin/compatibility'
+      path: '/compatibility'
+      fullPath: '/admin/compatibility'
+      preLoaderRoute: typeof AuthenticatedAdminCompatibilityRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -673,6 +624,7 @@ const AuthenticatedAdminProfilesRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminCompatibilityRoute: typeof AuthenticatedAdminCompatibilityRoute
   AuthenticatedAdminImamApplicationsRoute: typeof AuthenticatedAdminImamApplicationsRoute
   AuthenticatedAdminImamsRoute: typeof AuthenticatedAdminImamsRoute
   AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
@@ -684,6 +636,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminCompatibilityRoute: AuthenticatedAdminCompatibilityRoute,
     AuthenticatedAdminImamApplicationsRoute:
       AuthenticatedAdminImamApplicationsRoute,
     AuthenticatedAdminImamsRoute: AuthenticatedAdminImamsRoute,
@@ -763,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicCompatibilityStatusRoute: ApiPublicCompatibilityStatusRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport

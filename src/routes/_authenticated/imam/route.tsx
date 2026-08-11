@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { amIImam } from "@/lib/imam.functions";
+import { BrandName } from "@/components/BrandName";
 
 export const Route = createFileRoute("/_authenticated/imam")({
   ssr: false,
@@ -25,7 +26,7 @@ function ImamLayout() {
             <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
               Imam
             </span>
-            <span className="font-display text-lg text-foreground">Mithaq</span>
+            <BrandName className="text-lg" />
           </Link>
           <Link
             to="/dashboard"

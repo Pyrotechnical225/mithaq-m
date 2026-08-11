@@ -6,7 +6,7 @@ export default defineTool({
   name: "express_interest",
   title: "Express interest",
   description:
-    "Express interest in another Mithaq user by their user id (uuid). Creates or refreshes a pending interest from the signed-in user.",
+    "Express interest in another MeetHaq user by their user id (uuid). Creates or refreshes a pending interest from the signed-in user.",
   inputSchema: {
     to_user: z.string().uuid().describe("Recipient user id (uuid)."),
   },

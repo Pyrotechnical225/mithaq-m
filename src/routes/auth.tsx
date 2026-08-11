@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { bootstrapAdmin } from "@/lib/admin.functions";
+
+const ADMIN_EMAIL = "admin@mithaq.com";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => {
@@ -15,8 +15,8 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — Mithaq" },
-      { name: "description", content: "Sign in or create your Mithaq account." },
+      { title: "Sign in — MeetHaq" },
+      { name: "description", content: "Sign in or create your MeetHaq account." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -26,7 +26,6 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
-  const ensureAdmin = useServerFn(bootstrapAdmin);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,9 +57,8 @@ function AuthPage() {
     try {
       // Special dev/admin shortcut: typing "admin" (or admin@mithaq.com) as email
       const normalized = email.trim().toLowerCase();
-      if (mode === "signin" && (normalized === "admin" || normalized === "admin@mithaq.com")) {
-        const { email: adminEmail } = await ensureAdmin();
-        const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
+      if (mode === "signin" && (normalized === "admin" || normalized === ADMIN_EMAIL)) {
+        const { error } = await supabase.auth.signInWithPassword({ email: ADMIN_EMAIL, password });
         if (error) throw error;
         return;
       }

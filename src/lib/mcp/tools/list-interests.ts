@@ -4,7 +4,7 @@ import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-us
 export default defineTool({
   name: "list_interests",
   title: "List interests",
-  description: "List interests sent and received by the signed-in Mithaq user.",
+  description: "List interests sent and received by the signed-in MeetHaq user.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

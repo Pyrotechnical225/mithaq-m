@@ -28,7 +28,7 @@ export const amIImam = createServerFn({ method: "GET" })
   });
 
 // -----------------------------------------------------------------------------
-// Apply to become a Mithaq imam (any signed-in user).
+// Apply to become a MeetHaq imam (any signed-in user).
 // -----------------------------------------------------------------------------
 const ApplyInput = z.object({
   name: z.string().min(2).max(120),
