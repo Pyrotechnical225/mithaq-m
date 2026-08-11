@@ -2,40 +2,145 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { assertActiveMembership } from "./membership-guard";
 import { questions } from "./survey-questions";
+import {
+  createOpenAICompatibilityProvider,
+  getOpenAIModelName,
+} from "./openai-compatibility.server";
 
-// Only these question ids inform matching; free-text stays server-side only
-// unless the other person has opted in to sharing it.
-const CORE_IDS = questions.filter((q) => q.required).map((q) => q.id);
+const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
+const AI_SAFE_IDS = new Set(
+  questions
+    .filter((question) => question.type !== "text" && question.id !== 2)
+    .map((question) => question.id),
+);
 
-function summarizeAnswers(answers: Record<string, string>) {
+const SECTION_WEIGHTS: Record<string, number> = {
+  "Religious Practice": 4,
+  "Marriage Intentions": 3,
+  "Family & Practical Matters": 2,
+  "Family & Children": 2,
+  "Values & Expectations": 2,
+  "Islamic & Community Life": 2,
+  "Basic Information": 1,
+  "Personality & Lifestyle": 1,
+  "Compatibility Extras": 1,
+};
+
+type Answers = Record<string, string>;
+
+function normalized(value: string | undefined) {
+  return value?.trim().toLocaleLowerCase() ?? "";
+}
+
+function isFlexible(value: string) {
+  return /open|depends|not sure|other|no preference|flexible|undecided/.test(value);
+}
+
+function answerSimilarity(left: string, right: string) {
+  if (left === right) return 1;
+  if (isFlexible(left) || isFlexible(right)) return 0.65;
+  return 0;
+}
+
+export function fixedCompatibilityScore(mine: Answers, theirs: Answers) {
+  let earned = 0;
+  let available = 0;
+
+  for (const question of questions) {
+    if (question.id === 1 || question.id === 2 || question.type === "text") continue;
+    const mineValue = normalized(mine[question.id]);
+    const theirValue = normalized(theirs[question.id]);
+    if (!mineValue || !theirValue) continue;
+
+    const requiredMultiplier = REQUIRED_IDS.has(question.id) ? 1.25 : 1;
+    const weight = (SECTION_WEIGHTS[question.section] ?? 1) * requiredMultiplier;
+    available += weight;
+    earned += weight * answerSimilarity(mineValue, theirValue);
+  }
+
+  if (available === 0) return 50;
+  return Math.round(50 + (earned / available) * 50);
+}
+
+function summarizeSafeAnswers(answers: Answers) {
   return questions
-    .filter((q) => answers[q.id] && answers[q.id].trim() !== "")
-    .map((q) => `${q.section} — ${q.question}: ${answers[q.id]}`)
+    .filter((question) => AI_SAFE_IDS.has(question.id))
+    .filter((question) => normalized(answers[question.id]) !== "")
+    .map((question) => `${question.section} — ${question.question}: ${answers[question.id]}`)
     .join("\n");
 }
 
-const MatchSchema = z.object({
+const OpenAIReviewSchema = z.object({
   matches: z.array(
     z.object({
       candidate_id: z.string(),
-      score: z.number(),
-      strengths: z.string(),
-      considerations: z.string(),
+      score: z.number().min(0).max(100),
+      strengths: z.string().max(500),
+      considerations: z.string().max(500),
     }),
   ),
 });
 
+type OpenAIReview = z.infer<typeof OpenAIReviewSchema>["matches"][number];
+
+const GenerateMatchesInput = z.object({ openaiConsent: z.literal(true) });
+
+async function getOpenAIReviews(
+  mine: Answers,
+  candidates: Array<{ candidate_id: string; answers: Answers }>,
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey || candidates.length === 0) return new Map<string, OpenAIReview>();
+
+  const provider = createOpenAICompatibilityProvider(apiKey);
+  const prompt = `You provide a bounded compatibility review for MeetHaq, a halal marriage platform.
+
+Analyse only the anonymised multiple-choice survey answers below. Do not infer identity, protected traits, health, wealth, or facts that are not explicitly present. The fixed rubric remains the primary score; your score is a limited secondary review.
+
+MEMBER:
+${summarizeSafeAnswers(mine)}
+
+CANDIDATES:
+${candidates
+  .map(
+    (candidate) => `--- ${candidate.candidate_id} ---\n${summarizeSafeAnswers(candidate.answers)}`,
+  )
+  .join("\n\n")}
+
+For every candidate, return a 0-100 compatibility score plus concise strengths and points to discuss. Focus on religious practice, marriage intentions, family expectations, lifestyle, and flexibility. Return each candidate_id exactly as supplied.`;
+
+  try {
+    const result = await generateText({
+      model: provider(getOpenAIModelName()),
+      output: Output.object({
+        name: "MeetHaqCompatibilityReview",
+        description: "An anonymised, bounded compatibility review for each candidate",
+        schema: OpenAIReviewSchema,
+      }),
+      prompt,
+      maxOutputTokens: 1_500,
+      timeout: 15_000,
+      maxRetries: 1,
+      providerOptions: { openai: { store: false } },
+    });
+
+    return new Map(result.output.matches.map((review) => [review.candidate_id, review]));
+  } catch (error) {
+    if (!NoObjectGeneratedError.isInstance(error)) {
+      console.error("OpenAI compatibility review failed; using fixed-rubric fallback", error);
+    }
+    return new Map<string, OpenAIReview>();
+  }
+}
+
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => GenerateMatchesInput.parse(input))
   .handler(async ({ context }) => {
     await assertActiveMembership(context);
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI Gateway not configured");
 
-    // Load own answers
     const { data: mine } = await context.supabase
       .from("survey_answers")
       .select("answers, completed")
@@ -43,129 +148,81 @@ export const generateMatches = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!mine?.completed) throw new Error("Complete your survey first");
 
-    // Own gender for opposite-gender matching
-    const myGender = String((mine.answers as Record<string, string>)["2"] ?? "").toLowerCase();
-
-    // Load candidate pool: everyone discoverable except me
+    const myAnswers = mine.answers as Answers;
+    const myGender = normalized(myAnswers["2"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: candidates, error: candErr } = await supabaseAdmin
+    const { data: candidates, error: candidateError } = await supabaseAdmin
       .from("survey_answers")
       .select("user_id, answers, completed")
       .eq("completed", true)
       .neq("user_id", context.userId);
-    if (candErr) throw new Error(candErr.message);
+    if (candidateError) throw new Error(candidateError.message);
 
     const { data: privacyRows } = await supabaseAdmin
       .from("privacy_settings")
-      .select("user_id, visibility, show_free_text");
-    const privacyByUser = new Map((privacyRows ?? []).map((p) => [p.user_id, p]));
-
-    const pool = (candidates ?? []).filter((c) => {
-      const p = privacyByUser.get(c.user_id);
-      if (!p || p.visibility !== "discoverable") return false;
-      const g = String((c.answers as Record<string, string>)["2"] ?? "").toLowerCase();
-      if (myGender && g && myGender === g) return false; // opposite gender only
-      return true;
+      .select("user_id, visibility");
+    const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
+    const pool = (candidates ?? []).filter((candidate) => {
+      if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
+      const candidateGender = normalized((candidate.answers as Answers)["2"]);
+      return !myGender || !candidateGender || myGender !== candidateGender;
     });
 
-    if (pool.length === 0) {
-      const { data: saved } = await context.supabase
-        .from("matches")
-        .insert({ user_id: context.userId, results: { matches: [] } })
-        .select()
-        .single();
-      return saved;
-    }
+    const scoredPool = pool.map((candidate, index) => ({
+      candidate_id: `candidate_${index + 1}`,
+      real_id: candidate.user_id,
+      answers: candidate.answers as Answers,
+      fixed_score: fixedCompatibilityScore(myAnswers, candidate.answers as Answers),
+    }));
+    const openAIReviews = await getOpenAIReviews(myAnswers, scoredPool);
+    const openAIConfigured = !!process.env.OPENAI_API_KEY?.trim();
 
-    // Anonymize candidate payloads
-    const anonPool = pool.map((c, idx) => {
-      const answers = c.answers as Record<string, string>;
-      const showFreeText = privacyByUser.get(c.user_id)?.show_free_text ?? false;
-      const filtered: Record<string, string> = {};
-      for (const q of questions) {
-        const val = answers[q.id];
-        if (!val) continue;
-        if (q.type === "text" && !showFreeText && !CORE_IDS.includes(q.id)) continue;
-        filtered[q.id] = val;
-      }
-      return {
-        candidate_id: `cand_${idx}`,
-        real_id: c.user_id,
-        summary: summarizeAnswers(filtered),
-      };
-    });
+    const enriched = scoredPool
+      .map((candidate) => {
+        const review = openAIReviews.get(candidate.candidate_id);
+        const finalScore = review
+          ? Math.round(candidate.fixed_score * 0.8 + review.score * 0.2)
+          : candidate.fixed_score;
 
-    const idMap = new Map(anonPool.map((c) => [c.candidate_id, c.real_id]));
-
-    const gateway = createLovableAiGatewayProvider(apiKey);
-    const model = gateway("google/gemini-2.5-flash");
-
-    const prompt = `You help match practicing Muslims for halal marriage on the Mithaq platform.
-
-USER PROFILE:
-${summarizeAnswers(mine.answers as Record<string, string>)}
-
-CANDIDATES:
-${anonPool.map((c) => `--- ${c.candidate_id} ---\n${c.summary}`).join("\n\n")}
-
-Score each candidate 0-100 for compatibility with the USER, weighting:
-1) Deen (madhab, level of practice, prayer, hijab/beard, halal diet)
-2) Marriage intentions & timeline
-3) Family plans (children, in-laws, gender roles)
-4) Values, lifestyle, and location feasibility
-
-For each candidate return:
-- candidate_id (exactly as given)
-- score (0-100)
-- strengths: 1-2 sentences on why this is a good match
-- considerations: 1-2 sentences on genuine differences or things to discuss
-
-Return the top ${Math.min(5, anonPool.length)} matches, highest score first.`;
-
-    let output;
-    try {
-      const res = await generateText({
-        model,
-        prompt,
-        output: Output.object({ schema: MatchSchema }),
-      });
-      output = res.output;
-    } catch (err) {
-      if (NoObjectGeneratedError.isInstance(err)) {
-        output = { matches: [] };
-      } else {
-        throw err;
-      }
-    }
-
-    // Enrich with public candidate info (id + score/reasoning). Real ids stay
-    // server-side; we surface only what the recipient needs to decide.
-    const enriched = output.matches
-      .map((m) => {
-        const realId = idMap.get(m.candidate_id);
-        if (!realId) return null;
-        const cand = pool.find((p) => p.user_id === realId);
-        const answers = (cand?.answers ?? {}) as Record<string, string>;
         return {
-          match_user_id: realId,
-          score: m.score,
-          strengths: m.strengths,
-          considerations: m.considerations,
-          age: answers["1"] ?? null,
-          location: answers["3"] ?? null,
-          practice_level: answers["11"] ?? null,
-          madhab: answers["10"] ?? null,
-          timeline: answers["19"] ?? null,
+          match_user_id: candidate.real_id,
+          score: finalScore,
+          fixed_score: candidate.fixed_score,
+          openai_score: review?.score ?? null,
+          scoring_method: review ? "fixed-rubric-v1-with-openai-review" : "fixed-rubric-v1",
+          strengths:
+            review?.strengths ?? "Strong alignment across the fixed MeetHaq compatibility rubric.",
+          considerations:
+            review?.considerations ??
+            (openAIConfigured
+              ? "OpenAI was temporarily unavailable, so this result uses the fixed rubric only."
+              : "This result uses the fixed rubric; OpenAI review is not configured."),
+          age: candidate.answers["1"] ?? null,
+          location: candidate.answers["3"] ?? null,
+          practice_level: candidate.answers["11"] ?? null,
+          madhab: candidate.answers["10"] ?? null,
+          timeline: candidate.answers["19"] ?? null,
         };
       })
-      .filter(Boolean);
+      .filter((candidate) => candidate.score >= 70)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 5);
 
-    const { data: saved, error: saveErr } = await context.supabase
+    const { data: saved, error: saveError } = await context.supabase
       .from("matches")
-      .insert({ user_id: context.userId, results: { matches: enriched } })
+      .insert({
+        user_id: context.userId,
+        results: {
+          matches: enriched,
+          scoring_method: openAIReviews.size
+            ? "fixed-rubric-v1-with-openai-review"
+            : "fixed-rubric-v1",
+          openai_model: openAIReviews.size ? getOpenAIModelName() : null,
+        },
+      })
       .select()
       .single();
-    if (saveErr) throw new Error(saveErr.message);
+    if (saveError) throw new Error(saveError.message);
     return saved;
   });
 
@@ -236,23 +293,22 @@ export const listInterests = createServerFn({ method: "GET" })
       .eq("to_user", uid)
       .order("created_at", { ascending: false });
 
-    // For accepted mutual matches, fetch contact_email of the other side
     const acceptedIds = new Set<string>();
-    for (const s of sent ?? []) if (s.status === "accepted") acceptedIds.add(s.to_user);
-    for (const r of received ?? []) if (r.status === "accepted") acceptedIds.add(r.from_user);
+    for (const row of sent ?? []) if (row.status === "accepted") acceptedIds.add(row.to_user);
+    for (const row of received ?? []) if (row.status === "accepted") acceptedIds.add(row.from_user);
 
     let contacts: Record<string, { display_name: string | null; contact_email: string | null }> =
       {};
     if (acceptedIds.size > 0) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: profs } = await supabaseAdmin
+      const { data: profiles } = await supabaseAdmin
         .from("profiles")
         .select("id, display_name, contact_email")
         .in("id", Array.from(acceptedIds));
       contacts = Object.fromEntries(
-        (profs ?? []).map((p) => [
-          p.id,
-          { display_name: p.display_name, contact_email: p.contact_email },
+        (profiles ?? []).map((profile) => [
+          profile.id,
+          { display_name: profile.display_name, contact_email: profile.contact_email },
         ]),
       );
     }

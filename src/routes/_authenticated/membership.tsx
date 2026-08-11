@@ -13,8 +13,8 @@ import { MEMBERSHIP_BENEFITS, PLANS, formatPrice, type PlanId } from "@/lib/memb
 export const Route = createFileRoute("/_authenticated/membership")({
   head: () => ({
     meta: [
-      { title: "Mithaq membership" },
-      { name: "description", content: "Unlock your matches with a Mithaq membership." },
+      { title: "MeetHaq membership" },
+      { name: "description", content: "Unlock your matches with a MeetHaq membership." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -107,10 +107,10 @@ function MembershipPage() {
           ← Back to dashboard
         </Link>
 
-        <h1 className="mt-6 text-3xl text-foreground">Mithaq membership</h1>
+        <h1 className="mt-6 text-3xl text-foreground">MeetHaq membership</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Your survey and privacy controls are always free. Membership unlocks your matches and the
-          imam-arranged meeting process, and helps us keep Mithaq serious, moderated and halal.
+          imam-arranged meeting process, and helps us keep MeetHaq serious, moderated and halal.
         </p>
 
         {state?.active && (

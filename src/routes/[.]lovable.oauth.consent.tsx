@@ -89,10 +89,10 @@ function Consent() {
           ميثاق
         </p>
         <h1 className="mt-3 text-2xl font-semibold text-foreground">
-          Connect {clientName} to your Mithaq account
+          Connect {clientName} to your MeetHaq account
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          This lets {clientName} use Mithaq as you.
+          This lets {clientName} use MeetHaq as you.
         </p>
       </div>
 
@@ -110,7 +110,7 @@ function Consent() {
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          This does not bypass Mithaq's privacy settings or database policies.
+          This does not bypass MeetHaq's privacy settings or database policies.
         </p>
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         <div className="mt-6 flex gap-3">

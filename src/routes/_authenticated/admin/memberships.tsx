@@ -6,7 +6,7 @@ import { listMemberships, setComplimentaryMembership } from "@/lib/membership.fu
 
 export const Route = createFileRoute("/_authenticated/admin/memberships")({
   head: () => ({
-    meta: [{ title: "Memberships — Mithaq admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Memberships — MeetHaq admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminMemberships,
 });

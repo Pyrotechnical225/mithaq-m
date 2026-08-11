@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { amIAdmin } from "@/lib/admin.functions";
+import { BrandName } from "@/components/BrandName";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -28,7 +29,10 @@ function AdminLayout() {
             <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
               Admin
             </span>
-            <span className="font-display text-lg text-foreground">Mithaq control</span>
+            <span className="flex items-baseline gap-1">
+              <BrandName className="text-lg" />
+              <span className="text-sm text-muted-foreground">control</span>
+            </span>
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link
@@ -73,6 +77,13 @@ function AdminLayout() {
               activeProps={{ className: "text-foreground font-medium" }}
             >
               Memberships
+            </Link>
+            <Link
+              to="/admin/compatibility"
+              className="text-muted-foreground hover:text-foreground"
+              activeProps={{ className: "text-foreground font-medium" }}
+            >
+              Compatibility
             </Link>
 
             <Link

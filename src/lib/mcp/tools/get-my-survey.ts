@@ -4,7 +4,7 @@ import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-us
 export default defineTool({
   name: "get_my_survey",
   title: "Get my survey answers",
-  description: "Return the signed-in user's Mithaq survey answers and completion state.",
+  description: "Return the signed-in user's MeetHaq survey answers and completion state.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandName } from "@/components/BrandName";
 
 const learnLinks = [
   { to: "/nikah", label: "Nikah" },
@@ -59,10 +60,13 @@ export function SiteHeader() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)]">
             <span className="font-arabic text-lg">م</span>
           </div>
-          <span className="font-display text-2xl font-semibold text-foreground">Mithaq</span>
+          <BrandName className="text-2xl" />
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-muted-foreground lg:flex" aria-label="Main navigation">
+        <nav
+          className="hidden items-center gap-7 text-sm font-medium text-muted-foreground lg:flex"
+          aria-label="Main navigation"
+        >
           {homeLinks.map((link) => (
             <a key={link.href} href={link.href} className="transition-colors hover:text-foreground">
               {link.label}
@@ -89,7 +93,9 @@ export function SiteHeader() {
                     key={link.to}
                     to={link.to}
                     className="block rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
-                    activeProps={{ className: "block rounded-xl px-3 py-2.5 text-sm bg-accent text-foreground" }}
+                    activeProps={{
+                      className: "block rounded-xl px-3 py-2.5 text-sm bg-accent text-foreground",
+                    }}
                     onClick={() => setLearnOpen(false)}
                   >
                     {link.label}
@@ -102,12 +108,18 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-3 lg:flex">
           {signedIn && !verified ? (
-            <Link to="/verify-email" className="rounded-full bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+            <Link
+              to="/verify-email"
+              className="rounded-full bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+            >
               Verify email
             </Link>
           ) : null}
           {isAdmin ? (
-            <Link to="/admin" className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+            <Link
+              to="/admin"
+              className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary"
+            >
               Admin
             </Link>
           ) : null}
@@ -139,7 +151,10 @@ export function SiteHeader() {
       </div>
 
       {mobileOpen ? (
-        <nav className="border-t border-border bg-card px-5 py-5 lg:hidden" aria-label="Mobile navigation">
+        <nav
+          className="border-t border-border bg-card px-5 py-5 lg:hidden"
+          aria-label="Mobile navigation"
+        >
           <div className="mx-auto grid max-w-7xl gap-1">
             {homeLinks.map((link) => (
               <a

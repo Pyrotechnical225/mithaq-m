@@ -18,5 +18,5 @@ export async function assertActiveMembership(context: {
     _role: "admin",
   });
   if (isAdmin) return;
-  throw new Error("A Mithaq membership is required to view and act on matches.");
+  throw new Error("A MeetHaq membership is required to view and act on matches.");
 }

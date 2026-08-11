@@ -6,7 +6,7 @@ import { deleteMyAccount, getMyPrivacy, updateMyPrivacy } from "@/lib/privacy.fu
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
-    meta: [{ title: "Privacy & settings — Mithaq" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Privacy & settings — MeetHaq" }, { name: "robots", content: "noindex" }],
   }),
   component: SettingsPage,
 });

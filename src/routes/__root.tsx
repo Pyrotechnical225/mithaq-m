@@ -77,26 +77,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mithaq — Building homes, the halal way" },
+      { title: "MeetHaq — Building homes, the halal way" },
       {
         name: "description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "MeetHaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
       },
-      { name: "author", content: "Mithaq" },
-      { property: "og:title", content: "Mithaq — Building homes, the halal way" },
+      { name: "author", content: "MeetHaq" },
+      { property: "og:title", content: "MeetHaq — Building homes, the halal way" },
       {
         property: "og:description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "MeetHaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Mithaq — Building homes, the halal way" },
+      { name: "twitter:title", content: "MeetHaq — Building homes, the halal way" },
       {
         name: "twitter:description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "MeetHaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
       },
       {
         property: "og:image",
