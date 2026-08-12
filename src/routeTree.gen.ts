@@ -9,74 +9,48 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WaliRouteImport } from './routes/wali'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as NikahRouteImport } from './routes/nikah'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as MahrRouteImport } from './routes/mahr'
-import { Route as HalalRelationshipsRouteImport } from './routes/halal-relationships'
-import { Route as CommunityRouteImport } from './routes/community'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as AuthenticatedSurveyRouteImport } from './routes/_authenticated/survey'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
-import { Route as AuthenticatedImamApplyRouteImport } from './routes/_authenticated/imam-apply'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CommunityRouteImport } from './routes/community'
+import { Route as HalalRelationshipsRouteImport } from './routes/halal-relationships'
+import { Route as MahrRouteImport } from './routes/mahr'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as NikahRouteImport } from './routes/nikah'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as WaliRouteImport } from './routes/wali'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as AuthenticatedImamRouteRouteImport } from './routes/_authenticated/imam/route'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
-import { Route as AuthenticatedImamIndexRouteImport } from './routes/_authenticated/imam/index'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
-import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
-import { Route as ApiPublicCompatibilityStatusRouteImport } from './routes/api/public/compatibility-status'
-import { Route as AuthenticatedAdminSeedRouteImport } from './routes/_authenticated/admin/seed'
-import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
-import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
-import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin/memberships'
-import { Route as AuthenticatedAdminImamsRouteImport } from './routes/_authenticated/admin/imams'
-import { Route as AuthenticatedAdminImamApplicationsRouteImport } from './routes/_authenticated/admin/imam-applications'
-import { Route as AuthenticatedAdminCompatibilityRouteImport } from './routes/_authenticated/admin/compatibility'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedImamRouteRouteImport } from './routes/_authenticated/imam/route'
+import { Route as AuthenticatedImamApplyRouteImport } from './routes/_authenticated/imam-apply'
+import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSurveyRouteImport } from './routes/_authenticated/survey'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminCompatibilityRouteImport } from './routes/_authenticated/admin/compatibility'
+import { Route as AuthenticatedAdminImamApplicationsRouteImport } from './routes/_authenticated/admin/imam-applications'
+import { Route as AuthenticatedAdminImamsRouteImport } from './routes/_authenticated/admin/imams'
+import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin/memberships'
+import { Route as AuthenticatedAdminNewProfileRouteImport } from './routes/_authenticated/admin/new-profile'
+import { Route as AuthenticatedAdminProfilesRouteImport } from './routes/_authenticated/admin/profiles'
+import { Route as AuthenticatedAdminSeedRouteImport } from './routes/_authenticated/admin/seed'
+import { Route as AuthenticatedImamIndexRouteImport } from './routes/_authenticated/imam/index'
+import { Route as ApiPublicCompatibilityStatusRouteImport } from './routes/api/public/compatibility-status'
+import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
 
-const WaliRoute = WaliRouteImport.update({
-  id: '/wali',
-  path: '/wali',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NikahRoute = NikahRouteImport.update({
-  id: '/nikah',
-  path: '/nikah',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MahrRoute = MahrRouteImport.update({
-  id: '/mahr',
-  path: '/mahr',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HalalRelationshipsRoute = HalalRelationshipsRouteImport.update({
-  id: '/halal-relationships',
-  path: '/halal-relationships',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CommunityRoute = CommunityRouteImport.update({
-  id: '/community',
-  path: '/community',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -84,38 +58,56 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HalalRelationshipsRoute = HalalRelationshipsRouteImport.update({
+  id: '/halal-relationships',
+  path: '/halal-relationships',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => AuthRoute,
+const MahrRoute = MahrRouteImport.update({
+  id: '/mahr',
+  path: '/mahr',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSurveyRoute = AuthenticatedSurveyRouteImport.update({
-  id: '/survey',
-  path: '/survey',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const NikahRoute = NikahRouteImport.update({
+  id: '/nikah',
+  path: '/nikah',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedMembershipRoute = AuthenticatedMembershipRouteImport.update({
-  id: '/membership',
-  path: '/membership',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedImamApplyRoute = AuthenticatedImamApplyRouteImport.update({
-  id: '/imam-apply',
-  path: '/imam-apply',
+const WaliRoute = WaliRouteImport.update({
+  id: '/wali',
+  path: '/wali',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -123,58 +115,73 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedImamRouteRoute = AuthenticatedImamRouteRouteImport.update({
   id: '/imam',
   path: '/imam',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedImamApplyRoute = AuthenticatedImamApplyRouteImport.update({
+  id: '/imam-apply',
+  path: '/imam-apply',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedImamIndexRoute = AuthenticatedImamIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedImamRouteRoute,
+const AuthenticatedMembershipRoute = AuthenticatedMembershipRouteImport.update({
+  id: '/membership',
+  path: '/membership',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSurveyRoute = AuthenticatedSurveyRouteImport.update({
+  id: '/survey',
+  path: '/survey',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
-const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
-  id: '/api/public/stripe-webhook',
-  path: '/api/public/stripe-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCompatibilityStatusRoute =
-  ApiPublicCompatibilityStatusRouteImport.update({
-    id: '/api/public/compatibility-status',
-    path: '/api/public/compatibility-status',
-    getParentRoute: () => rootRouteImport,
+const AuthenticatedAdminCompatibilityRoute =
+  AuthenticatedAdminCompatibilityRouteImport.update({
+    id: '/compatibility',
+    path: '/compatibility',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
-const AuthenticatedAdminSeedRoute = AuthenticatedAdminSeedRouteImport.update({
-  id: '/seed',
-  path: '/seed',
+const AuthenticatedAdminImamApplicationsRoute =
+  AuthenticatedAdminImamApplicationsRouteImport.update({
+    id: '/imam-applications',
+    path: '/imam-applications',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminImamsRoute = AuthenticatedAdminImamsRouteImport.update({
+  id: '/imams',
+  path: '/imams',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
-const AuthenticatedAdminProfilesRoute =
-  AuthenticatedAdminProfilesRouteImport.update({
-    id: '/profiles',
-    path: '/profiles',
+const AuthenticatedAdminMembershipsRoute =
+  AuthenticatedAdminMembershipsRouteImport.update({
+    id: '/memberships',
+    path: '/memberships',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminNewProfileRoute =
@@ -183,38 +190,31 @@ const AuthenticatedAdminNewProfileRoute =
     path: '/new-profile',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
-const AuthenticatedAdminMembershipsRoute =
-  AuthenticatedAdminMembershipsRouteImport.update({
-    id: '/memberships',
-    path: '/memberships',
+const AuthenticatedAdminProfilesRoute =
+  AuthenticatedAdminProfilesRouteImport.update({
+    id: '/profiles',
+    path: '/profiles',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
-const AuthenticatedAdminImamsRoute = AuthenticatedAdminImamsRouteImport.update({
-  id: '/imams',
-  path: '/imams',
+const AuthenticatedAdminSeedRoute = AuthenticatedAdminSeedRouteImport.update({
+  id: '/seed',
+  path: '/seed',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
-const AuthenticatedAdminImamApplicationsRoute =
-  AuthenticatedAdminImamApplicationsRouteImport.update({
-    id: '/imam-applications',
-    path: '/imam-applications',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminCompatibilityRoute =
-  AuthenticatedAdminCompatibilityRouteImport.update({
-    id: '/compatibility',
-    path: '/compatibility',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
+const AuthenticatedImamIndexRoute = AuthenticatedImamIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedImamRouteRoute,
+} as any)
+const ApiPublicCompatibilityStatusRoute =
+  ApiPublicCompatibilityStatusRouteImport.update({
+    id: '/api/public/compatibility-status',
+    path: '/api/public/compatibility-status',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
+  id: '/api/public/stripe-webhook',
+  path: '/api/public/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminProfilesUserIdRoute =
@@ -323,7 +323,97 @@ export interface FileRoutesById {
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/_authenticated/admin/seed': typeof AuthenticatedAdminSeedRoute
-  '/api/publicÔè-¢Gß≤⁄Óù∆≠y‹-known/oauth-protected-resource'
+  '/api/public/compatibility-status': typeof ApiPublicCompatibilityStatusRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/imam/': typeof AuthenticatedImamIndexRoute
+  '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/admin'
+    | '/imam'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/dashboard'
+    | '/imam-apply'
+    | '/membership'
+    | '/settings'
+    | '/survey'
+    | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/admin/compatibility'
+    | '/admin/imam-applications'
+    | '/admin/imams'
+    | '/admin/memberships'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin/seed'
+    | '/api/public/compatibility-status'
+    | '/api/public/stripe-webhook'
+    | '/admin/'
+    | '/imam/'
+    | '/admin/profiles/$userId'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/dashboard'
+    | '/imam-apply'
+    | '/membership'
+    | '/settings'
+    | '/survey'
+    | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/admin/compatibility'
+    | '/admin/imam-applications'
+    | '/admin/imams'
+    | '/admin/memberships'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin/seed'
+    | '/api/public/compatibility-status'
+    | '/api/public/stripe-webhook'
+    | '/admin'
+    | '/imam'
+    | '/admin/profiles/$userId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/_authenticated/admin'
+    | '/_authenticated/imam'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/dashboard'
     | '/_authenticated/imam-apply'
     | '/_authenticated/membership'
@@ -367,60 +457,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wali': {
-      id: '/wali'
-      path: '/wali'
-      fullPath: '/wali'
-      preLoaderRoute: typeof WaliRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nikah': {
-      id: '/nikah'
-      path: '/nikah'
-      fullPath: '/nikah'
-      preLoaderRoute: typeof NikahRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mahr': {
-      id: '/mahr'
-      path: '/mahr'
-      fullPath: '/mahr'
-      preLoaderRoute: typeof MahrRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/halal-relationships': {
-      id: '/halal-relationships'
-      path: '/halal-relationships'
-      fullPath: '/halal-relationships'
-      preLoaderRoute: typeof HalalRelationshipsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/community': {
-      id: '/community'
-      path: '/community'
-      fullPath: '/community'
-      preLoaderRoute: typeof CommunityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -430,60 +471,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof AuthRoute
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/survey': {
-      id: '/_authenticated/survey'
-      path: '/survey'
-      fullPath: '/survey'
-      preLoaderRoute: typeof AuthenticatedSurveyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/halal-relationships': {
+      id: '/halal-relationships'
+      path: '/halal-relationships'
+      fullPath: '/halal-relationships'
+      preLoaderRoute: typeof HalalRelationshipsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/mahr': {
+      id: '/mahr'
+      path: '/mahr'
+      fullPath: '/mahr'
+      preLoaderRoute: typeof MahrRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/membership': {
-      id: '/_authenticated/membership'
-      path: '/membership'
-      fullPath: '/membership'
-      preLoaderRoute: typeof AuthenticatedMembershipRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/imam-apply': {
-      id: '/_authenticated/imam-apply'
-      path: '/imam-apply'
-      fullPath: '/imam-apply'
-      preLoaderRoute: typeof AuthenticatedImamApplyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/nikah': {
+      id: '/nikah'
+      path: '/nikah'
+      fullPath: '/nikah'
+      preLoaderRoute: typeof NikahRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/wali': {
+      id: '/wali'
+      path: '/wali'
+      fullPath: '/wali'
+      preLoaderRoute: typeof WaliRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/list-tools': {
@@ -493,12 +534,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/imam': {
-      id: '/_authenticated/imam'
-      path: '/imam'
-      fullPath: '/imam'
-      preLoaderRoute: typeof AuthenticatedImamRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -507,74 +548,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/imam/': {
-      id: '/_authenticated/imam/'
-      path: '/'
-      fullPath: '/imam/'
-      preLoaderRoute: typeof AuthenticatedImamIndexRouteImport
-      parentRoute: typeof AuthenticatedImamRouteRoute
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/imam': {
+      id: '/_authenticated/imam'
+      path: '/imam'
+      fullPath: '/imam'
+      preLoaderRoute: typeof AuthenticatedImamRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/imam-apply': {
+      id: '/_authenticated/imam-apply'
+      path: '/imam-apply'
+      fullPath: '/imam-apply'
+      preLoaderRoute: typeof AuthenticatedImamApplyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/membership': {
+      id: '/_authenticated/membership'
+      path: '/membership'
+      fullPath: '/membership'
+      preLoaderRoute: typeof AuthenticatedMembershipRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/survey': {
+      id: '/_authenticated/survey'
+      path: '/survey'
+      fullPath: '/survey'
+      preLoaderRoute: typeof AuthenticatedSurveyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/api/public/stripe-webhook': {
-      id: '/api/public/stripe-webhook'
-      path: '/api/public/stripe-webhook'
-      fullPath: '/api/public/stripe-webhook'
-      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/compatibility-status': {
-      id: '/api/public/compatibility-status'
-      path: '/api/public/compatibility-status'
-      fullPath: '/api/public/compatibility-status'
-      preLoaderRoute: typeof ApiPublicCompatibilityStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin/seed': {
-      id: '/_authenticated/admin/seed'
-      path: '/seed'
-      fullPath: '/admin/seed'
-      preLoaderRoute: typeof AuthenticatedAdminSeedRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/profiles': {
-      id: '/_authenticated/admin/profiles'
-      path: '/profiles'
-      fullPath: '/admin/profiles'
-      preLoaderRoute: typeof AuthenticatedAdminProfilesRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/new-profile': {
-      id: '/_authenticated/admin/new-profile'
-      path: '/new-profile'
-      fullPath: '/admin/new-profile'
-      preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/memberships': {
-      id: '/_authenticated/admin/memberships'
-      path: '/memberships'
-      fullPath: '/admin/memberships'
-      preLoaderRoute: typeof AuthenticatedAdminMembershipsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/imams': {
-      id: '/_authenticated/admin/imams'
-      path: '/imams'
-      fullPath: '/admin/imams'
-      preLoaderRoute: typeof AuthenticatedAdminImamsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/imam-applications': {
-      id: '/_authenticated/admin/imam-applications'
-      path: '/imam-applications'
-      fullPath: '/admin/imam-applications'
-      preLoaderRoute: typeof AuthenticatedAdminImamApplicationsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/admin/compatibility': {
@@ -584,18 +625,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCompatibilityRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/_authenticated/admin/imam-applications': {
+      id: '/_authenticated/admin/imam-applications'
+      path: '/imam-applications'
+      fullPath: '/admin/imam-applications'
+      preLoaderRoute: typeof AuthenticatedAdminImamApplicationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/imams': {
+      id: '/_authenticated/admin/imams'
+      path: '/imams'
+      fullPath: '/admin/imams'
+      preLoaderRoute: typeof AuthenticatedAdminImamsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/memberships': {
+      id: '/_authenticated/admin/memberships'
+      path: '/memberships'
+      fullPath: '/admin/memberships'
+      preLoaderRoute: typeof AuthenticatedAdminMembershipsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/new-profile': {
+      id: '/_authenticated/admin/new-profile'
+      path: '/new-profile'
+      fullPath: '/admin/new-profile'
+      preLoaderRoute: typeof AuthenticatedAdminNewProfileRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/profiles': {
+      id: '/_authenticated/admin/profiles'
+      path: '/profiles'
+      fullPath: '/admin/profiles'
+      preLoaderRoute: typeof AuthenticatedAdminProfilesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/seed': {
+      id: '/_authenticated/admin/seed'
+      path: '/seed'
+      fullPath: '/admin/seed'
+      preLoaderRoute: typeof AuthenticatedAdminSeedRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/imam/': {
+      id: '/_authenticated/imam/'
+      path: '/'
+      fullPath: '/imam/'
+      preLoaderRoute: typeof AuthenticatedImamIndexRouteImport
+      parentRoute: typeof AuthenticatedImamRouteRoute
+    }
+    '/api/public/compatibility-status': {
+      id: '/api/public/compatibility-status'
+      path: '/api/public/compatibility-status'
+      fullPath: '/api/public/compatibility-status'
+      preLoaderRoute: typeof ApiPublicCompatibilityStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/api/public/stripe-webhook': {
+      id: '/api/public/stripe-webhook'
+      path: '/api/public/stripe-webhook'
+      fullPath: '/api/public/stripe-webhook'
+      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/profiles/$userId': {

@@ -1,6 +1,11 @@
 // Server-only Stripe helpers. Uses the REST API over fetch so it works in the
 // edge/Worker runtime (no Node-only SDK).
 import { PLANS, type PlanId } from "./membership-plans";
+import {
+  isMeetingPackageId,
+  MEETING_PACKAGES,
+  type MeetingPackageId,
+} from "./meeting-packages";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
@@ -204,6 +209,41 @@ export async function createCheckoutSession(opts: {
   return { url: session.url as string };
 }
 
+export async function createMeetingPackageCheckout(opts: {
+  pairingId: string;
+  packageId: MeetingPackageId;
+  userId: string;
+  email: string | null;
+  origin: string;
+}) {
+  const selected = MEETING_PACKAGES[opts.packageId];
+  const body = form({
+    mode: "payment",
+    success_url: `${opts.origin}/dashboard?meeting_payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${opts.origin}/dashboard?meeting_payment=cancelled`,
+    client_reference_id: opts.userId,
+    customer_email: opts.email ?? undefined,
+    "line_items[0][quantity]": 1,
+    "line_items[0][price_data][currency]": "gbp",
+    "line_items[0][price_data][unit_amount]": selected.amountPence,
+    "line_items[0][price_data][product_data][name]": `MeetHaq ${selected.label} package`,
+    "line_items[0][price_data][product_data][description]": selected.description,
+    "metadata[kind]": "meeting_package",
+    "metadata[user_id]": opts.userId,
+    "metadata[pairing_id]": opts.pairingId,
+    "metadata[package_id]": selected.id,
+    "metadata[meeting_count]": selected.meetings,
+    "metadata[amount_pence]": selected.amountPence,
+  });
+  const session = await stripeCall(
+    "/checkout/sessions",
+    body,
+    "POST",
+    `meeting-package:${opts.pairingId}:${opts.userId}:${opts.packageId}`,
+  );
+  return { url: session.url as string };
+}
+
 export async function createBillingPortalSession(customerId: string, origin: string) {
   const session = await stripeCall(
     "/billing_portal/sessions",
@@ -354,6 +394,80 @@ export async function syncSubscriptionFromSession(sessionId: string, expectedUse
   return ok
     ? { ok: true as const, status: "active" }
     : { ok: false as const, reason: "db_error" as const };
+}
+
+export async function syncMeetingPackagePaymentFromSession(
+  sessionId: string,
+  expectedUserId?: string,
+) {
+  const session = (await retrieveCheckoutSession(sessionId)) as Record<string, unknown>;
+  const metadata = (session.metadata as Record<string, string> | undefined) ?? {};
+  if (
+    metadata.kind !== "meeting_package" ||
+    !metadata.pairing_id ||
+    !metadata.user_id ||
+    !isMeetingPackageId(metadata.package_id ?? "")
+  ) {
+    return { ok: false as const, reason: "invalid_session" as const };
+  }
+  if (expectedUserId && metadata.user_id !== expectedUserId) {
+    return { ok: false as const, reason: "wrong_user" as const };
+  }
+  if (session.payment_status !== "paid") {
+    return { ok: false as const, reason: "not_paid" as const };
+  }
+
+  const packageId = metadata.package_id as MeetingPackageId;
+  const selected = MEETING_PACKAGES[packageId];
+  if (
+    Number(session.amount_total) !== selected.amountPence ||
+    String(session.currency).toLowerCase() !== "gbp"
+  ) {
+    return { ok: false as const, reason: "invalid_amount" as const };
+  }
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: pairing } = await supabaseAdmin
+    .from("pairings")
+    .select("id,user_a,user_b,imam_id,payment_a_status,payment_b_status")
+    .eq("id", metadata.pairing_id)
+    .maybeSingle();
+  if (!pairing || ![pairing.user_a, pairing.user_b].includes(metadata.user_id)) {
+    return { ok: false as const, reason: "pairing_not_found" as const };
+  }
+
+  const side = pairing.user_a === metadata.user_id ? "a" : "b";
+  const otherPaid =
+    side === "a" ? pairing.payment_b_status === "paid" : pairing.payment_a_status === "paid";
+  const { error: purchaseError } = await supabaseAdmin.from("meeting_package_purchases").upsert(
+    {
+      pairing_id: pairing.id,
+      user_id: metadata.user_id,
+      package_id: selected.id,
+      meeting_count: selected.meetings,
+      amount_pence: selected.amountPence,
+      currency: "gbp",
+      stripe_session_id: sessionId,
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+    },
+    { onConflict: "pairing_id,user_id" },
+  );
+  if (purchaseError) throw new Error(`Could not record meeting package: ${purchaseError.message}`);
+
+  const paymentPatch =
+    side === "a"
+      ? { payment_a_status: "paid", payment_session_a: sessionId }
+      : { payment_b_status: "paid", payment_session_b: sessionId };
+  const { error: pairingError } = await supabaseAdmin
+    .from("pairings")
+    .update({ ...paymentPatch, status: otherPaid ? "ready_to_schedule" : "payment_pending" })
+    .eq("id", pairing.id);
+  if (pairingError) throw new Error(`Could not update payment status: ${pairingError.message}`);
+
+  return { ok: true as const, both_paid: otherPaid };
 }
 
 /** invoice.payment_succeeded / invoice.payment_failed handling. */

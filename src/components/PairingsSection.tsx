@@ -1,12 +1,15 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+  confirmMeetingPackagePayment,
   listMyPairings,
   listPairingMessages,
   postPairingMessage,
   respondToMeetup,
+  startMeetingPackageCheckout,
   syncMyPairings,
 } from "@/lib/pairings.functions";
+import { formatPence, MEETING_PACKAGES } from "@/lib/meeting-packages";
 
 type Pairing = Awaited<ReturnType<typeof listMyPairings>>[number];
 type Message = Awaited<ReturnType<typeof listPairingMessages>>[number];
@@ -14,6 +17,8 @@ type Message = Awaited<ReturnType<typeof listPairingMessages>>[number];
 export function PairingsSection() {
   const sync = useServerFn(syncMyPairings);
   const list = useServerFn(listMyPairings);
+  const checkout = useServerFn(startMeetingPackageCheckout);
+  const confirmPayment = useServerFn(confirmMeetingPackagePayment);
   const respond = useServerFn(respondToMeetup);
   const fetchMessages = useServerFn(listPairingMessages);
   const send = useServerFn(postPairingMessage);
@@ -27,8 +32,16 @@ export function PairingsSection() {
   const load = () => list().then(setPairings).catch(() => setPairings([]));
 
   useEffect(() => {
-    sync()
-      .catch(() => undefined)
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const paymentReturn = params.get("meeting_payment");
+    const paymentSync =
+      paymentReturn === "success" && sessionId
+        ? confirmPayment({ data: { session_id: sessionId } })
+        : Promise.resolve();
+    paymentSync
+      .catch(() => setError("We could not confirm that payment yet. Please refresh shortly."))
+      .then(() => sync().catch(() => undefined))
       .then(load);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,6 +164,77 @@ export function PairingsSection() {
                     );
                   })}
                 </div>
+              )}
+
+              {["approved", "awaiting_payment", "payment_pending"].includes(p.status) &&
+                (p.i_am === "a" ? p.payment_a_status : p.payment_b_status) !== "paid" && (
+                  <div className="mt-4 rounded-2xl border border-gold/40 bg-gold/10 p-4">
+                    <p className="font-medium text-foreground">Choose your meeting package</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Matching and anonymous profile review are free. Both members choose and pay
+                      separately after the imam approves the pairing.
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      {Object.values(MEETING_PACKAGES).map((meetingPackage) => (
+                        <div
+                          key={meetingPackage.id}
+                          className="flex flex-col rounded-2xl border border-border bg-card p-4"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-foreground">{meetingPackage.label}</p>
+                              <p className="mt-1 text-2xl font-semibold text-primary">
+                                {formatPence(meetingPackage.amountPence)}
+                              </p>
+                            </div>
+                            {meetingPackage.id === "three" && (
+                              <span className="rounded-full bg-gold/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide">
+                                Popular
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 flex-1 text-xs leading-5 text-muted-foreground">
+                            {meetingPackage.description}
+                          </p>
+                          <button
+                            onClick={async () => {
+                              setError(null);
+                              try {
+                                const result = await checkout({
+                                  data: {
+                                    pairing_id: p.id,
+                                    package_id: meetingPackage.id,
+                                    origin: window.location.origin,
+                                  },
+                                });
+                                window.location.href = result.url;
+                              } catch (error) {
+                                setError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not start secure checkout",
+                                );
+                              }
+                            }}
+                            className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                          >
+                            Choose {meetingPackage.label}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {p.meeting_package && (
+                <p className="mt-4 rounded-xl bg-primary/5 p-3 text-sm text-primary">
+                  ✓ Payment received: {p.meeting_package.meeting_count} meeting
+                  {p.meeting_package.meeting_count === 1 ? "" : "s"} for{" "}
+                  {formatPence(p.meeting_package.amount_pence)}
+                  {p.shared_meeting_allowance
+                    ? ` · shared allowance: ${p.shared_meeting_allowance}`
+                    : " · waiting for the other member to pay"}
+                </p>
               )}
 
               <button

@@ -9,6 +9,7 @@ import {
   proposeMeetup,
 } from "@/lib/imam.functions";
 import { listPairingMessages, postPairingMessage } from "@/lib/pairings.functions";
+import { formatPence } from "@/lib/meeting-packages";
 
 export const Route = createFileRoute("/_authenticated/imam/")({
   head: () => ({
@@ -199,9 +200,29 @@ function ImamDashboard() {
               </div>
             )}
 
-            {p.status === "approved" && (
+            {(p.meeting_package_a || p.meeting_package_b) && (
+              <div className="mt-4 grid gap-2 rounded-xl bg-primary/5 p-3 text-xs text-muted-foreground sm:grid-cols-3">
+                <p>
+                  Member A: {p.meeting_package_a
+                    ? `${p.meeting_package_a.meeting_count} meeting${p.meeting_package_a.meeting_count === 1 ? "" : "s"} · ${formatPence(p.meeting_package_a.amount_pence)}`
+                    : "payment pending"}
+                </p>
+                <p>
+                  Member B: {p.meeting_package_b
+                    ? `${p.meeting_package_b.meeting_count} meeting${p.meeting_package_b.meeting_count === 1 ? "" : "s"} · ${formatPence(p.meeting_package_b.amount_pence)}`
+                    : "payment pending"}
+                </p>
+                <p className="font-medium text-primary">
+                  Shared allowance: {p.shared_meeting_allowance} · remaining: {p.meetings_remaining}
+                </p>
+              </div>
+            )}
+
+            {["approved", "ready_to_schedule"].includes(p.status) && p.meetings_remaining > 0 && (
               <div className="mt-4 rounded-xl border border-border/70 p-3">
-                <p className="text-sm font-medium text-foreground">Arrange a meeting</p>
+                <p className="text-sm font-medium text-foreground">
+                  Arrange a meeting · {p.meetings_remaining} remaining
+                </p>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <input
                     type="datetime-local"

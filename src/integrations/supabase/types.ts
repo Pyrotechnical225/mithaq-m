@@ -321,6 +321,10 @@ export type Database = {
           decision_note: string | null
           id: string
           imam_id: string | null
+          payment_a_status: string
+          payment_b_status: string
+          payment_session_a: string | null
+          payment_session_b: string | null
           status: string
           updated_at: string
           user_a: string
@@ -332,6 +336,10 @@ export type Database = {
           decision_note?: string | null
           id?: string
           imam_id?: string | null
+          payment_a_status?: string
+          payment_b_status?: string
+          payment_session_a?: string | null
+          payment_session_b?: string | null
           status?: string
           updated_at?: string
           user_a: string
@@ -343,6 +351,10 @@ export type Database = {
           decision_note?: string | null
           id?: string
           imam_id?: string | null
+          payment_a_status?: string
+          payment_b_status?: string
+          payment_session_a?: string | null
+          payment_session_b?: string | null
           status?: string
           updated_at?: string
           user_a?: string
@@ -354,6 +366,59 @@ export type Database = {
             columns: ["imam_id"]
             isOneToOne: false
             referencedRelation: "imams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_package_purchases: {
+        Row: {
+          amount_pence: number
+          created_at: string
+          currency: string
+          id: string
+          meeting_count: number
+          package_id: string
+          paid_at: string
+          pairing_id: string
+          payment_status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_pence: number
+          created_at?: string
+          currency?: string
+          id?: string
+          meeting_count: number
+          package_id: string
+          paid_at?: string
+          pairing_id: string
+          payment_status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Update: {
+          amount_pence?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          meeting_count?: number
+          package_id?: string
+          paid_at?: string
+          pairing_id?: string
+          payment_status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_package_purchases_pairing_id_fkey"
+            columns: ["pairing_id"]
+            isOneToOne: false
+            referencedRelation: "pairings"
             referencedColumns: ["id"]
           },
         ]

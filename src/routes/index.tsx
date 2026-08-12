@@ -49,8 +49,8 @@ const steps = [
   },
   {
     number: "03",
-    title: "Move forward respectfully",
-    body: "Connect with clear intentions and bring your wali into the process from the beginning.",
+    title: "Meet with imam support",
+    body: "Matching stays free. After mutual acceptance and imam approval, each person chooses 1 meeting for £50, 3 for £120 or 5 for £175, with a wali or parents involved.",
   },
 ] as const;
 

@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { assertActiveMembership } from "./membership-guard";
 
 // -----------------------------------------------------------------------------
 // Member side: turn accepted mutual interests into pairings and assign the
@@ -10,7 +9,6 @@ import { assertActiveMembership } from "./membership-guard";
 export const syncMyPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: accepted } = await context.supabase
       .from("interests")
@@ -82,11 +80,10 @@ export const syncMyPairings = createServerFn({ method: "POST" })
 export const listMyPairings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: pairings } = await context.supabase
       .from("pairings")
-      .select("id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at")
+      .select("id, user_a, user_b, imam_id, status, decision_note, decided_at, created_at, payment_a_status, payment_b_status")
       .order("created_at", { ascending: false });
     if (!pairings || pairings.length === 0) return [];
 
@@ -102,7 +99,7 @@ export const listMyPairings = createServerFn({ method: "GET" })
       new Set(pairings.map((p) => p.imam_id).filter((x): x is string => !!x)),
     );
     const otherIds = pairings.map((p) => (p.user_a === uid ? p.user_b : p.user_a));
-    const [{ data: imams }, { data: profs }] = await Promise.all([
+    const [{ data: imams }, { data: profs }, { data: purchases }] = await Promise.all([
       imamIds.length
         ? supabaseAdmin
             .from("imams")
@@ -110,12 +107,20 @@ export const listMyPairings = createServerFn({ method: "GET" })
             .in("id", imamIds)
         : Promise.resolve({ data: [] as never[] }),
       supabaseAdmin.from("profiles").select("id, display_name, uk_city").in("id", otherIds),
+      supabaseAdmin
+        .from("meeting_package_purchases")
+        .select("pairing_id,user_id,package_id,meeting_count,amount_pence,payment_status")
+        .in("pairing_id", pairings.map((pairing) => pairing.id))
+        .eq("payment_status", "paid"),
     ]);
     const imamMap = new Map((imams ?? []).map((i) => [i.id, i]));
     const profMap = new Map((profs ?? []).map((p) => [p.id, p]));
 
     return pairings.map((p) => {
       const otherId = p.user_a === uid ? p.user_b : p.user_a;
+      const pairingPurchases = (purchases ?? []).filter((row) => row.pairing_id === p.id);
+      const mine = pairingPurchases.find((row) => row.user_id === uid) ?? null;
+      const theirs = pairingPurchases.find((row) => row.user_id === otherId) ?? null;
       return {
         ...p,
         i_am: p.user_a === uid ? ("a" as const) : ("b" as const),
@@ -125,9 +130,73 @@ export const listMyPairings = createServerFn({ method: "GET" })
           uk_city: profMap.get(otherId)?.uk_city ?? null,
         },
         imam: p.imam_id ? (imamMap.get(p.imam_id) ?? null) : null,
+        meeting_package: mine,
+        shared_meeting_allowance:
+          mine && theirs ? Math.min(mine.meeting_count, theirs.meeting_count) : null,
         meetups: (meetups ?? []).filter((m) => m.pairing_id === p.id),
       };
     });
+  });
+
+const MeetingCheckoutInput = z.object({
+  pairing_id: z.string().uuid(),
+  package_id: z.enum(["single", "three", "five"]),
+  origin: z.string().url(),
+});
+
+export const startMeetingPackageCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => MeetingCheckoutInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("user_a,user_b,status,payment_a_status,payment_b_status")
+      .eq("id", data.pairing_id)
+      .maybeSingle();
+    if (!pairing || ![pairing.user_a, pairing.user_b].includes(context.userId)) {
+      throw new Error("Meeting package is not available for this pairing");
+    }
+    const bothAccepted = ["approved", "awaiting_payment", "payment_pending"].includes(
+      pairing.status,
+    );
+    if (!bothAccepted) {
+      throw new Error("The imam must approve the pairing before payment");
+    }
+    const side = pairing.user_a === context.userId ? "a" : "b";
+    if ((side === "a" ? pairing.payment_a_status : pairing.payment_b_status) === "paid") {
+      throw new Error("You have already paid for this pairing");
+    }
+    if (pairing.status === "approved") {
+      await supabaseAdmin
+        .from("pairings")
+        .update({
+          status: "awaiting_payment",
+          payment_a_status:
+            pairing.payment_a_status === "not_due" ? "due" : pairing.payment_a_status,
+          payment_b_status:
+            pairing.payment_b_status === "not_due" ? "due" : pairing.payment_b_status,
+        })
+        .eq("id", data.pairing_id);
+    }
+    const { createMeetingPackageCheckout } = await import("./membership.server");
+    return createMeetingPackageCheckout({
+      pairingId: data.pairing_id,
+      packageId: data.package_id,
+      userId: context.userId,
+      email: (context.claims as { email?: string } | undefined)?.email ?? null,
+      origin: data.origin,
+    });
+  });
+
+const ConfirmMeetingPaymentInput = z.object({ session_id: z.string().min(10).max(200) });
+
+export const confirmMeetingPackagePayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ConfirmMeetingPaymentInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { syncMeetingPackagePaymentFromSession } = await import("./membership.server");
+    return syncMeetingPackagePaymentFromSession(data.session_id, context.userId);
   });
 
 const RespondMeetupInput = z.object({
@@ -139,7 +208,6 @@ export const respondToMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondMeetupInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { data: meetup, error } = await context.supabase
       .from("meetups")
       .select("id, pairing_id, response_a, response_b, status")

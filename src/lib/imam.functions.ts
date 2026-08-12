@@ -88,7 +88,7 @@ export const listImamPairings = createServerFn({ method: "GET" })
 
     const { data: pairings, error } = await context.supabase
       .from("pairings")
-      .select("id, user_a, user_b, status, decision_note, decided_at, created_at")
+      .select("id, user_a, user_b, status, decision_note, decided_at, created_at, payment_a_status, payment_b_status")
       .eq("imam_id", imamId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -103,13 +103,19 @@ export const listImamPairings = createServerFn({ method: "GET" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ids = Array.from(new Set(pairings.flatMap((p) => [p.user_a, p.user_b])));
-    const [{ data: profs }, { data: surveys }, { data: imam }] = await Promise.all([
+    const [{ data: profs }, { data: surveys }, { data: imam }, { data: purchases }] =
+      await Promise.all([
       supabaseAdmin
         .from("profiles")
         .select("id, display_name, contact_email, uk_city, uk_postcode, location_lat, location_lng")
         .in("id", ids),
       supabaseAdmin.from("survey_answers").select("user_id, answers").in("user_id", ids),
       supabaseAdmin.from("imams").select("lat, lng").eq("id", imamId).maybeSingle(),
+      supabaseAdmin
+        .from("meeting_package_purchases")
+        .select("pairing_id,user_id,package_id,meeting_count,amount_pence,payment_status")
+        .in("pairing_id", pairings.map((pairing) => pairing.id))
+        .eq("payment_status", "paid"),
     ]);
     const { haversineKm } = await import("./geo");
     const profMap = new Map((profs ?? []).map((p) => [p.id, p]));
@@ -138,12 +144,25 @@ export const listImamPairings = createServerFn({ method: "GET" })
       };
     };
 
-    return pairings.map((p) => ({
-      ...p,
-      member_a: summarise(p.user_a),
-      member_b: summarise(p.user_b),
-      meetups: (meetups ?? []).filter((m) => m.pairing_id === p.id),
-    }));
+    return pairings.map((p) => {
+      const pairingMeetups = (meetups ?? []).filter((m) => m.pairing_id === p.id);
+      const activeMeetings = pairingMeetups.filter((m) => m.status !== "cancelled").length;
+      const pairingPurchases = (purchases ?? []).filter((row) => row.pairing_id === p.id);
+      const packageA = pairingPurchases.find((row) => row.user_id === p.user_a) ?? null;
+      const packageB = pairingPurchases.find((row) => row.user_id === p.user_b) ?? null;
+      const sharedAllowance =
+        packageA && packageB ? Math.min(packageA.meeting_count, packageB.meeting_count) : 0;
+      return {
+        ...p,
+        member_a: summarise(p.user_a),
+        member_b: summarise(p.user_b),
+        meeting_package_a: packageA,
+        meeting_package_b: packageB,
+        shared_meeting_allowance: sharedAllowance,
+        meetings_remaining: Math.max(0, sharedAllowance - activeMeetings),
+        meetups: pairingMeetups,
+      };
+    });
   });
 
 const DecideInput = z.object({
@@ -185,7 +204,36 @@ export const proposeMeetup = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     if (!imamId) throw new Error("Forbidden: imam only");
-    const { error } = await context.supabase.from("meetups").insert({
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("payment_a_status,payment_b_status")
+      .eq("id", data.pairing_id)
+      .eq("imam_id", imamId)
+      .maybeSingle();
+    if (
+      !pairing ||
+      pairing.payment_a_status !== "paid" ||
+      pairing.payment_b_status !== "paid"
+    ) {
+      throw new Error("Both members must pay before a meeting can be scheduled");
+    }
+    const [{ data: purchases }, { data: existingMeetups }] = await Promise.all([
+      supabaseAdmin
+        .from("meeting_package_purchases")
+        .select("meeting_count")
+        .eq("pairing_id", data.pairing_id)
+        .eq("payment_status", "paid"),
+      supabaseAdmin.from("meetups").select("id,status").eq("pairing_id", data.pairing_id),
+    ]);
+    if (!purchases || purchases.length < 2) {
+      throw new Error("Both meeting package payments must be verified first");
+    }
+    const allowance = Math.min(...purchases.map((purchase) => purchase.meeting_count));
+    const used = (existingMeetups ?? []).filter((meeting) => meeting.status !== "cancelled").length;
+    if (used >= allowance) throw new Error("This match has used its paid meeting allowance");
+
+    const { error } = await supabaseAdmin.from("meetups").insert({
       pairing_id: data.pairing_id,
       imam_id: imamId,
       scheduled_at: new Date(data.scheduled_at).toISOString(),
