@@ -323,7 +323,97 @@ export interface FileRoutesById {
   '/_authenticated/admin/new-profile': typeof AuthenticatedAdminNewProfileRoute
   '/_authenticated/admin/profiles': typeof AuthenticatedAdminProfilesRouteWithChildren
   '/_authenticated/admin/seed': typeof AuthenticatedAdminSeedRoute
-  '/api/publicÔè-¢Gß≤⁄Óù∆≠y‹-known/oauth-protected-resource'
+  '/api/public/compatibility-status': typeof ApiPublicCompatibilityStatusRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/imam/': typeof AuthenticatedImamIndexRoute
+  '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/admin'
+    | '/imam'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/dashboard'
+    | '/imam-apply'
+    | '/membership'
+    | '/settings'
+    | '/survey'
+    | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/admin/compatibility'
+    | '/admin/imam-applications'
+    | '/admin/imams'
+    | '/admin/memberships'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin/seed'
+    | '/api/public/compatibility-status'
+    | '/api/public/stripe-webhook'
+    | '/admin/'
+    | '/imam/'
+    | '/admin/profiles/$userId'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/dashboard'
+    | '/imam-apply'
+    | '/membership'
+    | '/settings'
+    | '/survey'
+    | '/auth/callback'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/admin/compatibility'
+    | '/admin/imam-applications'
+    | '/admin/imams'
+    | '/admin/memberships'
+    | '/admin/new-profile'
+    | '/admin/profiles'
+    | '/admin/seed'
+    | '/api/public/compatibility-status'
+    | '/api/public/stripe-webhook'
+    | '/admin'
+    | '/imam'
+    | '/admin/profiles/$userId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/community'
+    | '/halal-relationships'
+    | '/mahr'
+    | '/mcp'
+    | '/nikah'
+    | '/verify-email'
+    | '/wali'
+    | '/_authenticated/admin'
+    | '/_authenticated/imam'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/dashboard'
     | '/_authenticated/imam-apply'
     | '/_authenticated/membership'
@@ -722,13 +812,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
