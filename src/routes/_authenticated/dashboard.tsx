@@ -13,7 +13,7 @@ import { getMyAnswers } from "@/lib/survey.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
-    meta: [{ title: "Your MeetHaq journey" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Your Mithaq journey" }, { name: "robots", content: "noindex" }],
   }),
   component: Dashboard,
 });
@@ -260,7 +260,7 @@ function Dashboard() {
             {activeStep === 3 && (
               <>
                 <p className="text-muted-foreground">
-                  The fixed MeetHaq rubric provides the primary score. OpenAI supplies a limited
+                  The fixed Mithaq rubric provides the primary score. OpenAI supplies a limited
                   secondary review using anonymised multiple-choice answers only.
                 </p>
                 <label className="mt-5 flex items-start gap-3 rounded-2xl border border-gold/30 bg-gold/5 p-4 text-sm">
@@ -271,7 +271,7 @@ function Dashboard() {
                     className="mt-1 h-4 w-4 rounded border-input"
                   />
                   <span>
-                    I consent to MeetHaq sending anonymised multiple-choice survey answers to OpenAI
+                    I consent to Mithaq sending anonymised multiple-choice survey answers to OpenAI
                     for a 20% compatibility review. Names, contact details, account IDs, and
                     free-text answers are excluded. The fixed rubric is used if OpenAI is
                     unavailable.

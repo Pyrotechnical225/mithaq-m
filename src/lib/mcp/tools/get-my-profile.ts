@@ -4,7 +4,7 @@ import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-us
 export default defineTool({
   name: "get_my_profile",
   title: "Get my profile",
-  description: "Return the signed-in MeetHaq user's profile row (display name, contact email).",
+  description: "Return the signed-in Mithaq user's profile row (display name, contact email).",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

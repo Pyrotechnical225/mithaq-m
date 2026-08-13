@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 export const Route = createFileRoute("/wali")({
   head: () => ({
     meta: [
-      { title: "The Role of the Wali in Islamic Marriage | MeetHaq" },
+      { title: "The Role of the Wali in Islamic Marriage | Mithaq" },
       {
         name: "description",
         content:

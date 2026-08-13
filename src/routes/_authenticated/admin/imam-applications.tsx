@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/imam-applications")({
   head: () => ({
-    meta: [{ title: "Imam applications — MeetHaq admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Imam applications — Mithaq admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminImamApplications,
 });

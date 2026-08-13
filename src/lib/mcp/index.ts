@@ -13,10 +13,10 @@ const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unse
 
 export default defineMcp({
   name: "mithaq-mcp",
-  title: "MeetHaq",
+  title: "Mithaq",
   version: "0.1.0",
   instructions:
-    "Tools for the MeetHaq halal marriage platform. Callers act as the signed-in MeetHaq user: read/update their survey answers and privacy settings, view AI-generated matches, and manage interests.",
+    "Tools for the Mithaq halal marriage platform. Callers act as the signed-in Mithaq user: read/update their survey answers and privacy settings, view AI-generated matches, and manage interests.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

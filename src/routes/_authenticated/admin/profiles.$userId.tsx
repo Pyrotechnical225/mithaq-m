@@ -1,7 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { getProfileDetail, updateProfileAdmin, deleteProfileAdmin } from "@/lib/admin.functions";
+import {
+  deleteProfileAdmin,
+  getProfileCompatibilityScoresAdmin,
+  getProfileDetail,
+  updateProfileAdmin,
+} from "@/lib/admin.functions";
 import { questions } from "@/lib/survey-questions";
 
 export const Route = createFileRoute("/_authenticated/admin/profiles/$userId")({
@@ -15,6 +20,7 @@ function EditProfile() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const fetchDetail = useServerFn(getProfileDetail);
+  const fetchCompatibility = useServerFn(getProfileCompatibilityScoresAdmin);
   const doUpdate = useServerFn(updateProfileAdmin);
   const doDelete = useServerFn(deleteProfileAdmin);
 
@@ -26,16 +32,38 @@ function EditProfile() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [compatibility, setCompatibility] = useState<Awaited<
+    ReturnType<typeof getProfileCompatibilityScoresAdmin>
+  > | null>(null);
+  const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
 
-  const load = () =>
-    fetchDetail({ data: { user_id: userId } }).then((d) => {
+  const load = async () => {
+    setCompatibility(null);
+    setCompatibilityError(null);
+    const [detailResult, compatibilityResult] = await Promise.allSettled([
+      fetchDetail({ data: { user_id: userId } }),
+      fetchCompatibility({ data: { user_id: userId } }),
+    ]);
+
+    if (detailResult.status === "fulfilled") {
+      const d = detailResult.value;
       setDetail(d);
       setDisplayName(d.profile?.display_name ?? "");
       setContactEmail(d.profile?.contact_email ?? "");
       setVisibility((d.privacy?.visibility as "hidden" | "discoverable" | "paused") ?? "hidden");
       setCompleted(!!d.survey?.completed);
       setAnswers((d.survey?.answers as Record<string, string>) ?? {});
-    });
+    }
+    if (compatibilityResult.status === "fulfilled") {
+      setCompatibility(compatibilityResult.value);
+    } else {
+      setCompatibilityError(
+        compatibilityResult.reason instanceof Error
+          ? compatibilityResult.reason.message
+          : "Unable to calculate compatibility scores",
+      );
+    }
+  };
 
   useEffect(() => {
     load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
@@ -55,6 +83,7 @@ function EditProfile() {
           answers,
         },
       });
+      await load();
       setMsg("Saved.");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Failed to save");
@@ -142,6 +171,65 @@ function EditProfile() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-6">
+        <div>
+          <h2 className="text-lg text-foreground">Compatibility with other members</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Admin audit view using the fixed Mithaq rubric. It includes every completed
+            opposite-gender profile, even below 70%, and excludes admin and imam accounts.
+          </p>
+        </div>
+
+        {compatibilityError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            {compatibilityError}
+          </div>
+        ) : !compatibility ? (
+          <p className="text-sm text-muted-foreground">Calculating compatibility scores…</p>
+        ) : !compatibility.eligible ? (
+          <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+            {compatibility.reason}
+          </p>
+        ) : compatibility.scores.length === 0 ? (
+          <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+            No completed opposite-gender member surveys are available to compare.
+          </p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {compatibility.scores.map((candidate) => (
+              <Link
+                key={candidate.user_id}
+                to="/admin/profiles/$userId"
+                params={{ userId: candidate.user_id }}
+                className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 transition hover:border-primary/30 hover:bg-accent/40"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{candidate.display_name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {[
+                      candidate.age ? `Age ${candidate.age}` : null,
+                      candidate.city,
+                      candidate.gender,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    candidate.score >= 70
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {candidate.score}%
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6 space-y-4">

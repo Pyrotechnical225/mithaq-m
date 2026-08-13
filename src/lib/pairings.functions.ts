@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // -----------------------------------------------------------------------------
 // Member side: turn accepted mutual interests into pairings and assign the
-// nearest imam who has an active MeetHaq account.
+// nearest imam who has an active Mithaq account.
 // -----------------------------------------------------------------------------
 export const syncMyPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

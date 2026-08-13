@@ -5,7 +5,7 @@ import { adminStats } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
-    meta: [{ title: "Admin overview — MeetHaq" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Admin overview — Mithaq" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminHome,
 });
@@ -13,17 +13,45 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 function AdminHome() {
   const fetchStats = useServerFn(adminStats);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null);
-  useEffect(() => {
-    fetchStats().then(setStats);
-  }, [fetchStats]);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!stats) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const loadStats = () => {
+    setError(null);
+    fetchStats()
+      .then(setStats)
+      .catch((loadError) => {
+        setError(loadError instanceof Error ? loadError.message : "Admin overview could not load.");
+      });
+  };
+
+  useEffect(() => {
+    loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) {
+    return (
+      <section className="rounded-3xl border border-destructive/30 bg-card p-7 text-center">
+        <h1 className="text-2xl text-foreground">Admin overview could not load</h1>
+        <p className="mt-3 text-sm text-destructive">{error}</p>
+        <button
+          type="button"
+          onClick={loadStats}
+          className="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground"
+        >
+          Try again
+        </button>
+      </section>
+    );
+  }
+
+  if (!stats) return <p className="text-sm text-muted-foreground">Loading admin overview…</p>;
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl text-foreground">Overview</h1>
-        <p className="text-sm text-muted-foreground">Everything happening on MeetHaq right now.</p>
+        <p className="text-sm text-muted-foreground">Everything happening on Mithaq right now.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

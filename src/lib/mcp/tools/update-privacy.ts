@@ -5,7 +5,7 @@ import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-us
 export default defineTool({
   name: "update_privacy_settings",
   title: "Update privacy settings",
-  description: "Update the signed-in user's MeetHaq privacy settings.",
+  description: "Update the signed-in user's Mithaq privacy settings.",
   inputSchema: {
     visibility: z.enum(["discoverable", "paused", "hidden"]),
     show_location: z.boolean(),

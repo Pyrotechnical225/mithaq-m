@@ -15,8 +15,8 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — MeetHaq" },
-      { name: "description", content: "Sign in or create your MeetHaq account." },
+      { title: "Sign in — Mithaq" },
+      { name: "description", content: "Sign in or create your Mithaq account." },
       { name: "robots", content: "noindex" },
     ],
   }),

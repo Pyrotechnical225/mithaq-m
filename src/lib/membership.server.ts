@@ -198,7 +198,7 @@ export async function createCheckoutSession(opts: {
     "line_items[0][price_data][currency]": plan.currency,
     "line_items[0][price_data][unit_amount]": plan.amount,
     "line_items[0][price_data][recurring][interval]": plan.interval,
-    "line_items[0][price_data][product_data][name]": `MeetHaq membership — ${plan.name}`,
+    "line_items[0][price_data][product_data][name]": `Mithaq membership — ${plan.name}`,
     "subscription_data[metadata][user_id]": opts.userId,
     "subscription_data[metadata][plan]": plan.id,
     "metadata[user_id]": opts.userId,
@@ -226,7 +226,7 @@ export async function createMeetingPackageCheckout(opts: {
     "line_items[0][quantity]": 1,
     "line_items[0][price_data][currency]": "gbp",
     "line_items[0][price_data][unit_amount]": selected.amountPence,
-    "line_items[0][price_data][product_data][name]": `MeetHaq ${selected.label} package`,
+    "line_items[0][price_data][product_data][name]": `Mithaq ${selected.label} package`,
     "line_items[0][price_data][product_data][description]": selected.description,
     "metadata[kind]": "meeting_package",
     "metadata[user_id]": opts.userId,
@@ -304,7 +304,7 @@ async function upsertSubscriptionRow(row: SubRow) {
   return true;
 }
 
-/** Resolve the MeetHaq user for a Stripe subscription object. */
+/** Resolve the Mithaq user for a Stripe subscription object. */
 async function resolveUserId(sub: Record<string, unknown>): Promise<string | null> {
   const meta = (sub.metadata as Record<string, string> | undefined) ?? {};
   if (meta.user_id) return meta.user_id;

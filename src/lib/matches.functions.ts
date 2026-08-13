@@ -94,7 +94,7 @@ async function getOpenAIReviews(
   if (!apiKey || candidates.length === 0) return new Map<string, OpenAIReview>();
 
   const provider = createOpenAICompatibilityProvider(apiKey);
-  const prompt = `You provide a bounded compatibility review for MeetHaq, a halal marriage platform.
+  const prompt = `You provide a bounded compatibility review for Mithaq, a halal marriage platform.
 
 Analyse only the anonymised multiple-choice survey answers below. Do not infer identity, protected traits, health, wealth, or facts that are not explicitly present. The fixed rubric remains the primary score; your score is a limited secondary review.
 
@@ -114,7 +114,7 @@ For every candidate, return a 0-100 compatibility score plus concise strengths a
     const result = await generateText({
       model: provider(getOpenAIModelName()),
       output: Output.object({
-        name: "MeetHaqCompatibilityReview",
+        name: "MithaqCompatibilityReview",
         description: "An anonymised, bounded compatibility review for each candidate",
         schema: OpenAIReviewSchema,
       }),
@@ -188,7 +188,7 @@ export const generateMatches = createServerFn({ method: "POST" })
           openai_score: review?.score ?? null,
           scoring_method: review ? "fixed-rubric-v1-with-openai-review" : "fixed-rubric-v1",
           strengths:
-            review?.strengths ?? "Strong alignment across the fixed MeetHaq compatibility rubric.",
+            review?.strengths ?? "Strong alignment across the fixed Mithaq compatibility rubric.",
           considerations:
             review?.considerations ??
             (openAIConfigured

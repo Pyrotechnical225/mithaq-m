@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { fixedCompatibilityScore } from "@/lib/matches.functions";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
@@ -120,6 +121,104 @@ export const getProfileDetail = createServerFn({ method: "GET" })
           }
         : null,
     };
+  });
+
+// -----------------------------------------------------------------------------
+// Admin: compare one member with every eligible opposite-gender member
+// -----------------------------------------------------------------------------
+export const getProfileCompatibilityScoresAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [selectedResult, surveysResult, profilesResult, rolesResult, imamAccountsResult] =
+      await Promise.all([
+        supabaseAdmin
+          .from("survey_answers")
+          .select("user_id, answers, completed")
+          .eq("user_id", data.user_id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("survey_answers")
+          .select("user_id, answers, completed")
+          .eq("completed", true)
+          .neq("user_id", data.user_id),
+        supabaseAdmin.from("profiles").select("id, display_name, uk_city"),
+        supabaseAdmin.from("user_roles").select("user_id, role"),
+        supabaseAdmin.from("imam_accounts").select("user_id"),
+      ]);
+
+    for (const result of [
+      selectedResult,
+      surveysResult,
+      profilesResult,
+      rolesResult,
+      imamAccountsResult,
+    ]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+
+    const excludedIds = new Set<string>(
+      (imamAccountsResult.data ?? []).map((account) => account.user_id),
+    );
+    for (const role of rolesResult.data ?? []) {
+      if (role.role === "admin") excludedIds.add(role.user_id);
+    }
+
+    if (excludedIds.has(data.user_id)) {
+      return {
+        eligible: false as const,
+        reason: "Compatibility comparisons are not available for admin or imam accounts.",
+        scores: [],
+      };
+    }
+
+    const selected = selectedResult.data;
+    if (!selected?.completed) {
+      return {
+        eligible: false as const,
+        reason: "This member must complete their survey before compatibility can be calculated.",
+        scores: [],
+      };
+    }
+
+    const selectedAnswers = selected.answers as Record<string, string>;
+    const selectedGender = selectedAnswers["2"]?.trim().toLowerCase();
+    if (selectedGender !== "male" && selectedGender !== "female") {
+      return {
+        eligible: false as const,
+        reason: "This member needs a valid gender answer before compatibility can be calculated.",
+        scores: [],
+      };
+    }
+
+    const profileById = new Map(
+      (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
+    );
+    const scores = (surveysResult.data ?? [])
+      .filter((candidate) => !excludedIds.has(candidate.user_id))
+      .filter((candidate) => {
+        const answers = candidate.answers as Record<string, string>;
+        const gender = answers["2"]?.trim().toLowerCase();
+        return gender === (selectedGender === "male" ? "female" : "male");
+      })
+      .map((candidate) => {
+        const answers = candidate.answers as Record<string, string>;
+        const profile = profileById.get(candidate.user_id);
+        return {
+          user_id: candidate.user_id,
+          display_name: profile?.display_name ?? "Untitled profile",
+          city: profile?.uk_city ?? answers["3"] ?? null,
+          age: answers["1"] ?? null,
+          gender: answers["2"] ?? null,
+          score: fixedCompatibilityScore(selectedAnswers, answers),
+        };
+      })
+      .sort((left, right) => right.score - left.score);
+
+    return { eligible: true as const, reason: null, scores };
   });
 
 // -----------------------------------------------------------------------------
@@ -428,10 +527,11 @@ export const listCompatibilityComparisonsAdmin = createServerFn({ method: "GET" 
 export const amIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await context.supabase.rpc("has_role", {
+    const { data, error } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: "admin",
     });
+    if (error) throw new Error(`Admin access check failed: ${error.message}`);
     return { isAdmin: !!data };
   });
 

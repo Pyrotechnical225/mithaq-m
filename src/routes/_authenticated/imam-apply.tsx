@@ -7,7 +7,7 @@ import { UK_CITIES_FOR_UI } from "@/lib/imams.functions";
 export const Route = createFileRoute("/_authenticated/imam-apply")({
   head: () => ({
     meta: [
-      { title: "Apply as an imam — MeetHaq" },
+      { title: "Apply as an imam — Mithaq" },
       {
         name: "description",
         content: "Imams can apply to review local pairings and arrange wali-attended meetings.",
@@ -86,7 +86,7 @@ function ImamApply() {
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
           ← Back to dashboard
         </Link>
-        <h1 className="mt-6 text-3xl text-foreground">Apply as a MeetHaq imam</h1>
+        <h1 className="mt-6 text-3xl text-foreground">Apply as a Mithaq imam</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Approved imams get their own dashboard to review pairings local to them, approve or
           decline them, arrange wali-attended meetings and message both families. Our team reviews
@@ -100,7 +100,7 @@ function ImamApply() {
             </p>
             {existing.admin_notes && (
               <p className="mt-1 text-muted-foreground">
-                Note from MeetHaq: {existing.admin_notes}
+                Note from Mithaq: {existing.admin_notes}
               </p>
             )}
             {existing.status === "approved" && (

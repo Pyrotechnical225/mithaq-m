@@ -7,7 +7,7 @@ import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
 export const Route = createFileRoute("/_authenticated/survey")({
   head: () => ({
     meta: [
-      { title: "Your MeetHaq profile — 50 questions" },
+      { title: "Your Mithaq profile — 50 questions" },
       { name: "robots", content: "noindex" },
     ],
   }),

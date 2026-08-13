@@ -146,7 +146,7 @@ function Index() {
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-32 lg:pt-24">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-[var(--shadow-soft)]">
-                <span className="h-2 w-2 rounded-full bg-gold" />A halal path to marriage
+                <span className="h-2 w-2 rounded-full bg-gold" /> Meet haq in marriage
               </div>
 
               <h1 className="mt-7 max-w-2xl font-display text-5xl font-semibold leading-[0.98] text-foreground sm:text-6xl lg:text-7xl">
@@ -155,8 +155,9 @@ function Index() {
               </h1>
 
               <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                MeetHaq helps practicing Muslims find marriage-minded matches through shared deen,
-                family values, and life goals — with respect for wali involvement at every step.
+                <span className="font-semibold text-foreground">Meet haq in marriage.</span> Mithaq
+                helps practicing Muslims find marriage-minded matches through shared deen, family
+                values, and life goals — with respect for wali involvement at every step.
               </p>
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -203,7 +204,7 @@ function Index() {
                 Marriage deserves a better beginning.
               </h2>
               <p className="mt-5 text-base leading-7 text-muted-foreground">
-                Every part of MeetHaq is designed around Islamic values, clear intentions, and the
+                Every part of Mithaq is designed around Islamic values, clear intentions, and the
                 dignity of everyone involved.
               </p>
             </div>
