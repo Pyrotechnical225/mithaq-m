@@ -1,8 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getProfileDetail, updateProfileAdmin, deleteProfileAdmin } from "@/lib/admin.functions";
 import { questions } from "@/lib/survey-questions";
+import { useAsyncResource } from "@/lib/use-async-resource";
+import { ErrorState, PageHeadingSkeleton } from "@/components/admin/async-states";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/admin/profiles/$userId")({
   head: () => ({
@@ -18,7 +21,6 @@ function EditProfile() {
   const doUpdate = useServerFn(updateProfileAdmin);
   const doDelete = useServerFn(deleteProfileAdmin);
 
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getProfileDetail>> | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [visibility, setVisibility] = useState<"hidden" | "discoverable" | "paused">("hidden");
@@ -27,19 +29,20 @@ function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const load = () =>
-    fetchDetail({ data: { user_id: userId } }).then((d) => {
-      setDetail(d);
-      setDisplayName(d.profile?.display_name ?? "");
-      setContactEmail(d.profile?.contact_email ?? "");
-      setVisibility((d.privacy?.visibility as "hidden" | "discoverable" | "paused") ?? "hidden");
-      setCompleted(!!d.survey?.completed);
-      setAnswers((d.survey?.answers as Record<string, string>) ?? {});
-    });
+  const load = useCallback(() => fetchDetail({ data: { user_id: userId } }), [fetchDetail, userId]);
+  // `userId` as the reset key so navigating straight from one profile to
+  // another re-fetches instead of showing the previous member's record.
+  const { status, data: detail, error, retry, refreshing } = useAsyncResource(load, userId);
 
+  // Seed the editable form once the record arrives.
   useEffect(() => {
-    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [userId]);
+    if (!detail) return;
+    setDisplayName(detail.profile?.display_name ?? "");
+    setContactEmail(detail.profile?.contact_email ?? "");
+    setVisibility((detail.privacy?.visibility as "hidden" | "discoverable" | "paused") ?? "hidden");
+    setCompleted(!!detail.survey?.completed);
+    setAnswers((detail.survey?.answers as Record<string, string>) ?? {});
+  }, [detail]);
 
   const save = async () => {
     setSaving(true);
@@ -64,12 +67,51 @@ function EditProfile() {
   };
 
   const remove = async () => {
-    if (!confirm("Delete this profile? This cannot be undone.")) return;
-    await doDelete({ data: { user_id: userId } });
-    navigate({ to: "/admin/profiles" });
+    const who = displayName || detail?.auth?.email || userId;
+    const counts = [
+      detail?.survey ? "their survey answers" : null,
+      (detail?.matches.length ?? 0) > 0 ? `${detail!.matches.length} match generation(s)` : null,
+      (detail?.interests.length ?? 0) > 0 ? `${detail!.interests.length} interest(s)` : null,
+    ].filter(Boolean);
+    if (
+      !confirm(
+        `Permanently delete ${who}?\n\nThis removes their auth account${counts.length ? `, plus ${counts.join(", ")}` : ""}. It cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      await doDelete({ data: { user_id: userId } });
+      navigate({ to: "/admin/profiles" });
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not delete this profile");
+    }
   };
 
-  if (!detail) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (status === "error") {
+    return (
+      <ErrorState
+        title="This profile didn't load"
+        message={error}
+        onRetry={retry}
+        retrying={refreshing}
+      />
+    );
+  }
+
+  if (status === "loading" || !detail) {
+    return (
+      <div className="space-y-8">
+        <PageHeadingSkeleton />
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="space-y-3 rounded-2xl border border-border bg-card p-6">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

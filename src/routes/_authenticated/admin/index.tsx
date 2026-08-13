@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { adminStats } from "@/lib/admin.functions";
+import { useAsyncResource } from "@/lib/use-async-resource";
+import {
+  CardGridSkeleton,
+  EmptyState,
+  ErrorState,
+  PageHeadingSkeleton,
+  StatGridSkeleton,
+} from "@/components/admin/async-states";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
@@ -12,12 +20,31 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 
 function AdminHome() {
   const fetchStats = useServerFn(adminStats);
-  const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null);
-  useEffect(() => {
-    fetchStats().then(setStats);
-  }, [fetchStats]);
+  const { status, data: stats, error, retry, refreshing } = useAsyncResource(fetchStats);
 
-  if (!stats) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (status === "error") {
+    return (
+      <ErrorState
+        title="The overview didn't load"
+        message={error}
+        onRetry={retry}
+        retrying={refreshing}
+      />
+    );
+  }
+
+  if (status === "loading" || !stats) {
+    return (
+      <div className="space-y-8">
+        <PageHeadingSkeleton />
+        <StatGridSkeleton />
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <PageHeadingSkeleton />
+        </div>
+        <CardGridSkeleton count={4} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -50,7 +77,20 @@ function AdminHome() {
             </li>
           ))}
           {stats.recentUsers.length === 0 && (
-            <li className="py-4 text-muted-foreground">No users yet.</li>
+            <li className="py-4">
+              <EmptyState
+                title="No members have signed up yet"
+                message="Once someone registers they'll appear here. To try the flows now, seed the example members."
+                action={
+                  <Link
+                    to="/admin/seed"
+                    className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    Seed example data
+                  </Link>
+                }
+              />
+            </li>
           )}
         </ul>
       </div>
@@ -65,93 +105,132 @@ function AdminHome() {
           <ControlCard
             title="Spouses database"
             body="Member profiles, survey answers, visibility and exports."
-            actions={[
-              { to: "/admin/profiles", label: "Browse & edit profiles", primary: true },
-              { to: "/admin/new-profile", label: "+ Add profile" },
-              { to: "/admin/profiles", label: "Export JSON / CSV" },
-            ]}
-          />
+          >
+            <Link to="/admin/profiles" className={PRIMARY_ACTION}>
+              Browse & edit profiles
+            </Link>
+            <Link to="/admin/new-profile" className={SECONDARY_ACTION}>
+              + Add profile
+            </Link>
+            <Link to="/admin/profiles" search={{ export: true }} className={SECONDARY_ACTION}>
+              Export JSON / CSV
+            </Link>
+          </ControlCard>
 
           <ControlCard
             title="Imams database"
             body="Imam directory: mosque, city, contact details and languages."
-            actions={[
-              { to: "/admin/imams", label: "Browse & edit imams", primary: true },
-              { to: "/admin/imams", label: "+ Add imam" },
-              { to: "/admin/seed", label: "Seed / clear example data" },
-            ]}
-          />
+          >
+            <Link to="/admin/imams" className={PRIMARY_ACTION}>
+              Browse & edit imams
+            </Link>
+            <Link to="/admin/imams" search={{ add: true }} className={SECONDARY_ACTION}>
+              + Add imam
+            </Link>
+            <Link to="/admin/seed" className={SECONDARY_ACTION}>
+              Seed / clear example data
+            </Link>
+          </ControlCard>
 
           <ControlCard
             title="Imam applications & pairings"
             body="Approve or decline imam applicants, activate or suspend imam dashboard access, and oversee every pairing and arranged meetup."
-            actions={[
-              { to: "/admin/imam-applications", label: "Review applications", primary: true },
-              { to: "/admin/imam-applications", label: "All pairings & meetups" },
-            ]}
-          />
+          >
+            <Link to="/admin/imam-applications" className={PRIMARY_ACTION}>
+              Review applications
+            </Link>
+            <Link
+              to="/admin/imam-applications"
+              search={{ section: "pairings" }}
+              className={SECONDARY_ACTION}
+            >
+              All pairings & meetups
+            </Link>
+          </ControlCard>
 
           <ControlCard
             title="Memberships & billing"
             body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
-            actions={[
-              { to: "/admin/memberships", label: "Manage memberships", primary: true },
-              { to: "/membership", label: "Member-facing plans" },
-            ]}
-          />
+          >
+            <Link to="/admin/memberships" className={PRIMARY_ACTION}>
+              Manage memberships
+            </Link>
+            <Link to="/membership" className={SECONDARY_ACTION}>
+              Member-facing plans
+            </Link>
+          </ControlCard>
 
           <ControlCard
             title="Compatibility scoring audit"
             body="Compare the fixed-rubric score, OpenAI review and final weighted result for every generated match."
-            actions={[
-              { to: "/admin/compatibility", label: "Compare scores", primary: true },
-              { to: "/api/public/compatibility-status", label: "OpenAI connection status" },
-            ]}
-          />
+          >
+            <Link to="/admin/compatibility" className={PRIMARY_ACTION}>
+              Compare scores
+            </Link>
+            {/* A raw JSON endpoint, not a router page — a <Link> here would 404. */}
+            <a
+              href="/api/public/compatibility-status"
+              target="_blank"
+              rel="noreferrer"
+              className={SECONDARY_ACTION}
+            >
+              OpenAI status (raw JSON)
+            </a>
+          </ControlCard>
 
           <ControlCard
             title="Example & demo data"
             body="Seed example members and imams for testing, then clear them out again in one click."
-            actions={[{ to: "/admin/seed", label: "Seed data tools", primary: true }]}
-          />
+          >
+            <Link to="/admin/seed" className={PRIMARY_ACTION}>
+              Seed data tools
+            </Link>
+          </ControlCard>
 
           <ControlCard
             title="Member experience"
             body="Open the platform exactly as a member sees it — survey, privacy controls, matches, location and imam picker."
-            actions={[
-              { to: "/dashboard", label: "Open user dashboard", primary: true },
-              { to: "/survey", label: "Survey" },
-              { to: "/settings", label: "Privacy settings" },
-            ]}
-          />
+          >
+            <Link to="/dashboard" className={PRIMARY_ACTION}>
+              Open user dashboard
+            </Link>
+            <Link to="/survey" className={SECONDARY_ACTION}>
+              Survey
+            </Link>
+            <Link to="/settings" className={SECONDARY_ACTION}>
+              Privacy settings
+            </Link>
+          </ControlCard>
         </div>
       </section>
     </div>
   );
 }
 
-type Action = { to: string; label: string; primary?: boolean };
+const PRIMARY_ACTION =
+  "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90";
+const SECONDARY_ACTION = "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent";
 
-function ControlCard({ title, body, actions }: { title: string; body: string; actions: Action[] }) {
+/**
+ * Actions are passed as real <Link> children rather than a `{ to: string }`
+ * array: the widened string form gave up TanStack's route typing, which is how
+ * three of these buttons ended up pointing somewhere that didn't do what the
+ * label said.
+ */
+function ControlCard({
+  title,
+  body,
+  children,
+}: {
+  title: string;
+  body: string;
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-border p-5">
       <h3 className="text-lg text-foreground">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {actions.map((a, i) => (
-          <Link
-            key={`${a.to}-${i}`}
-            to={a.to}
-            className={
-              a.primary
-                ? "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
-                : "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
-            }
-          >
-            {a.label}
-          </Link>
-        ))}
-      </div>
+      <div className="mt-4 flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }

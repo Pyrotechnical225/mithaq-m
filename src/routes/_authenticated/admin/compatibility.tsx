@@ -1,7 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { listCompatibilityComparisonsAdmin } from "@/lib/admin.functions";
+import { useAsyncResource } from "@/lib/use-async-resource";
+import {
+  EmptyRow,
+  ErrorState,
+  PageHeadingSkeleton,
+  StatGridSkeleton,
+  TableSkeleton,
+} from "@/components/admin/async-states";
 
 export const Route = createFileRoute("/_authenticated/admin/compatibility")({
   head: () => ({
@@ -15,30 +23,45 @@ export const Route = createFileRoute("/_authenticated/admin/compatibility")({
 
 function CompatibilityComparisonPage() {
   const fetchComparisons = useServerFn(listCompatibilityComparisonsAdmin);
-  const [rows, setRows] = useState<Awaited<
-    ReturnType<typeof listCompatibilityComparisonsAdmin>
-  > | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchComparisons()
-      .then(setRows)
-      .catch((reason) => {
-        setError(reason instanceof Error ? reason.message : "Unable to load compatibility scores");
-      });
-  }, [fetchComparisons]);
+  const { status, data: rows, error, retry, refreshing } = useAsyncResource(fetchComparisons);
 
   const summary = useMemo(() => {
     const all = rows ?? [];
     const reviewed = all.filter((row) => row.openai_score !== null);
+    // Deliberately averaged over `reviewed` only: a fallback row has no OpenAI
+    // score, so it has no gap to average. The fallback count is shown next to
+    // it so the denominator is never a mystery.
     const averageDifference = reviewed.length
       ? reviewed.reduce((sum, row) => sum + Math.abs(row.difference ?? 0), 0) / reviewed.length
       : 0;
-    return { total: all.length, reviewed: reviewed.length, averageDifference };
+    return {
+      total: all.length,
+      reviewed: reviewed.length,
+      fallback: all.length - reviewed.length,
+      averageDifference,
+    };
   }, [rows]);
 
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
-  if (!rows) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (status === "error") {
+    return (
+      <ErrorState
+        title="Compatibility scores didn't load"
+        message={error}
+        onRetry={retry}
+        retrying={refreshing}
+      />
+    );
+  }
+
+  if (status === "loading" || !rows) {
+    return (
+      <div className="space-y-6">
+        <PageHeadingSkeleton />
+        <StatGridSkeleton count={3} />
+        <TableSkeleton rows={6} columns={6} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -52,10 +75,19 @@ function CompatibilityComparisonPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Metric label="Stored results" value={String(summary.total)} />
-        <Metric label="OpenAI reviewed" value={String(summary.reviewed)} />
         <Metric
-          label="Average AI / rubric gap"
-          value={`${summary.averageDifference.toFixed(1)} pts`}
+          label="OpenAI reviewed"
+          value={String(summary.reviewed)}
+          note={`${summary.fallback} fallback row${summary.fallback === 1 ? "" : "s"} with no AI score`}
+        />
+        <Metric
+          label="Mean AI / rubric gap"
+          value={summary.reviewed === 0 ? "—" : `${summary.averageDifference.toFixed(1)} pts`}
+          note={
+            summary.reviewed === 0
+              ? "No OpenAI-reviewed rows to average"
+              : `Across the ${summary.reviewed} OpenAI-reviewed row${summary.reviewed === 1 ? "" : "s"} only — the ${summary.fallback} fallback row${summary.fallback === 1 ? " is" : "s are"} excluded`
+          }
         />
       </div>
 
@@ -98,11 +130,11 @@ function CompatibilityComparisonPage() {
               </tr>
             ))}
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  No compatibility scores have been generated yet.
-                </td>
-              </tr>
+              <EmptyRow
+                colSpan={6}
+                title="No compatibility scores have been generated yet"
+                message="This page is an audit log of scores members generated for themselves. It fills up once a member with a completed survey runs “Find my matches”."
+              />
             ) : null}
           </tbody>
         </table>
@@ -111,11 +143,12 @@ function CompatibilityComparisonPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{value}</p>
+      {note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { assertActiveMembership } from "./membership-guard";
+import { getExcludedUserIds } from "./match-exclusions.server";
 import { questions } from "./survey-questions";
 import {
   createOpenAICompatibilityProvider,
@@ -150,6 +151,12 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const myAnswers = mine.answers as Answers;
     const myGender = normalized(myAnswers["2"]);
+    // Fail closed: without a gender on either side we cannot guarantee an
+    // opposite-gender match, so we refuse rather than match against everyone.
+    if (!myGender) {
+      throw new Error("Answer the gender question in your profile to generate matches");
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: candidates, error: candidateError } = await supabaseAdmin
       .from("survey_answers")
@@ -162,10 +169,13 @@ export const generateMatches = createServerFn({ method: "POST" })
       .from("privacy_settings")
       .select("user_id, visibility");
     const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
+    const excludedUserIds = await getExcludedUserIds();
     const pool = (candidates ?? []).filter((candidate) => {
+      if (excludedUserIds.has(candidate.user_id)) return false;
       if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
       const candidateGender = normalized((candidate.answers as Answers)["2"]);
-      return !myGender || !candidateGender || myGender !== candidateGender;
+      if (!candidateGender) return false;
+      return candidateGender !== myGender;
     });
 
     const scoredPool = pool.map((candidate, index) => ({
