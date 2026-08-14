@@ -311,7 +311,7 @@ function SurveyPage() {
               id="step-heading"
               ref={headingRef}
               tabIndex={-1}
-              className="mt-2 text-3xl text-foreground outline-none md:text-4xl"
+              className="mt-2 text-display text-foreground outline-none"
             >
               {section.name}
             </h1>
@@ -430,7 +430,7 @@ function ReviewStep({
         id="step-heading"
         ref={headingRef}
         tabIndex={-1}
-        className="mt-2 text-3xl text-foreground outline-none md:text-4xl"
+        className="mt-2 text-display text-foreground outline-none"
       >
         Review your answers
       </h1>

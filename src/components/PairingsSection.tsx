@@ -24,7 +24,10 @@ export function PairingsSection() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => list().then(setPairings).catch(() => setPairings([]));
+  const load = () =>
+    list()
+      .then(setPairings)
+      .catch(() => setPairings([]));
 
   useEffect(() => {
     sync()
@@ -116,7 +119,9 @@ export function PairingsSection() {
                         </p>
                         {m.address && <p className="text-xs text-muted-foreground">{m.address}</p>}
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {m.wali_required ? "Wali attendance required." : "Wali attendance optional."}
+                          {m.wali_required
+                            ? "Wali attendance required."
+                            : "Wali attendance optional."}
                           {m.note ? ` ${m.note}` : ""}
                         </p>
                         <div className="mt-2 flex items-center gap-2 text-xs">
@@ -174,7 +179,8 @@ export function PairingsSection() {
                         }`}
                       >
                         <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                          {m.mine ? "You" : m.sender_role} · {new Date(m.created_at).toLocaleString()}
+                          {m.mine ? "You" : m.sender_role} ·{" "}
+                          {new Date(m.created_at).toLocaleString()}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
                       </div>

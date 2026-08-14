@@ -64,11 +64,11 @@ const safeguards = [
 function MatchPreview() {
   return (
     <div className="relative mx-auto w-full max-w-lg">
-      <div className="absolute -inset-6 rounded-[2.5rem] bg-gold/10 blur-2xl" />
+      <div className="absolute -inset-6 rounded-[2.5rem] bg-azure/10 blur-2xl" />
       <div className="relative overflow-hidden rounded-[2rem] border border-white/50 bg-card/95 p-5 shadow-[var(--shadow-elevated)] sm:p-7">
         <div className="flex items-center justify-between border-b border-border pb-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-azure">
               Your journey
             </p>
             <p className="mt-1 font-display text-2xl font-semibold text-foreground">
@@ -107,13 +107,13 @@ function MatchPreview() {
         </div>
 
         <div className="mt-5 flex items-center gap-3 rounded-2xl bg-primary px-4 py-3.5 text-primary-foreground">
-          <ShieldCheck size={19} className="shrink-0 text-gold" aria-hidden="true" />
+          <ShieldCheck size={19} className="shrink-0 text-azure" aria-hidden="true" />
           <p className="text-sm">Respectful, private, and designed for wali involvement.</p>
         </div>
       </div>
 
       <div className="absolute -bottom-5 -left-3 hidden items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-soft)] sm:flex">
-        <Sparkles size={17} className="text-gold" aria-hidden="true" />
+        <Sparkles size={17} className="text-azure" aria-hidden="true" />
         <span className="text-sm font-medium text-foreground">
           Compatibility beyond appearances
         </span>
@@ -142,11 +142,11 @@ function Index() {
 
       <main>
         <section className="relative">
-          <div className="absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_78%_20%,color-mix(in_oklch,var(--color-gold)_18%,transparent),transparent_45%)]" />
+          <div className="absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_78%_20%,color-mix(in_oklch,var(--color-azure)_18%,transparent),transparent_45%)]" />
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-32 lg:pt-24">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-[var(--shadow-soft)]">
-                <span className="h-2 w-2 rounded-full bg-gold" />A halal path to marriage
+                <span className="h-2 w-2 rounded-full bg-azure" />A halal path to marriage
               </div>
 
               <h1 className="mt-7 max-w-2xl font-display text-5xl font-semibold leading-[0.98] text-foreground sm:text-6xl lg:text-7xl">
@@ -196,7 +196,7 @@ function Index() {
         <section id="principles" className="scroll-mt-28 border-y border-border/70 bg-card/45">
           <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-24">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-azure">
                 Our principles
               </p>
               <h2 className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
@@ -234,7 +234,7 @@ function Index() {
           <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
             <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-azure">
                   How it works
                 </p>
                 <h2 className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
@@ -258,7 +258,7 @@ function Index() {
                     key={step.number}
                     className="grid grid-cols-[auto_1fr] gap-5 rounded-3xl border border-border bg-card p-6 sm:p-7"
                   >
-                    <span className="font-display text-4xl font-semibold text-gold">
+                    <span className="font-display text-4xl font-semibold text-azure">
                       {step.number}
                     </span>
                     <div>
@@ -275,10 +275,10 @@ function Index() {
         <section id="safety" className="scroll-mt-28 px-5 pb-20 lg:px-8 lg:pb-28">
           <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] bg-primary text-primary-foreground lg:grid-cols-2">
             <div className="p-8 sm:p-12 lg:p-16">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-gold">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-azure">
                 <LockKeyhole size={23} aria-hidden="true" />
               </div>
-              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-azure">
                 Safety and dignity
               </p>
               <h2 className="mt-4 text-4xl font-semibold sm:text-5xl">Your trust comes first.</h2>
@@ -293,7 +293,7 @@ function Index() {
                   key={item}
                   className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
                 >
-                  <ShieldCheck size={19} className="shrink-0 text-gold" aria-hidden="true" />
+                  <ShieldCheck size={19} className="shrink-0 text-azure" aria-hidden="true" />
                   <span className="font-medium">{item}</span>
                 </div>
               ))}

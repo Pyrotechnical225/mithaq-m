@@ -293,7 +293,7 @@ function Dashboard() {
             </button>
           </div>
 
-          <label className="mt-4 flex items-start gap-3 rounded-xl border border-gold/30 bg-gold/5 p-4 text-sm">
+          <label className="mt-4 flex items-start gap-3 rounded-xl border border-azure/30 bg-azure/5 p-4 text-sm">
             <input
               type="checkbox"
               checked={openAIConsent}

@@ -234,7 +234,7 @@ function MembershipPage() {
               <div className="flex items-baseline justify-between">
                 <h2 className="text-xl text-foreground">{plan.name}</h2>
                 {plan.highlight && (
-                  <span className="rounded-full bg-gold/30 px-3 py-1 text-xs text-foreground">
+                  <span className="rounded-full bg-azure/30 px-3 py-1 text-xs text-foreground">
                     {plan.highlight}
                   </span>
                 )}

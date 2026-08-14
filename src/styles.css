@@ -4,10 +4,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   MeetHaq identity — Direction B "Geometric".
+   Palette taken from the chosen Canva board (DAHSOVe2f80):
+     #004d40 deep emerald   #e6ebed cool plaster   #273f3f slate ink
+     #2286c9 glazed cobalt
+   The cool plaster ground deliberately replaces the old cream, and the girih
+   lattice below replaces the two ambient radial gradients that were on <body>.
+   --------------------------------------------------------------------------- */
+
 @theme inline {
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
-  --font-display: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  /* Direction B: a grotesque leads, the serif is demoted to pull-quotes and
+     Arabic moments. Cormorant Garamond is gone. */
+  --font-display: "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+
+  /* A real scale. The old design jumped from text-sm straight to text-4xl with
+     almost nothing usable in between. */
+  --text-display-sm: clamp(1.5rem, 1.24rem + 1.1vw, 2rem);
+  --text-display-sm--line-height: 1.2;
+  --text-display: clamp(2rem, 1.6rem + 1.9vw, 3rem);
+  --text-display--line-height: 1.12;
+  --text-display-lg: clamp(2.5rem, 1.75rem + 3.4vw, 4.25rem);
+  --text-display-lg--line-height: 1.05;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -35,47 +56,58 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-gold: var(--gold);
-  --color-gold-foreground: var(--gold-foreground);
-  --color-cream: var(--cream);
 
-  --shadow-soft: 0 1px 2px rgba(20, 40, 30, 0.04), 0 8px 24px rgba(20, 40, 30, 0.06);
-  --shadow-elevated: 0 4px 12px rgba(20, 40, 30, 0.08), 0 20px 40px rgba(20, 40, 30, 0.10);
+  /* Glazed-tile cobalt, the one accent. `azure` replaces the old `gold` token:
+     the palette no longer contains gold, and a token named gold holding a blue
+     would be a trap for the next person. */
+  --color-azure: var(--azure);
+  --color-azure-foreground: var(--azure-foreground);
+  --color-azure-bright: var(--azure-bright);
+
+  /* Flatter than before. Direction B is engineered, not soft. */
+  --shadow-soft: 0 1px 2px rgba(39, 63, 63, 0.05);
+  --shadow-elevated: 0 2px 4px rgba(39, 63, 63, 0.06), 0 12px 28px rgba(39, 63, 63, 0.08);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Warm cream background, deep emerald primary, muted gold accent */
-  --background: oklch(0.985 0.012 85);
-  --foreground: oklch(0.24 0.03 155);
+  --background: #e6ebed;
+  --foreground: #273f3f;
 
-  --card: oklch(0.995 0.008 85);
-  --card-foreground: oklch(0.24 0.03 155);
-  --popover: oklch(0.995 0.008 85);
-  --popover-foreground: oklch(0.24 0.03 155);
+  --card: #f3f6f7;
+  --card-foreground: #273f3f;
+  --popover: #f3f6f7;
+  --popover-foreground: #273f3f;
 
-  --primary: oklch(0.36 0.07 160);
-  --primary-foreground: oklch(0.985 0.012 85);
+  --primary: #004d40;
+  --primary-foreground: #e6ebed;
 
-  --secondary: oklch(0.94 0.02 90);
-  --secondary-foreground: oklch(0.28 0.05 160);
+  --secondary: #d7e0e3;
+  --secondary-foreground: #004d40;
 
-  --muted: oklch(0.95 0.015 85);
-  --muted-foreground: oklch(0.48 0.02 155);
+  --muted: #dae1e4;
+  /* 7.35:1 on the ground, 8.14:1 on cards, and still 5.23:1 where it sits
+     directly over a girih line — passes AA for body text everywhere. */
+  --muted-foreground: #3d4d50;
 
-  --accent: oklch(0.92 0.04 90);
-  --accent-foreground: oklch(0.28 0.05 160);
+  --accent: #d3dee2;
+  --accent-foreground: #004d40;
 
-  --gold: oklch(0.72 0.13 80);
-  --gold-foreground: oklch(0.22 0.03 155);
-  --cream: oklch(0.97 0.02 85);
+  /* B2 ships cobalt at #2286c9, which is only 3.28:1 on the ground — large-text
+     and decoration only. --azure is that hue darkened until it clears AA on the
+     ground (6.64:1), on cards (7.35:1) and over a girih line (4.72:1), because
+     the app uses it for small uppercase labels. --azure-bright keeps B2's
+     literal value for fills, where contrast is not a text concern. */
+  --azure: #12557f;
+  --azure-foreground: #e6ebed;
+  --azure-bright: #2286c9;
 
-  --destructive: oklch(0.55 0.20 27);
-  --destructive-foreground: oklch(0.985 0.012 85);
-  --border: oklch(0.88 0.02 90);
-  --input: oklch(0.90 0.015 90);
-  --ring: oklch(0.55 0.08 160);
+  --destructive: #a32020;
+  --destructive-foreground: #f3f6f7;
+  --border: #c4ced2;
+  --input: #b7c4c9;
+  --ring: #12557f;
 }
 
 @layer base {
@@ -84,19 +116,70 @@
   }
 
   body {
+    position: relative;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(1200px 600px at 80% -10%, oklch(0.92 0.05 90 / 0.5), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, oklch(0.88 0.06 160 / 0.35), transparent 60%);
-    background-attachment: fixed;
   }
 
-  h1, h2, h3 {
+  /*
+    The girih lattice. Anchored to the top of the document and masked so it is
+    at full strength at the very top and gone by roughly 1100px down — present
+    where it frames the page, absent where it would fight body copy.
+    Absolute (not fixed) so the fade tracks the document, not the viewport.
+  */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23004d40' stroke-width='0.9' stroke-opacity='0.5'%3E%3Crect x='15' y='15' width='30' height='30'/%3E%3Cpath d='M30 8.79L51.21 30L30 51.21L8.79 30Z'/%3E%3Crect x='-15' y='-15' width='30' height='30'/%3E%3Cpath d='M0 -21.21L21.21 0L0 21.21L-21.21 0Z'/%3E%3Crect x='45' y='-15' width='30' height='30'/%3E%3Cpath d='M60 -21.21L81.21 0L60 21.21L38.79 0Z'/%3E%3Crect x='-15' y='45' width='30' height='30'/%3E%3Cpath d='M0 38.79L21.21 60L0 81.21L-21.21 60Z'/%3E%3Crect x='45' y='45' width='30' height='30'/%3E%3Cpath d='M60 38.79L81.21 60L60 81.21L38.79 60Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-position: top center;
+    background-size: 96px 96px;
+    opacity: 0.4;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 1) 0px,
+      rgb(0 0 0 / 0.6) 320px,
+      rgb(0 0 0 / 0.25) 700px,
+      rgb(0 0 0 / 0) 1100px
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 1) 0px,
+      rgb(0 0 0 / 0.6) 320px,
+      rgb(0 0 0 / 0.25) 700px,
+      rgb(0 0 0 / 0) 1100px
+    );
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+  }
+
+  /* Real focus rings everywhere, not just where a component remembered. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -105,4 +188,7 @@
 }
 @utility font-display {
   font-family: var(--font-display);
+}
+@utility font-serif {
+  font-family: var(--font-serif);
 }

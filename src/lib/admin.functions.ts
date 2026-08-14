@@ -444,7 +444,12 @@ const CompareInput = z.object({
 });
 
 export type PoolExclusionReason =
-  "self" | "incomplete_survey" | "no_gender" | "same_gender" | "imam" | "admin";
+  | "self"
+  | "incomplete_survey"
+  | "no_gender"
+  | "same_gender"
+  | "imam"
+  | "admin";
 
 type PoolCandidate = {
   user_id: string;

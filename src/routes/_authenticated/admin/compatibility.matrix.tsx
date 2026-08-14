@@ -27,13 +27,13 @@ type Row = Comparison["rows"][number];
 
 /**
  * Score bands use the existing palette tokens. Deliberately not red/amber/green
- * — a traffic-light scale both fights the emerald/gold palette and implies a
+ * — a traffic-light scale both fights the emerald/azure palette and implies a
  * pass/fail verdict, which is exactly the misreading this page guards against.
  */
 function scoreBand(score: number) {
   if (score >= 85) return "bg-primary text-primary-foreground";
   if (score >= 70) return "bg-primary/15 text-primary";
-  if (score >= 50) return "bg-gold/15 text-foreground";
+  if (score >= 50) return "bg-azure/15 text-foreground";
   return "bg-muted text-muted-foreground";
 }
 
