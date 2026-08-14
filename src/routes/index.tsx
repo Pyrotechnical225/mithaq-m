@@ -100,7 +100,12 @@ function Index() {
       <SiteHeader />
 
       <main>
-        <section className="relative">
+        {/*
+          Carries id="how": the header's "How it works" link points at /#how,
+          and the journey rail is now what that link is describing. Removing the
+          old section without rehoming the anchor left the nav item dead.
+        */}
+        <section id="how" className="relative scroll-mt-24">
           <div className="mx-auto max-w-7xl px-5 pb-20 pt-14 lg:px-8 lg:pb-24 lg:pt-20">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-[var(--shadow-soft)]">
