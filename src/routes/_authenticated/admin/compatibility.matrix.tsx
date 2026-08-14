@@ -12,7 +12,7 @@ import { EmptyRow, EmptyState, ErrorState, TableSkeleton } from "@/components/ad
 export const Route = createFileRoute("/_authenticated/admin/compatibility/matrix")({
   head: () => ({
     meta: [
-      { title: "Compatibility matrix — MeetHaq admin" },
+      { title: "Compatibility matrix — Mithaq admin" },
       { name: "robots", content: "noindex" },
     ],
   }),

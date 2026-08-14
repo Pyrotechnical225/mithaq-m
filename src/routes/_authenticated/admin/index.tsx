@@ -13,7 +13,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
-    meta: [{ title: "Admin overview — MeetHaq" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Admin overview — Mithaq" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminHome,
 });
@@ -50,7 +50,7 @@ function AdminHome() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl text-foreground">Overview</h1>
-        <p className="text-sm text-muted-foreground">Everything happening on MeetHaq right now.</p>
+        <p className="text-sm text-muted-foreground">Everything happening on Mithaq right now.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

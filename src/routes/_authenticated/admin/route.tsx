@@ -86,7 +86,7 @@ function AdminLayout() {
       <SidebarInset className="bg-background">
         <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
           <SidebarTrigger />
-          <span className="text-sm text-muted-foreground">MeetHaq control</span>
+          <span className="text-sm text-muted-foreground">Mithaq control</span>
         </header>
         {/* Admin density is deliberately tighter than the member side: admins
             get scannable tables, members get air. */}

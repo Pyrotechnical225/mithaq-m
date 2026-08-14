@@ -13,7 +13,7 @@ import { listPairingMessages, postPairingMessage } from "@/lib/pairings.function
 export const Route = createFileRoute("/_authenticated/imam/")({
   head: () => ({
     meta: [
-      { title: "Imam dashboard — MeetHaq" },
+      { title: "Imam dashboard — Mithaq" },
       { name: "description", content: "Review local pairings and arrange wali-attended meetings." },
       { name: "robots", content: "noindex" },
     ],

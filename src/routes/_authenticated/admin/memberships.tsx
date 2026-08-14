@@ -13,7 +13,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/memberships")({
   head: () => ({
-    meta: [{ title: "Memberships — MeetHaq admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Memberships — Mithaq admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminMemberships,
 });

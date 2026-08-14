@@ -14,7 +14,7 @@ import {
 export const Route = createFileRoute("/_authenticated/admin/compatibility")({
   head: () => ({
     meta: [
-      { title: "Compatibility comparison — MeetHaq admin" },
+      { title: "Compatibility comparison — Mithaq admin" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -68,7 +68,7 @@ function CompatibilityComparisonPage() {
       <div>
         <h1 className="text-3xl text-foreground">Compatibility comparison</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Audit how MeetHaq combines the fixed rubric (80%) with the anonymised OpenAI review (20%).
+          Audit how Mithaq combines the fixed rubric (80%) with the anonymised OpenAI review (20%).
           A missing OpenAI score means the safe fixed-rubric fallback was used.
         </p>
       </div>

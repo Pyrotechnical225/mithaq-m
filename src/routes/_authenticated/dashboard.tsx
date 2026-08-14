@@ -21,7 +21,7 @@ import { BrandName } from "@/components/BrandName";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
-    meta: [{ title: "Your MeetHaq dashboard" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Your Mithaq dashboard" }, { name: "robots", content: "noindex" }],
   }),
   component: Dashboard,
 });
@@ -301,7 +301,7 @@ function Dashboard() {
               className="mt-1 h-4 w-4 rounded border-input"
             />
             <span>
-              I consent to MeetHaq sending anonymised multiple-choice survey answers to OpenAI for a
+              I consent to Mithaq sending anonymised multiple-choice survey answers to OpenAI for a
               20% compatibility review. Names, email addresses, phone numbers, account IDs and
               free-text answers are excluded. If OpenAI is unavailable, the fixed rubric is used.
             </span>
@@ -310,7 +310,7 @@ function Dashboard() {
           <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
             <p className="font-medium">Please review these matches with your wali or parent.</p>
             <p className="mt-1 text-muted-foreground">
-              MeetHaq encourages family involvement from the very first step. Sit down with a parent
+              Mithaq encourages family involvement from the very first step. Sit down with a parent
               or wali (guardian) and go through the suggestions together before expressing interest
               — their guidance is part of the halal way.
             </p>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/verify-email")({
   head: () => ({
-    meta: [{ title: "Verify your email — MeetHaq" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Verify your email — Mithaq" }, { name: "robots", content: "noindex" }],
   }),
   ssr: false,
   component: VerifyEmail,

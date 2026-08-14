@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/admin/imam-applications")({
   head: () => ({
-    meta: [{ title: "Imam applications — MeetHaq admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Imam applications — Mithaq admin" }, { name: "robots", content: "noindex" }],
   }),
   validateSearch: (search: Record<string, unknown>): { section?: "pairings" } => ({
     section: search.section === "pairings" ? "pairings" : undefined,

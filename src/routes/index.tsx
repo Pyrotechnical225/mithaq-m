@@ -2,11 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  Check,
   HeartHandshake,
   LockKeyhole,
   ShieldCheck,
-  Sparkles,
   UserRoundCheck,
   Users,
 } from "lucide-react";
@@ -36,21 +34,43 @@ const principles = [
   },
 ] as const;
 
-const steps = [
+/**
+ * The front page leads with the journey rather than a claim, so these five
+ * stages are the page's primary content. `who` states who can see the member's
+ * information at each stage — the reassurance is attached to the step it
+ * belongs to, rather than buried in a settings page.
+ */
+const journey = [
   {
-    number: "01",
-    title: "Tell us about yourself",
-    body: "Answer thoughtful questions about your deen, values, family life, and hopes for marriage.",
+    n: "1",
+    title: "Complete your profile",
+    body: "Nine sections, about twelve minutes. Save and return whenever you like — nothing is submitted until you are ready.",
+    who: "Visible to: you only",
   },
   {
-    number: "02",
-    title: "Discover aligned matches",
-    body: "Explore OpenAI-scored, imam-reviewed matches grounded in shared practice, priorities, and long-term goals.",
+    n: "2",
+    title: "Set your visibility",
+    body: "You choose whether you can be found at all, and you can pause it at any time without losing your answers.",
+    who: "Visible to: you only",
   },
   {
-    number: "03",
-    title: "Move forward respectfully",
-    body: "Connect with clear intentions and bring your wali into the process from the beginning.",
+    n: "3",
+    title: "Receive considered introductions",
+    body: "Weighted toward religious practice, marriage intentions and family expectations — not appearance or activity.",
+    who: "Visible to: you only",
+  },
+  {
+    n: "4",
+    title: "Express interest",
+    body: "Nothing of yours is shared until you have both agreed. Contact details come last, never first.",
+    who: "Shared with the other person only once you both accept",
+  },
+  {
+    n: "5",
+    title: "Meet with an imam",
+    body: "A local imam oversees the introduction from there — the same person, from first meeting through to nikah.",
+    who: "Introduced once you and your match have both accepted",
+    key: true,
   },
 ] as const;
 
@@ -60,67 +80,6 @@ const safeguards = [
   "Private information stays protected",
   "Clear reporting and moderation tools",
 ] as const;
-
-function MatchPreview() {
-  return (
-    <div className="relative mx-auto w-full max-w-lg">
-      <div className="absolute -inset-6 rounded-[2.5rem] bg-azure/10 blur-2xl" />
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/50 bg-card/95 p-5 shadow-[var(--shadow-elevated)] sm:p-7">
-        <div className="flex items-center justify-between border-b border-border pb-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-azure">
-              Your journey
-            </p>
-            <p className="mt-1 font-display text-2xl font-semibold text-foreground">
-              A thoughtful match
-            </p>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <HeartHandshake size={22} aria-hidden="true" />
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-2xl border border-border bg-background/70 p-5">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <span className="font-display text-lg font-semibold">92%</span>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Strong values alignment</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Similar religious practice, family expectations, and marriage timeline.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {["Deen & practice", "Family values", "Life goals", "Marriage timeline"].map((label) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 rounded-xl bg-secondary/65 px-3 py-3 text-xs font-medium text-secondary-foreground"
-            >
-              <Check size={14} className="text-primary" aria-hidden="true" />
-              {label}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-primary px-4 py-3.5 text-primary-foreground">
-          <ShieldCheck size={19} className="shrink-0 text-azure" aria-hidden="true" />
-          <p className="text-sm">Respectful, private, and designed for wali involvement.</p>
-        </div>
-      </div>
-
-      <div className="absolute -bottom-5 -left-3 hidden items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-soft)] sm:flex">
-        <Sparkles size={17} className="text-azure" aria-hidden="true" />
-        <span className="text-sm font-medium text-foreground">
-          Compatibility beyond appearances
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function Index() {
   const [signedIn, setSignedIn] = useState(false);
@@ -142,54 +101,77 @@ function Index() {
 
       <main>
         <section className="relative">
-          <div className="absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_78%_20%,color-mix(in_oklch,var(--color-azure)_18%,transparent),transparent_45%)]" />
-          <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-32 lg:pt-24">
-            <div>
+          <div className="mx-auto max-w-7xl px-5 pb-20 pt-14 lg:px-8 lg:pb-24 lg:pt-20">
+            <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-[var(--shadow-soft)]">
                 <span className="h-2 w-2 rounded-full bg-azure" />A halal path to marriage
               </div>
 
-              <h1 className="mt-7 max-w-2xl font-display text-5xl font-semibold leading-[0.98] text-foreground sm:text-6xl lg:text-7xl">
-                Meet with purpose.
-                <span className="block text-primary">Marry with confidence.</span>
+              <h1 className="mt-7 max-w-[18ch] font-display text-4xl leading-[1.06] tracking-tight text-foreground sm:text-5xl">
+                Five steps, and an imam at the end of them.
               </h1>
 
-              <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                MeetHaq helps practicing Muslims find marriage-minded matches through shared deen,
-                family values, and life goals — with respect for wali involvement at every step.
+              <p className="mt-6 text-base leading-7 text-muted-foreground sm:text-lg">
+                No swiping and no open browsing. Here is exactly what happens, and who can see what
+                at each stage.
               </p>
-
-              <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Link
-                  to={ctaTo}
-                  className="group inline-flex items-center justify-center gap-3 rounded-full bg-primary px-7 py-4 font-semibold text-primary-foreground shadow-[var(--shadow-elevated)] transition hover:-translate-y-0.5 hover:bg-primary/90"
-                >
-                  {ctaLabel}
-                  <ArrowRight
-                    size={18}
-                    className="transition-transform group-hover:translate-x-1"
-                    aria-hidden="true"
-                  />
-                </Link>
-                <a
-                  href="#how"
-                  className="inline-flex items-center justify-center rounded-full border border-border bg-card px-7 py-4 font-semibold text-foreground transition hover:bg-accent"
-                >
-                  See how it works
-                </a>
-              </div>
-
-              <div className="mt-7 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground">
-                {["Serious profiles", "Wali-friendly", "Private by design"].map((item) => (
-                  <span key={item} className="flex items-center gap-2">
-                    <Check size={15} className="text-primary" aria-hidden="true" />
-                    {item}
-                  </span>
-                ))}
-              </div>
             </div>
 
-            <MatchPreview />
+            <ol className="mt-12 lg:mt-16">
+              {journey.map((stage) => {
+                const highlighted = "key" in stage && stage.key;
+                return (
+                  <li
+                    key={stage.n}
+                    className={
+                      highlighted
+                        ? "mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-6 sm:px-7"
+                        : "border-t border-border py-6 first:border-t-0 first:pt-0"
+                    }
+                  >
+                    <div className="grid grid-cols-[2.5rem_1fr] gap-4 sm:grid-cols-[3.5rem_1fr] sm:gap-7">
+                      <span
+                        className={`font-display text-3xl font-light leading-none tabular-nums sm:text-4xl ${
+                          highlighted ? "text-primary" : "text-azure"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {stage.n}
+                      </span>
+                      <div>
+                        <h2 className="font-display text-lg text-foreground sm:text-xl">
+                          {stage.title}
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                          {stage.body}
+                        </p>
+                        <p className="mt-3 text-xs text-azure sm:text-[13px]">{stage.who}</p>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <Link
+                to={ctaTo}
+                className="group inline-flex items-center justify-center gap-3 rounded-full bg-primary px-7 py-4 font-semibold text-primary-foreground shadow-[var(--shadow-elevated)] transition hover:-translate-y-0.5 hover:bg-primary/90"
+              >
+                {ctaLabel}
+                <ArrowRight
+                  size={18}
+                  className="transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </Link>
+              <a
+                href="#principles"
+                className="inline-flex items-center justify-center rounded-full border border-border bg-card px-7 py-4 font-semibold text-foreground transition hover:bg-accent"
+              >
+                Read our principles
+              </a>
+            </div>
           </div>
         </section>
 
@@ -203,7 +185,7 @@ function Index() {
                 Marriage deserves a better beginning.
               </h2>
               <p className="mt-5 text-base leading-7 text-muted-foreground">
-                Every part of MeetHaq is designed around Islamic values, clear intentions, and the
+                Every part of Mithaq is designed around Islamic values, clear intentions, and the
                 dignity of everyone involved.
               </p>
             </div>
@@ -226,48 +208,6 @@ function Index() {
                   </article>
                 );
               })}
-            </div>
-          </div>
-        </section>
-
-        <section id="how" className="scroll-mt-28">
-          <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
-            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-azure">
-                  How it works
-                </p>
-                <h2 className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
-                  From intention to introduction.
-                </h2>
-                <p className="mt-5 text-base leading-7 text-muted-foreground">
-                  A calm, structured process that helps you focus on the things that make a marriage
-                  last.
-                </p>
-                <Link
-                  to={ctaTo}
-                  className="mt-8 inline-flex items-center gap-2 font-semibold text-primary hover:underline"
-                >
-                  {ctaLabel} <ArrowRight size={17} aria-hidden="true" />
-                </Link>
-              </div>
-
-              <ol className="grid gap-4">
-                {steps.map((step) => (
-                  <li
-                    key={step.number}
-                    className="grid grid-cols-[auto_1fr] gap-5 rounded-3xl border border-border bg-card p-6 sm:p-7"
-                  >
-                    <span className="font-display text-4xl font-semibold text-azure">
-                      {step.number}
-                    </span>
-                    <div>
-                      <h3 className="text-2xl font-semibold text-foreground">{step.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.body}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
             </div>
           </div>
         </section>
@@ -329,7 +269,7 @@ function Index() {
               />
             </Link>
             <p className="mt-4 text-xs text-muted-foreground">
-              About 10 minutes · Your answers remain private
+              Nine sections, about 12 minutes · Your answers remain private
             </p>
           </div>
         </section>

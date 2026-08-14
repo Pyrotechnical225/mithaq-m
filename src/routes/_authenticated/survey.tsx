@@ -24,7 +24,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/survey")({
   head: () => ({
-    meta: [{ title: "Your MeetHaq profile" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Your Mithaq profile" }, { name: "robots", content: "noindex" }],
   }),
   validateSearch: (search: Record<string, unknown>): { step?: number } => {
     const raw = Number(search.step);
