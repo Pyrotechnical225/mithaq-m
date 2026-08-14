@@ -1,150 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { assertActiveMembership } from "./membership-guard";
 import { getExcludedUserIds } from "./match-exclusions.server";
-import { questions } from "./survey-questions";
+import { getOpenAIModelName } from "./openai-compatibility.server";
 import {
-  createOpenAICompatibilityProvider,
-  getOpenAIModelName,
-} from "./openai-compatibility.server";
+  fixedCompatibilityScore,
+  normalized,
+  reviewCandidates,
+  weightedFinalScore,
+  type Answers,
+} from "./compatibility.server";
 
-const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
-const AI_SAFE_IDS = new Set(
-  questions
-    .filter((question) => question.type !== "text" && question.id !== 2)
-    .map((question) => question.id),
-);
-
-const SECTION_WEIGHTS: Record<string, number> = {
-  "Religious Practice": 4,
-  "Marriage Intentions": 3,
-  "Family & Practical Matters": 2,
-  "Family & Children": 2,
-  "Values & Expectations": 2,
-  "Islamic & Community Life": 2,
-  "Basic Information": 1,
-  "Personality & Lifestyle": 1,
-  "Compatibility Extras": 1,
-};
-
-type Answers = Record<string, string>;
-
-function normalized(value: string | undefined) {
-  return value?.trim().toLocaleLowerCase() ?? "";
-}
-
-function isFlexible(value: string) {
-  return /open|depends|not sure|other|no preference|flexible|undecided/.test(value);
-}
-
-function answerSimilarity(left: string, right: string) {
-  if (left === right) return 1;
-  if (isFlexible(left) || isFlexible(right)) return 0.65;
-  return 0;
-}
-
-export function fixedCompatibilityScore(mine: Answers, theirs: Answers) {
-  let earned = 0;
-  let available = 0;
-
-  for (const question of questions) {
-    if (question.id === 1 || question.id === 2 || question.type === "text") continue;
-    const mineValue = normalized(mine[question.id]);
-    const theirValue = normalized(theirs[question.id]);
-    if (!mineValue || !theirValue) continue;
-
-    const requiredMultiplier = REQUIRED_IDS.has(question.id) ? 1.25 : 1;
-    const weight = (SECTION_WEIGHTS[question.section] ?? 1) * requiredMultiplier;
-    available += weight;
-    earned += weight * answerSimilarity(mineValue, theirValue);
-  }
-
-  if (available === 0) return 50;
-  return Math.round(50 + (earned / available) * 50);
-}
-
-function summarizeSafeAnswers(answers: Answers) {
-  return questions
-    .filter((question) => AI_SAFE_IDS.has(question.id))
-    .filter((question) => normalized(answers[question.id]) !== "")
-    .map((question) => `${question.section} — ${question.question}: ${answers[question.id]}`)
-    .join("\n");
-}
-
-const OpenAIReviewSchema = z.object({
-  matches: z.array(
-    z.object({
-      candidate_id: z.string(),
-      score: z.number().min(0).max(100),
-      strengths: z.string().max(500),
-      considerations: z.string().max(500),
-    }),
-  ),
-});
-
-type OpenAIReview = z.infer<typeof OpenAIReviewSchema>["matches"][number];
+// The rubric, prompt building and anonymisation now live in
+// compatibility.server.ts so the admin compatibility matrix shares them
+// verbatim instead of copy-pasting.
+export { fixedCompatibilityScore } from "./compatibility.server";
 
 const GenerateMatchesInput = z.object({ openaiConsent: z.literal(true) });
-
-async function getOpenAIReviews(
-  mine: Answers,
-  candidates: Array<{ candidate_id: string; answers: Answers }>,
-) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey || candidates.length === 0) return new Map<string, OpenAIReview>();
-
-  const provider = createOpenAICompatibilityProvider(apiKey);
-  const prompt = `You provide a bounded compatibility review for MeetHaq, a halal marriage platform.
-
-Analyse only the anonymised multiple-choice survey answers below. Do not infer identity, protected traits, health, wealth, or facts that are not explicitly present. The fixed rubric remains the primary score; your score is a limited secondary review.
-
-MEMBER:
-${summarizeSafeAnswers(mine)}
-
-CANDIDATES:
-${candidates
-  .map(
-    (candidate) => `--- ${candidate.candidate_id} ---\n${summarizeSafeAnswers(candidate.answers)}`,
-  )
-  .join("\n\n")}
-
-For every candidate, return a 0-100 compatibility score plus concise strengths and points to discuss. Focus on religious practice, marriage intentions, family expectations, lifestyle, and flexibility. Return each candidate_id exactly as supplied.`;
-
-  try {
-    const result = await generateText({
-      model: provider(getOpenAIModelName()),
-      output: Output.object({
-        name: "MeetHaqCompatibilityReview",
-        description: "An anonymised, bounded compatibility review for each candidate",
-        schema: OpenAIReviewSchema,
-      }),
-      prompt,
-      maxOutputTokens: 1_500,
-      timeout: 15_000,
-      maxRetries: 1,
-      providerOptions: { openai: { store: false } },
-    });
-
-    return new Map(result.output.matches.map((review) => [review.candidate_id, review]));
-  } catch (error) {
-    // A 404 here means the configured model id is wrong, which degrades every
-    // review permanently while looking like transient unavailability. Say so
-    // explicitly rather than logging nothing.
-    const message = error instanceof Error ? error.message : String(error);
-    if (/404|not found|does not exist|model_not_found/i.test(message)) {
-      console.error(
-        `[openai-compatibility] MISCONFIGURED MODEL — "${getOpenAIModelName()}" was rejected by OpenAI. ` +
-          `Every compatibility review will fall back to the fixed rubric until OPENAI_MODEL is corrected. ` +
-          `Check /api/public/compatibility-status for details. Underlying error: ${message}`,
-      );
-    } else if (!NoObjectGeneratedError.isInstance(error)) {
-      console.error("OpenAI compatibility review failed; using fixed-rubric fallback", error);
-    }
-    return new Map<string, OpenAIReview>();
-  }
-}
 
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -194,15 +67,15 @@ export const generateMatches = createServerFn({ method: "POST" })
       answers: candidate.answers as Answers,
       fixed_score: fixedCompatibilityScore(myAnswers, candidate.answers as Answers),
     }));
-    const openAIReviews = await getOpenAIReviews(myAnswers, scoredPool);
-    const openAIConfigured = !!process.env.OPENAI_API_KEY?.trim();
+    const { reviews: openAIReviews, configured: openAIConfigured } = await reviewCandidates(
+      myAnswers,
+      scoredPool,
+    );
 
     const enriched = scoredPool
       .map((candidate) => {
         const review = openAIReviews.get(candidate.candidate_id);
-        const finalScore = review
-          ? Math.round(candidate.fixed_score * 0.8 + review.score * 0.2)
-          : candidate.fixed_score;
+        const finalScore = weightedFinalScore(candidate.fixed_score, review?.score);
 
         return {
           match_user_id: candidate.real_id,

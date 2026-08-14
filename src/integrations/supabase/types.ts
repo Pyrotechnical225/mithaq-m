@@ -195,6 +195,54 @@ export type Database = {
         }
         Relationships: []
       }
+      compatibility_scores: {
+        Row: {
+          candidate_user_id: string
+          considerations: string | null
+          created_at: string
+          final_score: number
+          fixed_score: number
+          id: string
+          openai_model: string | null
+          openai_score: number | null
+          rubric_version: string
+          scoring_method: string
+          strengths: string | null
+          subject_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_user_id: string
+          considerations?: string | null
+          created_at?: string
+          final_score: number
+          fixed_score: number
+          id?: string
+          openai_model?: string | null
+          openai_score?: number | null
+          rubric_version: string
+          scoring_method: string
+          strengths?: string | null
+          subject_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_user_id?: string
+          considerations?: string | null
+          created_at?: string
+          final_score?: number
+          fixed_score?: number
+          id?: string
+          openai_model?: string | null
+          openai_score?: number | null
+          rubric_version?: string
+          scoring_method?: string
+          strengths?: string | null
+          subject_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
           created_at: string

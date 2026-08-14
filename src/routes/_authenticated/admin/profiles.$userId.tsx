@@ -130,12 +130,21 @@ function EditProfile() {
             {detail.auth?.email_confirmed_at ? " · verified" : " · unverified"}
           </p>
         </div>
-        <button
-          onClick={remove}
-          className="rounded-full border border-destructive/40 px-4 py-1.5 text-xs text-destructive hover:bg-destructive/10"
-        >
-          Delete profile
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/admin/compatibility/matrix"
+            search={{ member: userId }}
+            className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+          >
+            Compare against pool
+          </Link>
+          <button
+            onClick={remove}
+            className="rounded-full border border-destructive/40 px-4 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+          >
+            Delete profile
+          </button>
+        </div>
       </div>
 
       {msg && <p className="text-sm text-primary">{msg}</p>}

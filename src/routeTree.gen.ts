@@ -43,6 +43,7 @@ import { Route as AuthenticatedAdminCompatibilityRouteImport } from './routes/_a
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAdminProfilesUserIdRouteImport } from './routes/_authenticated/admin/profiles.$userId'
+import { Route as AuthenticatedAdminCompatibilityMatrixRouteImport } from './routes/_authenticated/admin/compatibility.matrix'
 
 const WaliRoute = WaliRouteImport.update({
   id: '/wali',
@@ -223,6 +224,12 @@ const AuthenticatedAdminProfilesUserIdRoute =
     path: '/$userId',
     getParentRoute: () => AuthenticatedAdminProfilesRoute,
   } as any)
+const AuthenticatedAdminCompatibilityMatrixRoute =
+  AuthenticatedAdminCompatibilityMatrixRouteImport.update({
+    id: '/matrix',
+    path: '/matrix',
+    getParentRoute: () => AuthenticatedAdminCompatibilityRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -246,7 +253,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
+  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRouteWithChildren
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/imam/': typeof AuthenticatedImamIndexRoute
+  '/admin/compatibility/matrix': typeof AuthenticatedAdminCompatibilityMatrixRoute
   '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -279,7 +287,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
+  '/admin/compatibility': typeof AuthenticatedAdminCompatibilityRouteWithChildren
   '/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -290,6 +298,7 @@ export interface FileRoutesByTo {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/imam': typeof AuthenticatedImamIndexRoute
+  '/admin/compatibility/matrix': typeof AuthenticatedAdminCompatibilityMatrixRoute
   '/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRoutesById {
@@ -316,7 +325,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/_authenticated/admin/compatibility': typeof AuthenticatedAdminCompatibilityRoute
+  '/_authenticated/admin/compatibility': typeof AuthenticatedAdminCompatibilityRouteWithChildren
   '/_authenticated/admin/imam-applications': typeof AuthenticatedAdminImamApplicationsRoute
   '/_authenticated/admin/imams': typeof AuthenticatedAdminImamsRoute
   '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -327,6 +336,7 @@ export interface FileRoutesById {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/imam/': typeof AuthenticatedImamIndexRoute
+  '/_authenticated/admin/compatibility/matrix': typeof AuthenticatedAdminCompatibilityMatrixRoute
   '/_authenticated/admin/profiles/$userId': typeof AuthenticatedAdminProfilesUserIdRoute
 }
 export interface FileRouteTypes {
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/admin/'
     | '/imam/'
+    | '/admin/compatibility/matrix'
     | '/admin/profiles/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/admin'
     | '/imam'
+    | '/admin/compatibility/matrix'
     | '/admin/profiles/$userId'
   id:
     | '__root__'
@@ -433,6 +445,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
     | '/_authenticated/imam/'
+    | '/_authenticated/admin/compatibility/matrix'
     | '/_authenticated/admin/profiles/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -695,8 +708,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminProfilesUserIdRouteImport
       parentRoute: typeof AuthenticatedAdminProfilesRoute
     }
+    '/_authenticated/admin/compatibility/matrix': {
+      id: '/_authenticated/admin/compatibility/matrix'
+      path: '/matrix'
+      fullPath: '/admin/compatibility/matrix'
+      preLoaderRoute: typeof AuthenticatedAdminCompatibilityMatrixRouteImport
+      parentRoute: typeof AuthenticatedAdminCompatibilityRoute
+    }
   }
 }
+
+interface AuthenticatedAdminCompatibilityRouteChildren {
+  AuthenticatedAdminCompatibilityMatrixRoute: typeof AuthenticatedAdminCompatibilityMatrixRoute
+}
+
+const AuthenticatedAdminCompatibilityRouteChildren: AuthenticatedAdminCompatibilityRouteChildren =
+  {
+    AuthenticatedAdminCompatibilityMatrixRoute:
+      AuthenticatedAdminCompatibilityMatrixRoute,
+  }
+
+const AuthenticatedAdminCompatibilityRouteWithChildren =
+  AuthenticatedAdminCompatibilityRoute._addFileChildren(
+    AuthenticatedAdminCompatibilityRouteChildren,
+  )
 
 interface AuthenticatedAdminProfilesRouteChildren {
   AuthenticatedAdminProfilesUserIdRoute: typeof AuthenticatedAdminProfilesUserIdRoute
@@ -714,7 +749,7 @@ const AuthenticatedAdminProfilesRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteRouteChildren {
-  AuthenticatedAdminCompatibilityRoute: typeof AuthenticatedAdminCompatibilityRoute
+  AuthenticatedAdminCompatibilityRoute: typeof AuthenticatedAdminCompatibilityRouteWithChildren
   AuthenticatedAdminImamApplicationsRoute: typeof AuthenticatedAdminImamApplicationsRoute
   AuthenticatedAdminImamsRoute: typeof AuthenticatedAdminImamsRoute
   AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
@@ -726,7 +761,8 @@ interface AuthenticatedAdminRouteRouteChildren {
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
-    AuthenticatedAdminCompatibilityRoute: AuthenticatedAdminCompatibilityRoute,
+    AuthenticatedAdminCompatibilityRoute:
+      AuthenticatedAdminCompatibilityRouteWithChildren,
     AuthenticatedAdminImamApplicationsRoute:
       AuthenticatedAdminImamApplicationsRoute,
     AuthenticatedAdminImamsRoute: AuthenticatedAdminImamsRoute,

@@ -136,13 +136,28 @@ function AdminLayout() {
             >
               Memberships
             </Link>
-            <Link
-              to="/admin/compatibility"
-              className="text-muted-foreground hover:text-foreground"
-              activeProps={{ className: "text-foreground font-medium" }}
-            >
-              Compatibility
-            </Link>
+            {/* Compatibility is two pages, grouped rather than added as a
+                tenth top-level link — the nav already wraps badly. */}
+            <span className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                Compatibility
+              </span>
+              <Link
+                to="/admin/compatibility"
+                className="text-muted-foreground hover:text-foreground"
+                activeOptions={{ exact: true }}
+                activeProps={{ className: "text-foreground font-medium" }}
+              >
+                Audit
+              </Link>
+              <Link
+                to="/admin/compatibility/matrix"
+                className="text-muted-foreground hover:text-foreground"
+                activeProps={{ className: "text-foreground font-medium" }}
+              >
+                Matrix
+              </Link>
+            </span>
 
             <Link
               to="/admin/seed"
