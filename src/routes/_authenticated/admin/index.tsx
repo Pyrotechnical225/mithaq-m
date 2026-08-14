@@ -53,6 +53,13 @@ function AdminHome() {
         <p className="text-sm text-muted-foreground">Everything happening on Mithaq right now.</p>
       </div>
 
+      {/*
+        Leads with what needs attention rather than a wall of equal-weight
+        cards. Only surfaces a row when there is genuinely something to do, so
+        an empty panel means "nothing outstanding" rather than "no data".
+      */}
+      <NeedsAttention stats={stats} />
+
       <div className="grid gap-4 md:grid-cols-4">
         <Stat label="Profiles" value={stats.profileCount} />
         <Stat label="Completed surveys" value={stats.completedCount} />
@@ -239,7 +246,80 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function NeedsAttention({ stats }: { stats: Awaited<ReturnType<typeof adminStats>> }) {
+  const stuckMidSurvey = Math.max(0, stats.profileCount - stats.completedCount);
+  const completedButHidden = Math.max(0, stats.completedCount - stats.discoverableCount);
+
+  const items = [
+    stuckMidSurvey > 0 && {
+      key: "stuck",
+      count: stuckMidSurvey,
+      label:
+        stuckMidSurvey === 1
+          ? "member has not finished their survey"
+          : "members have not finished their survey",
+      detail: "They cannot be matched until it is complete.",
+      to: "/admin/profiles" as const,
+      cta: "Review profiles",
+    },
+    completedButHidden > 0 && {
+      key: "hidden",
+      count: completedButHidden,
+      label:
+        completedButHidden === 1
+          ? "completed profile is not discoverable"
+          : "completed profiles are not discoverable",
+      detail: "Finished their survey but cannot be found by anyone.",
+      to: "/admin/profiles" as const,
+      cta: "Check visibility",
+    },
+  ].filter(Boolean) as Array<{
+    key: string;
+    count: number;
+    label: string;
+    detail: string;
+    to: "/admin/profiles";
+    cta: string;
+  }>;
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Needs attention</h2>
+        <p className="mt-2 text-sm text-foreground">
+          Nothing outstanding — every member has finished their survey and is discoverable.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Needs attention</h2>
+      <ul className="mt-3 divide-y divide-border">
+        {items.map((item) => (
+          <li key={item.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-semibold tabular-nums text-primary">{item.count}</span>
+              <span className="text-sm text-foreground">
+                {item.label}
+                <span className="block text-xs text-muted-foreground">{item.detail}</span>
+              </span>
+            </div>
+            <Link
+              to={item.to}
+              className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+            >
+              {item.cta}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

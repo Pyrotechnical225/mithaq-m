@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
 import { StepRail } from "@/components/survey/StepRail";
 import { QuestionField } from "@/components/survey/QuestionField";
@@ -152,11 +153,14 @@ function SurveyPage() {
         }
         await save({ data: { answers: payload, completed } });
         setSavedAt(new Date().toLocaleTimeString());
+        // Same verb as the control that triggered it.
+        if (!completed) toast.success("Draft saved");
         return true;
       } catch (error) {
-        setSaveError(
-          error instanceof Error ? error.message : "We couldn't save your answers just now",
-        );
+        const message =
+          error instanceof Error ? error.message : "We couldn't save your answers just now";
+        setSaveError(message);
+        toast.error("Could not save", { description: message });
         return false;
       } finally {
         setSaving(false);

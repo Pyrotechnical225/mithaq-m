@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useState } from "react";
 import { listAllProfiles } from "@/lib/admin.functions";
+import { toast } from "sonner";
 import { listMemberships, setComplimentaryMembership } from "@/lib/membership.functions";
 import { useAsyncResource } from "@/lib/use-async-resource";
 import {
@@ -68,8 +69,11 @@ function AdminMemberships() {
     try {
       await grant({ data: { user_id: row.id, grant: give } });
       await reload();
+      toast.success(give ? "Complimentary membership granted" : "Complimentary membership revoked");
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not update membership");
+      const message = e instanceof Error ? e.message : "Could not update membership";
+      setActionError(message);
+      toast.error("Could not update membership", { description: message });
     } finally {
       setBusy(null);
     }

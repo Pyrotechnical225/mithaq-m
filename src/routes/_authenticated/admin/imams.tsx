@@ -8,6 +8,7 @@ import {
   updateImam,
   ADMIN_UK_CITIES,
 } from "@/lib/admin.functions";
+import { toast } from "sonner";
 import { listImams } from "@/lib/imams.functions";
 import { useAsyncResource } from "@/lib/use-async-resource";
 import { EmptyRow, ErrorState, TableSkeleton } from "@/components/admin/async-states";
@@ -86,9 +87,11 @@ function ImamsAdmin() {
       if (editing) {
         await doUpdate({ data: { id: editing.id, ...payload } });
         setMsg("Updated.");
+        toast.success("Changes saved");
       } else {
         await doCreate({ data: payload });
         setMsg("Created.");
+        toast.success("Imam added");
       }
       setForm(empty);
       setEditing(null);
@@ -126,7 +129,9 @@ function ImamsAdmin() {
       await doDelete({ data: { id: imam.id } });
       await reload();
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Could not delete this imam");
+      const message = err instanceof Error ? err.message : "Could not delete this imam";
+      setMsg(message);
+      toast.error("Could not delete", { description: message });
     }
   };
 

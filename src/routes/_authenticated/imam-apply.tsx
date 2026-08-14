@@ -99,9 +99,7 @@ function ImamApply() {
               Your application status: <span className="capitalize">{existing.status}</span>
             </p>
             {existing.admin_notes && (
-              <p className="mt-1 text-muted-foreground">
-                Note from Mithaq: {existing.admin_notes}
-              </p>
+              <p className="mt-1 text-muted-foreground">Note from Mithaq: {existing.admin_notes}</p>
             )}
             {existing.status === "approved" && (
               <Link

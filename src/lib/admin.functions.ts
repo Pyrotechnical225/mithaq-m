@@ -567,6 +567,7 @@ export const compareMemberAgainstPool = createServerFn({ method: "POST" })
         rows: [],
         subject,
         exclusions,
+        cacheAvailable: true,
         rubricVersion: RUBRIC_VERSION,
       };
     }
@@ -576,19 +577,42 @@ export const compareMemberAgainstPool = createServerFn({ method: "POST" })
         rows: [],
         subject,
         exclusions,
+        cacheAvailable: true,
         rubricVersion: RUBRIC_VERSION,
       };
     }
 
     // Cached AI portions for this subject at the current rubric version.
-    const { data: cached } = data.refresh
-      ? { data: [] }
-      : await supabaseAdmin
-          .from("compatibility_scores")
-          .select("candidate_user_id, openai_score, strengths, considerations, updated_at")
-          .eq("subject_user_id", data.userId)
-          .eq("rubric_version", RUBRIC_VERSION);
-    const cachedBy = new Map((cached ?? []).map((row) => [row.candidate_user_id, row]));
+    // The cache is an optimisation, never a dependency: if the table is missing
+    // (migration not yet applied) or unreadable, fall through to an uncached
+    // run rather than failing the page. `cacheAvailable` surfaces that in the
+    // UI so a silently uncached — and therefore repeatedly billed — run is
+    // visible rather than mysterious.
+    let cached: Array<{
+      candidate_user_id: string;
+      openai_score: number | null;
+      strengths: string | null;
+      considerations: string | null;
+      updated_at: string;
+    }> = [];
+    let cacheAvailable = true;
+    if (!data.refresh) {
+      const { data: rows, error } = await supabaseAdmin
+        .from("compatibility_scores")
+        .select("candidate_user_id, openai_score, strengths, considerations, updated_at")
+        .eq("subject_user_id", data.userId)
+        .eq("rubric_version", RUBRIC_VERSION);
+      if (error) {
+        cacheAvailable = false;
+        console.error(
+          `[compatibility] Score cache unavailable — every run will re-bill the AI review until ` +
+            `supabase/migrations/20260814010000_compatibility_scores.sql is applied. ${error.message}`,
+        );
+      } else {
+        cached = rows ?? [];
+      }
+    }
+    const cachedBy = new Map(cached.map((row) => [row.candidate_user_id, row]));
 
     const labels = await loadProfileLabels(pool.map((c) => c.user_id));
 
@@ -617,7 +641,14 @@ export const compareMemberAgainstPool = createServerFn({ method: "POST" })
       })
       .sort((left, right) => right.final_score - left.final_score);
 
-    return { status: "ok" as const, rows, subject, exclusions, rubricVersion: RUBRIC_VERSION };
+    return {
+      status: "ok" as const,
+      rows,
+      subject,
+      exclusions,
+      cacheAvailable,
+      rubricVersion: RUBRIC_VERSION,
+    };
   });
 
 /**
@@ -717,7 +748,14 @@ export const refreshPoolAiReviews = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin
         .from("compatibility_scores")
         .upsert(upserts, { onConflict: "subject_user_id,candidate_user_id,rubric_version" });
-      if (error) throw new Error(`Could not cache compatibility scores: ${error.message}`);
+      // Caching is best-effort. A missing table must not discard a completed
+      // (and already paid for) AI run — the scores are returned either way.
+      if (error) {
+        console.error(
+          `[compatibility] Could not write the score cache; results are returned uncached. ` +
+            `${error.message}`,
+        );
+      }
     }
 
     return { status: "ok" as const, reviews: out, failures, model };

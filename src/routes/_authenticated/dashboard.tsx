@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { getMyAnswers } from "@/lib/survey.functions";
 import { getMyPrivacy } from "@/lib/privacy.functions";
 import {
@@ -369,45 +370,81 @@ function Dashboard() {
           ) : (
             <div className="mt-5 space-y-4">
               {matches?.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No compatible profiles yet. Check back as more people join.
-                </p>
+                <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+                  <p className="text-sm font-medium text-foreground">No introductions yet</p>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                    Nobody currently meets your compatibility threshold. This changes as more people
+                    complete their profiles — we'll have more to show you soon.
+                  </p>
+                </div>
               )}
               {matches?.map((m) => (
-                <div key={m.match_user_id} className="rounded-xl border border-border p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="text-sm text-muted-foreground">
-                      {m.age && <span className="mr-3">Age {m.age}</span>}
-                      {m.location && <span className="mr-3">{m.location}</span>}
-                      {m.madhab && <span className="mr-3">{m.madhab}</span>}
-                      {m.practice_level && <span>{m.practice_level}</span>}
-                    </div>
-                    <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                      {Math.round(m.score)}% OpenAI-assisted match
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-foreground">
-                    <span className="font-medium">Strengths — </span>
-                    {m.strengths}
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Consider — </span>
+                <article key={m.match_user_id} className="rounded-xl border border-border p-5">
+                  {/*
+                    Leads with what they have in common. The score is present and
+                    honest but deliberately secondary — a large percentage as the
+                    hero is what makes a marriage platform read as a dating app.
+                  */}
+                  <p className="text-base leading-7 text-foreground">{m.strengths}</p>
+
+                  <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                    {m.age && (
+                      <div>
+                        <dt className="sr-only">Age</dt>
+                        <dd className="tabular-nums">Age {m.age}</dd>
+                      </div>
+                    )}
+                    {m.location && (
+                      <div>
+                        <dt className="sr-only">Location</dt>
+                        <dd>{m.location}</dd>
+                      </div>
+                    )}
+                    {m.madhab && (
+                      <div>
+                        <dt className="sr-only">Madhab</dt>
+                        <dd>{m.madhab}</dd>
+                      </div>
+                    )}
+                    {m.practice_level && (
+                      <div>
+                        <dt className="sr-only">Practice</dt>
+                        <dd>{m.practice_level}</dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  <p className="mt-4 border-t border-border pt-4 text-sm text-muted-foreground">
+                    <span className="text-foreground">Worth discussing — </span>
                     {m.considerations}
                   </p>
-                  <div className="mt-3 flex items-center gap-3">
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <button
                       disabled={sentIds.has(m.match_user_id)}
                       onClick={async () => {
-                        await sendInterest({ data: { to_user: m.match_user_id } });
-                        setSentIds((s) => new Set(s).add(m.match_user_id));
-                        fetchInterests().then(setInterests);
+                        try {
+                          await sendInterest({ data: { to_user: m.match_user_id } });
+                          setSentIds((s) => new Set(s).add(m.match_user_id));
+                          fetchInterests().then(setInterests);
+                          toast.success("Interest sent", {
+                            description: "They'll be told only if they express interest too.",
+                          });
+                        } catch (e) {
+                          toast.error("Could not send interest", {
+                            description: e instanceof Error ? e.message : undefined,
+                          });
+                        }
                       }}
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {sentIds.has(m.match_user_id) ? "Interest sent" : "Express interest"}
                     </button>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {Math.round(m.score)}% compatibility · a starting point, not a ruling
+                    </span>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}

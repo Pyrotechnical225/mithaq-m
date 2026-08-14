@@ -377,11 +377,16 @@ function CompatibilityMatrixPage() {
             >
               Export CSV
             </button>
-            {rows[0]?.cached_at && (
+            {comparison?.cacheAvailable === false ? (
+              <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs text-destructive">
+                Score cache unavailable — every run re-bills the AI review. Apply
+                supabase/migrations/20260814010000_compatibility_scores.sql.
+              </span>
+            ) : rows[0]?.cached_at ? (
               <span className="text-xs text-muted-foreground">
                 AI portion cached {new Date(rows[0].cached_at).toLocaleString()}
               </span>
-            )}
+            ) : null}
             {aiRunning && (
               <span className="text-xs text-muted-foreground">
                 Running AI review in batches — fixed scores are already final.

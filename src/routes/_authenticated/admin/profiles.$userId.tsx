@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useState } from "react";
 import { getProfileDetail, updateProfileAdmin, deleteProfileAdmin } from "@/lib/admin.functions";
+import { toast } from "sonner";
 import { questions } from "@/lib/survey-questions";
 import { useAsyncResource } from "@/lib/use-async-resource";
 import { ErrorState, PageHeadingSkeleton } from "@/components/admin/async-states";
@@ -59,8 +60,11 @@ function EditProfile() {
         },
       });
       setMsg("Saved.");
+      toast.success("Changes saved");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Failed to save");
+      const message = e instanceof Error ? e.message : "Failed to save";
+      setMsg(message);
+      toast.error("Could not save changes", { description: message });
     } finally {
       setSaving(false);
     }
