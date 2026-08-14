@@ -129,7 +129,17 @@ For every candidate, return a 0-100 compatibility score plus concise strengths a
 
     return new Map(result.output.matches.map((review) => [review.candidate_id, review]));
   } catch (error) {
-    if (!NoObjectGeneratedError.isInstance(error)) {
+    // A 404 here means the configured model id is wrong, which degrades every
+    // review permanently while looking like transient unavailability. Say so
+    // explicitly rather than logging nothing.
+    const message = error instanceof Error ? error.message : String(error);
+    if (/404|not found|does not exist|model_not_found/i.test(message)) {
+      console.error(
+        `[openai-compatibility] MISCONFIGURED MODEL — "${getOpenAIModelName()}" was rejected by OpenAI. ` +
+          `Every compatibility review will fall back to the fixed rubric until OPENAI_MODEL is corrected. ` +
+          `Check /api/public/compatibility-status for details. Underlying error: ${message}`,
+      );
+    } else if (!NoObjectGeneratedError.isInstance(error)) {
       console.error("OpenAI compatibility review failed; using fixed-rubric fallback", error);
     }
     return new Map<string, OpenAIReview>();
