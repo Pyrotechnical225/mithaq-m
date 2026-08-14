@@ -3,15 +3,15 @@
 import { PLANS, type PlanId } from "./membership-plans";
 
 const STRIPE_API = "https://api.stripe.com/v1";
+const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
 /** Stripe statuses that mean the member should keep access. */
 export const ACCESS_STATUSES = ["active", "trialing", "complimentary"] as const;
 
-// Prefer the full secret key; fall back to a restricted key (rk_...) which
-// works for Checkout/Billing calls as long as it has write access to those
-// resources.
+// Prefer a least-privilege restricted key when one is configured. A full
+// secret key remains supported for Vercel Marketplace compatibility.
 function stripeKey() {
-  return process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_API_KEY;
+  return process.env.STRIPE_RESTRICTED_API_KEY || process.env.STRIPE_SECRET_KEY;
 }
 
 export function stripeConfigured() {
@@ -22,12 +22,12 @@ export function stripeConfigured() {
 export function stripeKeyInfo() {
   const full = process.env.STRIPE_SECRET_KEY;
   const restricted = process.env.STRIPE_RESTRICTED_API_KEY;
-  const key = full || restricted;
+  const key = restricted || full;
   if (!key) return { configured: false as const };
   const prefix = key.slice(0, key.indexOf("_", 3) + 1 || 8);
   return {
     configured: true as const,
-    source: full ? ("STRIPE_SECRET_KEY" as const) : ("STRIPE_RESTRICTED_API_KEY" as const),
+    source: restricted ? ("STRIPE_RESTRICTED_API_KEY" as const) : ("STRIPE_SECRET_KEY" as const),
     kind: key.startsWith("rk_") ? ("restricted" as const) : ("secret" as const),
     mode: key.includes("_live_") ? ("live" as const) : ("test" as const),
     prefix,
@@ -68,6 +68,7 @@ async function stripeCall(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": STRIPE_API_VERSION,
   };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API}${path}`, {
@@ -154,25 +155,48 @@ export async function getOrCreateCustomer(opts: {
 
 /** True when this Stripe customer already has a live (billable) subscription. */
 export async function customerHasLiveSubscription(customerId: string) {
-  try {
-    const list = (await stripeCall(
-      `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
-      undefined,
-      "GET",
-    )) as { data?: { id: string; status: string }[] };
-    return (list.data ?? []).some((s) =>
-      ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
-    );
-  } catch {
-    // If we can't check, don't block the member — Stripe Checkout and the
-    // billing portal still prevent genuine double-charging on the same plan.
-    return false;
-  }
+  const list = (await stripeCall(
+    `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
+    undefined,
+    "GET",
+  )) as { data?: { id: string; status: string }[] };
+  return (list.data ?? []).some((s) =>
+    ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Checkout / portal                                                   */
 /* ------------------------------------------------------------------ */
+
+function appOrigin(requestedOrigin: string) {
+  const configured =
+    process.env.APP_URL?.trim() ||
+    process.env.SITE_URL?.trim() ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const raw = configured
+    ? configured.includes("://")
+      ? configured
+      : `https://${configured}`
+    : requestedOrigin;
+  const url = new URL(raw);
+  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  if (url.protocol !== "https:" && !(local && url.protocol === "http:")) {
+    throw new StripeError(0, "Invalid checkout return URL", "invalid_origin", null);
+  }
+  return url.origin;
+}
+
+function randomLetters(length = 8) {
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, (value) => String.fromCharCode(97 + (value % 26))).join("");
+}
+
+function configuredPriceId(plan: PlanId) {
+  return (
+    plan === "monthly" ? process.env.STRIPE_MONTHLY_PRICE_ID : process.env.STRIPE_YEARLY_PRICE_ID
+  )?.trim();
+}
 
 export async function createCheckoutSession(opts: {
   plan: PlanId;
@@ -183,31 +207,43 @@ export async function createCheckoutSession(opts: {
   // Pricing is resolved server-side from the allowlisted plan id only.
   const plan = PLANS[opts.plan];
   if (!plan) throw new StripeError(0, "Unknown plan", "invalid_plan", null);
+  const origin = appOrigin(opts.origin);
+  const priceId = configuredPriceId(plan.id);
   const body = form({
     mode: "subscription",
-    success_url: `${opts.origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${opts.origin}/membership?checkout=cancelled`,
+    success_url: `${origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/membership?checkout=cancelled`,
     client_reference_id: opts.userId,
     customer: opts.customerId,
     "line_items[0][quantity]": 1,
-    "line_items[0][price_data][currency]": plan.currency,
-    "line_items[0][price_data][unit_amount]": plan.amount,
-    "line_items[0][price_data][recurring][interval]": plan.interval,
-    "line_items[0][price_data][product_data][name]": `MeetHaq membership — ${plan.name}`,
     "subscription_data[metadata][user_id]": opts.userId,
     "subscription_data[metadata][plan]": plan.id,
     "metadata[user_id]": opts.userId,
     "metadata[plan]": plan.id,
     allow_promotion_codes: true,
+    integration_identifier: `meethaq_${randomLetters()}`,
   });
-  const session = await stripeCall("/checkout/sessions", body);
+  if (priceId) {
+    body.set("line_items[0][price]", priceId);
+  } else {
+    body.set("line_items[0][price_data][currency]", plan.currency);
+    body.set("line_items[0][price_data][unit_amount]", String(plan.amount));
+    body.set("line_items[0][price_data][recurring][interval]", plan.interval);
+    body.set("line_items[0][price_data][product_data][name]", `MeetHaq membership — ${plan.name}`);
+  }
+  const session = await stripeCall(
+    "/checkout/sessions",
+    body,
+    "POST",
+    `checkout:${opts.userId}:${plan.id}:${Math.floor(Date.now() / 30_000)}`,
+  );
   return { url: session.url as string };
 }
 
 export async function createBillingPortalSession(customerId: string, origin: string) {
   const session = await stripeCall(
     "/billing_portal/sessions",
-    form({ customer: customerId, return_url: `${origin}/membership` }),
+    form({ customer: customerId, return_url: `${appOrigin(origin)}/membership` }),
   );
   return { url: session.url as string };
 }
