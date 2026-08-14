@@ -36,3 +36,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# graphify code-graph output (regenerate with: graphify update .)
+graphify-out/
