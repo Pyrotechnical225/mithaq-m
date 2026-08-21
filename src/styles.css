@@ -40,7 +40,7 @@
   --color-cream: var(--cream);
 
   --shadow-soft: 0 1px 2px rgba(20, 40, 30, 0.04), 0 8px 24px rgba(20, 40, 30, 0.06);
-  --shadow-elevated: 0 4px 12px rgba(20, 40, 30, 0.08), 0 20px 40px rgba(20, 40, 30, 0.10);
+  --shadow-elevated: 0 4px 12px rgba(20, 40, 30, 0.08), 0 20px 40px rgba(20, 40, 30, 0.1);
 }
 
 :root {
@@ -71,19 +71,28 @@
   --gold-foreground: oklch(0.22 0.03 155);
   --cream: oklch(0.97 0.02 85);
 
-  --destructive: oklch(0.55 0.20 27);
+  --destructive: oklch(0.55 0.2 27);
   --destructive-foreground: oklch(0.985 0.012 85);
   --border: oklch(0.88 0.02 90);
-  --input: oklch(0.90 0.015 90);
+  --input: oklch(0.9 0.015 90);
   --ring: oklch(0.55 0.08 160);
 }
 
 @layer base {
+  html {
+    max-width: 100%;
+    overflow-x: clip;
+    scroll-behavior: smooth;
+  }
+
   * {
     border-color: var(--color-border);
+    min-width: 0;
   }
 
   body {
+    max-width: 100%;
+    overflow-x: clip;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -94,9 +103,50 @@
     background-attachment: fixed;
   }
 
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  p,
+  a,
+  button,
+  td,
+  th {
+    overflow-wrap: anywhere;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid color-mix(in oklch, var(--color-ring) 70%, transparent);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

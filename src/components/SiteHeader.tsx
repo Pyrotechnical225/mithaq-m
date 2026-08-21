@@ -50,6 +50,17 @@ export function SiteHeader() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
+
   const accountTo = signedIn ? "/dashboard" : "/auth";
   const accountLabel = signedIn ? "Dashboard" : "Sign in";
 
@@ -144,6 +155,7 @@ export function SiteHeader() {
           className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground lg:hidden"
           aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
           aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
           onClick={() => setMobileOpen((current) => !current)}
         >
           {mobileOpen ? <X size={19} /> : <Menu size={19} />}
@@ -152,6 +164,7 @@ export function SiteHeader() {
 
       {mobileOpen ? (
         <nav
+          id="mobile-navigation"
           className="border-t border-border bg-card px-5 py-5 lg:hidden"
           aria-label="Mobile navigation"
         >
@@ -176,6 +189,24 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
+            {signedIn && !verified ? (
+              <Link
+                to="/verify-email"
+                className="rounded-xl px-3 py-3 text-sm font-medium text-destructive hover:bg-destructive/10"
+                onClick={() => setMobileOpen(false)}
+              >
+                Verify email
+              </Link>
+            ) : null}
+            {isAdmin ? (
+              <Link
+                to="/admin"
+                className="rounded-xl px-3 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
+                onClick={() => setMobileOpen(false)}
+              >
+                Admin dashboard
+              </Link>
+            ) : null}
             <Link
               to={accountTo}
               className="mt-3 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"

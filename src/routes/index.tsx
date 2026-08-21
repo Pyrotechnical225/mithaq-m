@@ -15,6 +15,16 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Mithaq — Meet haq in marriage" },
+      {
+        name: "description",
+        content:
+          "Meet haq in marriage with Mithaq: private Muslim matchmaking with family involvement, imam review, and compatibility scoring.",
+      },
+    ],
+  }),
   component: Index,
 });
 
@@ -140,7 +150,7 @@ function Index() {
     <div className="min-h-screen overflow-x-hidden">
       <SiteHeader />
 
-      <main>
+      <main id="main-content">
         <section className="relative">
           <div className="absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_78%_20%,color-mix(in_oklch,var(--color-gold)_18%,transparent),transparent_45%)]" />
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-32 lg:pt-24">
