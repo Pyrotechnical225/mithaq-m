@@ -1,100 +1,182 @@
-import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { amIAdmin } from "@/lib/admin.functions";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { BrandName } from "@/components/BrandName";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
-  beforeLoad: async (): Promise<{ adminCheckError: string | null }> => {
-    // A failed role check and a genuine "not an admin" are different things.
-    // Only the latter may bounce the user; the former has to be visible,
-    // otherwise a Supabase outage is indistinguishable from a permissions
-    // decision and a real admin gets silently redirected with no explanation.
-    let isAdmin: boolean;
-    try {
-      const result = await amIAdmin();
-      isAdmin = !!result.isAdmin;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "The admin permission check did not complete";
-      // An expired or missing session is an auth problem, not an outage.
-      if (message.startsWith("Unauthorized")) throw redirect({ to: "/auth" });
-      return { adminCheckError: message };
-    }
-
-    if (!isAdmin) throw redirect({ to: "/dashboard" });
-    return { adminCheckError: null };
-  },
   component: AdminLayout,
 });
 
-function AdminCheckFailed({ message }: { message: string }) {
-  const router = useRouter();
-  const [retrying, setRetrying] = useState(false);
+function AdminLayout() {
+  const navigate = useNavigate();
+  const checkAdmin = useServerFn(amIAdmin);
+  const [access, setAccess] = useState<"checking" | "granted" | "denied" | "error">("checking");
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [menu, setMenu] = useState(false);
+
+  const verifyAccess = () => {
+    setAccess("checking");
+    setAccessError(null);
+    checkAdmin()
+      .then(({ isAdmin }) => setAccess(isAdmin ? "granted" : "denied"))
+      .catch((error) => {
+        setAccess("error");
+        setAccessError(
+          error instanceof Error ? error.message : "Admin access could not be checked.",
+        );
+      });
+  };
+
+  useEffect(() => {
+    verifyAccess();
+    const closeMenu = (event: KeyboardEvent) => event.key === "Escape" && setMenu(false);
+    window.addEventListener("keydown", closeMenu);
+    return () => window.removeEventListener("keydown", closeMenu);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const switchAccount = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  };
+
+  const navLinks = (
+    <>
+      <AdminLink to="/admin" label="Overview" exact onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/profiles" label="Profiles" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/new-profile" label="New profile" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/imams" label="Imams" onNavigate={() => setMenu(false)} />
+      <AdminLink
+        to="/admin/imam-applications"
+        label="Imam applications"
+        onNavigate={() => setMenu(false)}
+      />
+      <AdminLink to="/admin/memberships" label="Memberships" onNavigate={() => setMenu(false)} />
+      <AdminLink
+        to="/admin/compatibility"
+        label="Compatibility"
+        onNavigate={() => setMenu(false)}
+      />
+      <AdminLink to="/admin/seed" label="Seed data" onNavigate={() => setMenu(false)} />
+      <Link
+        to="/dashboard"
+        onClick={() => setMenu(false)}
+        className="rounded-full border border-border px-3 py-1.5 text-foreground hover:bg-accent"
+      >
+        User view
+      </Link>
+    </>
+  );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="max-w-md rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
-        <h1 className="text-lg font-medium text-foreground">
-          We couldn't confirm your admin access
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This is not a permissions decision — the check itself failed to complete, so we've kept
-          you here rather than sending you away.
-        </p>
-        <p className="mt-2 rounded-lg bg-background/60 px-3 py-2 font-mono text-xs text-muted-foreground">
-          {message}
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button
-            onClick={async () => {
-              setRetrying(true);
-              try {
-                await router.invalidate();
-              } finally {
-                setRetrying(false);
-              }
-            }}
-            disabled={retrying}
-            className="rounded-full bg-primary px-4 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
-            {retrying ? "Checking…" : "Try again"}
-          </button>
-          <Link
-            to="/dashboard"
-            className="rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent"
-          >
-            Go to my dashboard
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-6">
+          <Link to="/admin" className="flex items-center gap-2">
+            <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
+              Admin
+            </span>
+            <span className="flex items-baseline gap-1">
+              <BrandName className="text-lg" />
+              <span className="text-sm text-muted-foreground">control</span>
+            </span>
           </Link>
+          <nav className="hidden items-center gap-4 text-sm lg:flex">
+            {access === "granted" ? navLinks : <Link to="/dashboard">User view</Link>}
+          </nav>
+          <button
+            type="button"
+            aria-label={menu ? "Close admin navigation" : "Open admin navigation"}
+            aria-expanded={menu}
+            onClick={() => setMenu((open) => !open)}
+            className="rounded-xl border border-border p-2 lg:hidden"
+          >
+            {menu ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+        {menu && (
+          <nav className="grid gap-4 border-t border-border px-5 py-5 text-sm lg:hidden">
+            {access === "granted" ? navLinks : <Link to="/dashboard">User view</Link>}
+          </nav>
+        )}
+      </header>
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6">
+        {access === "checking" && (
+          <AccessPanel title="Checking admin access…">
+            <p>Please wait while Mithaq verifies your signed-in account.</p>
+          </AccessPanel>
+        )}
+        {access === "denied" && (
+          <AccessPanel title="This account does not have admin access">
+            <p>Sign out and use the Mithaq administrator account, then open this page again.</p>
+            <button
+              type="button"
+              onClick={switchAccount}
+              className="mt-5 rounded-full bg-primary px-5 py-2.5 font-medium text-primary-foreground"
+            >
+              Switch account
+            </button>
+          </AccessPanel>
+        )}
+        {access === "error" && (
+          <AccessPanel title="Admin access could not be verified">
+            <p>{accessError}</p>
+            <button
+              type="button"
+              onClick={verifyAccess}
+              className="mt-5 rounded-full bg-primary px-5 py-2.5 font-medium text-primary-foreground"
+            >
+              Try again
+            </button>
+          </AccessPanel>
+        )}
+        {access === "granted" && <Outlet />}
       </div>
     </div>
   );
 }
 
-function AdminLayout() {
-  const { adminCheckError } = Route.useRouteContext();
-  const [now, setNow] = useState("");
-  useEffect(() => setNow(new Date().toLocaleString()), []);
-
-  if (adminCheckError) return <AdminCheckFailed message={adminCheckError} />;
-
+function AdminLink({
+  to,
+  label,
+  exact = false,
+  onNavigate,
+}: {
+  to:
+    | "/admin"
+    | "/admin/profiles"
+    | "/admin/new-profile"
+    | "/admin/imams"
+    | "/admin/imam-applications"
+    | "/admin/memberships"
+    | "/admin/compatibility"
+    | "/admin/seed";
+  label: string;
+  exact?: boolean;
+  onNavigate: () => void;
+}) {
   return (
-    <SidebarProvider>
-      <AdminSidebar />
-      <SidebarInset className="bg-background">
-        <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
-          <SidebarTrigger />
-          <span className="text-sm text-muted-foreground">Mithaq control</span>
-        </header>
-        {/* Admin density is deliberately tighter than the member side: admins
-            get scannable tables, members get air. */}
-        <div className="px-4 py-6 md:px-6">
-          <Outlet />
-          <p className="mt-8 text-right text-[10px] text-muted-foreground">{now}</p>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <Link
+      to={to}
+      onClick={onNavigate}
+      className="text-muted-foreground hover:text-foreground"
+      activeOptions={{ exact }}
+      activeProps={{ className: "font-medium text-foreground" }}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function AccessPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mx-auto max-w-xl rounded-3xl border border-border bg-card p-7 text-center shadow-[var(--shadow-soft)] sm:p-10">
+      <h1 className="text-2xl text-foreground">{title}</h1>
+      <div className="mt-3 text-sm leading-6 text-muted-foreground">{children}</div>
+    </section>
   );
 }

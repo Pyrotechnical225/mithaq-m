@@ -11,7 +11,6 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -82,14 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "Meet haq in marriage with Mithaq. Find marriage-minded Muslims through shared deen, family values, life goals, wali involvement, and imam-supported introductions.",
       },
       { name: "author", content: "Mithaq" },
       { property: "og:title", content: "Mithaq — Building homes, the halal way" },
       {
         property: "og:description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "Meet haq in marriage with Mithaq. Find marriage-minded Muslims through shared deen, family values, life goals, wali involvement, and imam-supported introductions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -97,7 +96,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "Mithaq honors marriage as the sacred covenant described in Islam. We match practicing Muslims by religious commitment, family values, and life goals — with respect for wali involvement and Islamic marriage practices.",
+          "Meet haq in marriage with Mithaq. Find marriage-minded Muslims through shared deen, family values, life goals, wali involvement, and imam-supported introductions.",
       },
       {
         property: "og:image",
@@ -112,11 +111,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Archivo:wght@300;400;500;600&family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap",
       },
       {
         rel: "stylesheet",
@@ -139,6 +139,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only fixed left-4 top-4 z-[100] rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only"
+        >
+          Skip to main content
+        </a>
         {children}
         <Scripts />
       </body>
@@ -153,9 +159,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      {/* sonner was installed and wrapped in components/ui/sonner.tsx but never
-          mounted, so every toast() call in the app was a silent no-op. */}
-      <Toaster />
     </QueryClientProvider>
   );
 }

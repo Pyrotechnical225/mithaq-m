@@ -5,7 +5,7 @@ export default defineTool({
   name: "get_privacy_settings",
   title: "Get privacy settings",
   description:
-    "Return the signed-in user's MeetHaq privacy settings (visibility, field visibility).",
+    "Return the signed-in user's Mithaq privacy settings (visibility, field visibility).",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

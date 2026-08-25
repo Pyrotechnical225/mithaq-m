@@ -1,16 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listAllProfiles } from "@/lib/admin.functions";
-import { toast } from "sonner";
 import { listMemberships, setComplimentaryMembership } from "@/lib/membership.functions";
-import { useAsyncResource } from "@/lib/use-async-resource";
-import {
-  EmptyRow,
-  ErrorState,
-  PageHeadingSkeleton,
-  TableSkeleton,
-} from "@/components/admin/async-states";
 
 export const Route = createFileRoute("/_authenticated/admin/memberships")({
   head: () => ({
@@ -34,70 +26,46 @@ function AdminMemberships() {
   const fetchMemberships = useServerFn(listMemberships);
   const grant = useServerFn(setComplimentaryMembership);
 
+  const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [actionError, setActionError] = useState("");
+  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
 
-  const load = useCallback(async (): Promise<Row[]> => {
+  const load = useCallback(async () => {
     const [profiles, subs] = await Promise.all([fetchProfiles(), fetchMemberships()]);
     const subMap = new Map(subs.map((s) => [s.user_id, s]));
-    return profiles.map((p) => {
-      const s = subMap.get(p.id);
-      return {
-        id: p.id,
-        email: p.contact_email ?? p.auth_email,
-        plan: s?.plan ?? "none",
-        status: s?.status ?? "inactive",
-        period_end: s?.current_period_end ?? null,
-      };
-    });
+    setRows(
+      profiles.map((p) => {
+        const s = subMap.get(p.id);
+        return {
+          id: p.id,
+          email: p.contact_email ?? p.auth_email,
+          plan: s?.plan ?? "none",
+          status: s?.status ?? "inactive",
+          period_end: s?.current_period_end ?? null,
+        };
+      }),
+    );
   }, [fetchProfiles, fetchMemberships]);
 
-  const { status, data: rows, error, retry, reload, refreshing } = useAsyncResource(load);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const toggle = async (row: Row, give: boolean) => {
-    const who = row.email ?? row.id;
-    if (
-      !give &&
-      !confirm(
-        `Revoke complimentary membership for ${who}?\n\nThey will lose access to match generation immediately unless they have a paid subscription.`,
-      )
-    )
-      return;
-    setBusy(row.id);
-    setActionError("");
+  const toggle = async (userId: string, give: boolean) => {
+    setBusy(userId);
+    setError("");
     try {
-      await grant({ data: { user_id: row.id, grant: give } });
-      await reload();
-      toast.success(give ? "Complimentary membership granted" : "Complimentary membership revoked");
+      await grant({ data: { user_id: userId, grant: give } });
+      await load();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Could not update membership";
-      setActionError(message);
-      toast.error("Could not update membership", { description: message });
+      setError(e instanceof Error ? e.message : "Could not update membership");
     } finally {
       setBusy(null);
     }
   };
 
-  if (status === "error") {
-    return (
-      <ErrorState
-        title="Memberships didn't load"
-        message={error}
-        onRetry={retry}
-        retrying={refreshing}
-      />
-    );
-  }
-
-  if (status === "loading" || !rows) {
-    return (
-      <div className="space-y-6">
-        <PageHeadingSkeleton />
-        <TableSkeleton rows={6} columns={5} />
-      </div>
-    );
-  }
+  if (!rows) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const filtered = rows.filter((r) =>
     query ? (r.email ?? "").toLowerCase().includes(query.toLowerCase()) : true,
@@ -114,10 +82,8 @@ function AdminMemberships() {
         </p>
       </div>
 
-      {actionError && (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {actionError}
-        </p>
+      {error && (
+        <p className="rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</p>
       )}
 
       <input
@@ -162,7 +128,7 @@ function AdminMemberships() {
                   <td className="px-4 py-3 text-right">
                     <button
                       disabled={busy === r.id}
-                      onClick={() => toggle(r, r.plan !== "complimentary")}
+                      onClick={() => toggle(r.id, r.plan !== "complimentary")}
                       className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-50"
                     >
                       {busy === r.id
@@ -175,20 +141,13 @@ function AdminMemberships() {
                 </tr>
               );
             })}
-            {filtered.length === 0 &&
-              (rows.length === 0 ? (
-                <EmptyRow
-                  colSpan={5}
-                  title="No members yet"
-                  message="Memberships appear here once someone registers. Seed the example members to try the grant / revoke flow."
-                />
-              ) : (
-                <EmptyRow
-                  colSpan={5}
-                  title="No members match that search"
-                  message="Clear the search box to see every member again."
-                />
-              ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-muted-foreground">
+                  No members match that search.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { LayerGroup, Map as LeafletMap } from "leaflet";
 
 export type ImamMapPoint = {
   id: string;
@@ -19,8 +20,8 @@ type Props = {
 export default function UkImamMap({ points, user }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   // Keep the map + layer group across renders so we can update markers only.
-  const mapRef = useRef<any>(null);
-  const layerRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const layerRef = useRef<LayerGroup | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !ref.current) return;
@@ -45,6 +46,7 @@ export default function UkImamMap({ points, user }: Props) {
 
       const map = mapRef.current;
       const layer = layerRef.current;
+      if (!map || !layer) return;
       layer.clearLayers();
 
       const bounds: [number, number][] = [];

@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useState } from "react";
-import { getProfileDetail, updateProfileAdmin, deleteProfileAdmin } from "@/lib/admin.functions";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import {
+  deleteProfileAdmin,
+  getProfileCompatibilityScoresAdmin,
+  getProfileDetail,
+  updateProfileAdmin,
+} from "@/lib/admin.functions";
 import { questions } from "@/lib/survey-questions";
-import { useAsyncResource } from "@/lib/use-async-resource";
-import { ErrorState, PageHeadingSkeleton } from "@/components/admin/async-states";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/admin/profiles/$userId")({
   head: () => ({
@@ -19,9 +20,11 @@ function EditProfile() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
   const fetchDetail = useServerFn(getProfileDetail);
+  const fetchCompatibility = useServerFn(getProfileCompatibilityScoresAdmin);
   const doUpdate = useServerFn(updateProfileAdmin);
   const doDelete = useServerFn(deleteProfileAdmin);
 
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getProfileDetail>> | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [visibility, setVisibility] = useState<"hidden" | "discoverable" | "paused">("hidden");
@@ -29,21 +32,42 @@ function EditProfile() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [compatibility, setCompatibility] = useState<Awaited<
+    ReturnType<typeof getProfileCompatibilityScoresAdmin>
+  > | null>(null);
+  const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
 
-  const load = useCallback(() => fetchDetail({ data: { user_id: userId } }), [fetchDetail, userId]);
-  // `userId` as the reset key so navigating straight from one profile to
-  // another re-fetches instead of showing the previous member's record.
-  const { status, data: detail, error, retry, refreshing } = useAsyncResource(load, userId);
+  const load = async () => {
+    setCompatibility(null);
+    setCompatibilityError(null);
+    const [detailResult, compatibilityResult] = await Promise.allSettled([
+      fetchDetail({ data: { user_id: userId } }),
+      fetchCompatibility({ data: { user_id: userId } }),
+    ]);
 
-  // Seed the editable form once the record arrives.
+    if (detailResult.status === "fulfilled") {
+      const d = detailResult.value;
+      setDetail(d);
+      setDisplayName(d.profile?.display_name ?? "");
+      setContactEmail(d.profile?.contact_email ?? "");
+      setVisibility((d.privacy?.visibility as "hidden" | "discoverable" | "paused") ?? "hidden");
+      setCompleted(!!d.survey?.completed);
+      setAnswers((d.survey?.answers as Record<string, string>) ?? {});
+    }
+    if (compatibilityResult.status === "fulfilled") {
+      setCompatibility(compatibilityResult.value);
+    } else {
+      setCompatibilityError(
+        compatibilityResult.reason instanceof Error
+          ? compatibilityResult.reason.message
+          : "Unable to calculate compatibility scores",
+      );
+    }
+  };
+
   useEffect(() => {
-    if (!detail) return;
-    setDisplayName(detail.profile?.display_name ?? "");
-    setContactEmail(detail.profile?.contact_email ?? "");
-    setVisibility((detail.privacy?.visibility as "hidden" | "discoverable" | "paused") ?? "hidden");
-    setCompleted(!!detail.survey?.completed);
-    setAnswers((detail.survey?.answers as Record<string, string>) ?? {});
-  }, [detail]);
+    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [userId]);
 
   const save = async () => {
     setSaving(true);
@@ -59,63 +83,22 @@ function EditProfile() {
           answers,
         },
       });
+      await load();
       setMsg("Saved.");
-      toast.success("Changes saved");
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to save";
-      setMsg(message);
-      toast.error("Could not save changes", { description: message });
+      setMsg(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async () => {
-    const who = displayName || detail?.auth?.email || userId;
-    const counts = [
-      detail?.survey ? "their survey answers" : null,
-      (detail?.matches.length ?? 0) > 0 ? `${detail!.matches.length} match generation(s)` : null,
-      (detail?.interests.length ?? 0) > 0 ? `${detail!.interests.length} interest(s)` : null,
-    ].filter(Boolean);
-    if (
-      !confirm(
-        `Permanently delete ${who}?\n\nThis removes their auth account${counts.length ? `, plus ${counts.join(", ")}` : ""}. It cannot be undone.`,
-      )
-    )
-      return;
-    try {
-      await doDelete({ data: { user_id: userId } });
-      navigate({ to: "/admin/profiles" });
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Could not delete this profile");
-    }
+    if (!confirm("Delete this profile? This cannot be undone.")) return;
+    await doDelete({ data: { user_id: userId } });
+    navigate({ to: "/admin/profiles" });
   };
 
-  if (status === "error") {
-    return (
-      <ErrorState
-        title="This profile didn't load"
-        message={error}
-        onRetry={retry}
-        retrying={refreshing}
-      />
-    );
-  }
-
-  if (status === "loading" || !detail) {
-    return (
-      <div className="space-y-8">
-        <PageHeadingSkeleton />
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="space-y-3 rounded-2xl border border-border bg-card p-6">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (!detail) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
     <div className="space-y-8">
@@ -134,21 +117,12 @@ function EditProfile() {
             {detail.auth?.email_confirmed_at ? " · verified" : " · unverified"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/admin/compatibility/matrix"
-            search={{ member: userId }}
-            className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
-          >
-            Compare against pool
-          </Link>
-          <button
-            onClick={remove}
-            className="rounded-full border border-destructive/40 px-4 py-1.5 text-xs text-destructive hover:bg-destructive/10"
-          >
-            Delete profile
-          </button>
-        </div>
+        <button
+          onClick={remove}
+          className="rounded-full border border-destructive/40 px-4 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+        >
+          Delete profile
+        </button>
       </div>
 
       {msg && <p className="text-sm text-primary">{msg}</p>}
@@ -197,6 +171,65 @@ function EditProfile() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-6">
+        <div>
+          <h2 className="text-lg text-foreground">Compatibility with other members</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Admin audit view using the fixed Mithaq rubric. It includes every completed
+            opposite-gender profile, even below 70%, and excludes admin and imam accounts.
+          </p>
+        </div>
+
+        {compatibilityError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            {compatibilityError}
+          </div>
+        ) : !compatibility ? (
+          <p className="text-sm text-muted-foreground">Calculating compatibility scores…</p>
+        ) : !compatibility.eligible ? (
+          <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+            {compatibility.reason}
+          </p>
+        ) : compatibility.scores.length === 0 ? (
+          <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+            No completed opposite-gender member surveys are available to compare.
+          </p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {compatibility.scores.map((candidate) => (
+              <Link
+                key={candidate.user_id}
+                to="/admin/profiles/$userId"
+                params={{ userId: candidate.user_id }}
+                className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 transition hover:border-primary/30 hover:bg-accent/40"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{candidate.display_name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {[
+                      candidate.age ? `Age ${candidate.age}` : null,
+                      candidate.city,
+                      candidate.gender,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    candidate.score >= 70
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {candidate.score}%
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6 space-y-4">

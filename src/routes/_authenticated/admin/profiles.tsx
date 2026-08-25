@@ -1,20 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { deleteProfileAdmin, exportProfilesAdmin, listAllProfiles } from "@/lib/admin.functions";
-import { useAsyncResource } from "@/lib/use-async-resource";
-import {
-  EmptyRow,
-  ErrorState,
-  PageHeadingSkeleton,
-  TableSkeleton,
-} from "@/components/admin/async-states";
 
 export const Route = createFileRoute("/_authenticated/admin/profiles")({
   head: () => ({ meta: [{ title: "Profiles — Admin" }, { name: "robots", content: "noindex" }] }),
-  validateSearch: (search: Record<string, unknown>): { export?: boolean } => ({
-    export: search.export === true || search.export === "true" ? true : undefined,
-  }),
   component: ProfilesList,
 });
 
@@ -31,85 +21,19 @@ function download(filename: string, mime: string, body: string) {
 }
 
 function ProfilesList() {
-  const { export: exportRequested } = Route.useSearch();
   const fetchAll = useServerFn(listAllProfiles);
   const doExport = useServerFn(exportProfilesAdmin);
   const doDelete = useServerFn(deleteProfileAdmin);
 
-  const {
-    status,
-    data: rows,
-    error,
-    retry,
-    reload,
-    refreshing,
-  } = useAsyncResource<Row[]>(fetchAll);
+  const [rows, setRows] = useState<Row[] | null>(null);
   const [q, setQ] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
 
-  // Arriving from the overview's "Export JSON / CSV" action puts the export
-  // controls on screen and highlights them, so the label matches what happens.
+  const load = () => fetchAll().then(setRows);
   useEffect(() => {
-    if (!exportRequested || status !== "ready") return;
-    exportRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [exportRequested, status]);
+    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
 
-  const exportOne = async (id: string, format: "json" | "csv") => {
-    setActionError(null);
-    try {
-      const r = await doExport({ data: { format, user_id: id } });
-      download(r.filename, r.mime, r.body);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Export failed");
-    }
-  };
-  const exportAll = async (format: "json" | "csv") => {
-    setActionError(null);
-    try {
-      const r = await doExport({ data: { format } });
-      download(r.filename, r.mime, r.body);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Export failed");
-    }
-  };
-  const remove = async (id: string, label: string) => {
-    if (
-      !confirm(
-        `Permanently delete ${label}?\n\nThis removes their auth account, survey answers, privacy settings, matches and interests. It cannot be undone.`,
-      )
-    )
-      return;
-    setActionError(null);
-    try {
-      await doDelete({ data: { user_id: id } });
-      await reload();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not delete this profile");
-    }
-  };
-
-  if (status === "error") {
-    return (
-      <ErrorState
-        title="Profiles didn't load"
-        message={error}
-        onRetry={retry}
-        retrying={refreshing}
-      />
-    );
-  }
-
-  if (status === "loading" || !rows) {
-    return (
-      <div className="space-y-6">
-        <PageHeadingSkeleton />
-        <TableSkeleton rows={8} columns={8} />
-      </div>
-    );
-  }
-
-  const filtered = rows.filter((r) => {
+  const filtered = (rows ?? []).filter((r) => {
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -120,18 +44,25 @@ function ProfilesList() {
     );
   });
 
+  const exportOne = async (id: string, format: "json" | "csv") => {
+    const r = await doExport({ data: { format, user_id: id } });
+    download(r.filename, r.mime, r.body);
+  };
+  const exportAll = async (format: "json" | "csv") => {
+    const r = await doExport({ data: { format } });
+    download(r.filename, r.mime, r.body);
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Delete this profile permanently? This cannot be undone.")) return;
+    await doDelete({ data: { user_id: id } });
+    load();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-3xl text-foreground">Profiles</h1>
-        <div
-          ref={exportRef}
-          className={
-            exportRequested
-              ? "flex gap-2 rounded-full p-1 ring-2 ring-primary ring-offset-2 ring-offset-background"
-              : "flex gap-2"
-          }
-        >
+        <div className="flex gap-2">
           <button
             onClick={() => exportAll("json")}
             className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
@@ -152,19 +83,6 @@ function ProfilesList() {
           </Link>
         </div>
       </div>
-
-      {exportRequested ? (
-        <p className="text-sm text-muted-foreground">
-          Choose a format above to export every profile, or use the per-row JSON / CSV buttons for a
-          single member.
-        </p>
-      ) : null}
-
-      {actionError ? (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {actionError}
-        </p>
-      ) : null}
 
       <input
         value={q}
@@ -229,9 +147,7 @@ function ProfilesList() {
                       CSV
                     </button>
                     <button
-                      onClick={() =>
-                        remove(r.id, r.display_name || r.auth_email || r.contact_email || r.id)
-                      }
+                      onClick={() => remove(r.id)}
                       className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10"
                     >
                       Delete
@@ -240,20 +156,13 @@ function ProfilesList() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 &&
-              (rows.length === 0 ? (
-                <EmptyRow
-                  colSpan={8}
-                  title="No profiles yet"
-                  message="Create one with “+ New profile”, or seed the example members from the Seed data page."
-                />
-              ) : (
-                <EmptyRow
-                  colSpan={8}
-                  title="Nothing matches that search"
-                  message="Clear the search box to see all profiles again."
-                />
-              ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  No profiles.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -20,6 +20,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         const {
           verifyStripeSignature,
           syncSubscriptionFromSession,
+          syncMeetingPackagePaymentFromSession,
           syncSubscriptionObject,
           syncFromInvoice,
           claimStripeEvent,
@@ -53,7 +54,16 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           };
           switch (event.type) {
             case "checkout.session.completed":
-              ensureSynced(await syncSubscriptionFromSession(obj.id as string));
+              if (((obj.metadata ?? {}) as Record<string, string>).kind === "meeting_package") {
+                ensureSynced(await syncMeetingPackagePaymentFromSession(obj.id as string));
+              } else {
+                ensureSynced(await syncSubscriptionFromSession(obj.id as string));
+              }
+              break;
+            case "checkout.session.async_payment_succeeded":
+              if (((obj.metadata ?? {}) as Record<string, string>).kind === "meeting_package") {
+                ensureSynced(await syncMeetingPackagePaymentFromSession(obj.id as string));
+              }
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":

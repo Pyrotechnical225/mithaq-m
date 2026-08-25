@@ -1,30 +1,143 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { assertActiveMembership } from "./membership-guard";
-import { getExcludedUserIds } from "./match-exclusions.server";
-import { getOpenAIModelName } from "./openai-compatibility.server";
+import { questions } from "./survey-questions";
 import {
-  fixedCompatibilityScore,
-  normalized,
-  reviewCandidates,
-  weightedFinalScore,
-  type Answers,
-} from "./compatibility.server";
+  createOpenAICompatibilityProvider,
+  getOpenAIModelName,
+} from "./openai-compatibility.server";
 
-// The rubric, prompt building and anonymisation now live in
-// compatibility.server.ts so the admin compatibility matrix shares them
-// verbatim instead of copy-pasting.
-export { fixedCompatibilityScore } from "./compatibility.server";
+const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
+const AI_SAFE_IDS = new Set(
+  questions
+    .filter((question) => question.type !== "text" && question.id !== 2)
+    .map((question) => question.id),
+);
+
+const SECTION_WEIGHTS: Record<string, number> = {
+  "Religious Practice": 4,
+  "Marriage Intentions": 3,
+  "Family & Practical Matters": 2,
+  "Family & Children": 2,
+  "Values & Expectations": 2,
+  "Islamic & Community Life": 2,
+  "Basic Information": 1,
+  "Personality & Lifestyle": 1,
+  "Compatibility Extras": 1,
+};
+
+type Answers = Record<string, string>;
+
+function normalized(value: string | undefined) {
+  return value?.trim().toLocaleLowerCase() ?? "";
+}
+
+function isFlexible(value: string) {
+  return /open|depends|not sure|other|no preference|flexible|undecided/.test(value);
+}
+
+function answerSimilarity(left: string, right: string) {
+  if (left === right) return 1;
+  if (isFlexible(left) || isFlexible(right)) return 0.65;
+  return 0;
+}
+
+export function fixedCompatibilityScore(mine: Answers, theirs: Answers) {
+  let earned = 0;
+  let available = 0;
+
+  for (const question of questions) {
+    if (question.id === 1 || question.id === 2 || question.type === "text") continue;
+    const mineValue = normalized(mine[question.id]);
+    const theirValue = normalized(theirs[question.id]);
+    if (!mineValue || !theirValue) continue;
+
+    const requiredMultiplier = REQUIRED_IDS.has(question.id) ? 1.25 : 1;
+    const weight = (SECTION_WEIGHTS[question.section] ?? 1) * requiredMultiplier;
+    available += weight;
+    earned += weight * answerSimilarity(mineValue, theirValue);
+  }
+
+  if (available === 0) return 50;
+  return Math.round(50 + (earned / available) * 50);
+}
+
+function summarizeSafeAnswers(answers: Answers) {
+  return questions
+    .filter((question) => AI_SAFE_IDS.has(question.id))
+    .filter((question) => normalized(answers[question.id]) !== "")
+    .map((question) => `${question.section} — ${question.question}: ${answers[question.id]}`)
+    .join("\n");
+}
+
+const OpenAIReviewSchema = z.object({
+  matches: z.array(
+    z.object({
+      candidate_id: z.string(),
+      score: z.number().min(0).max(100),
+      strengths: z.string().max(500),
+      considerations: z.string().max(500),
+    }),
+  ),
+});
+
+type OpenAIReview = z.infer<typeof OpenAIReviewSchema>["matches"][number];
 
 const GenerateMatchesInput = z.object({ openaiConsent: z.literal(true) });
+
+async function getOpenAIReviews(
+  mine: Answers,
+  candidates: Array<{ candidate_id: string; answers: Answers }>,
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey || candidates.length === 0) return new Map<string, OpenAIReview>();
+
+  const provider = createOpenAICompatibilityProvider(apiKey);
+  const prompt = `You provide a bounded compatibility review for Mithaq, a halal marriage platform.
+
+Analyse only the anonymised multiple-choice survey answers below. Do not infer identity, protected traits, health, wealth, or facts that are not explicitly present. The fixed rubric remains the primary score; your score is a limited secondary review.
+
+MEMBER:
+${summarizeSafeAnswers(mine)}
+
+CANDIDATES:
+${candidates
+  .map(
+    (candidate) => `--- ${candidate.candidate_id} ---\n${summarizeSafeAnswers(candidate.answers)}`,
+  )
+  .join("\n\n")}
+
+For every candidate, return a 0-100 compatibility score plus concise strengths and points to discuss. Focus on religious practice, marriage intentions, family expectations, lifestyle, and flexibility. Return each candidate_id exactly as supplied.`;
+
+  try {
+    const result = await generateText({
+      model: provider(getOpenAIModelName()),
+      output: Output.object({
+        name: "MithaqCompatibilityReview",
+        description: "An anonymised, bounded compatibility review for each candidate",
+        schema: OpenAIReviewSchema,
+      }),
+      prompt,
+      maxOutputTokens: 1_500,
+      timeout: 15_000,
+      maxRetries: 1,
+      providerOptions: { openai: { store: false } },
+    });
+
+    return new Map(result.output.matches.map((review) => [review.candidate_id, review]));
+  } catch (error) {
+    if (!NoObjectGeneratedError.isInstance(error)) {
+      console.error("OpenAI compatibility review failed; using fixed-rubric fallback", error);
+    }
+    return new Map<string, OpenAIReview>();
+  }
+}
 
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => GenerateMatchesInput.parse(input))
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
-
     const { data: mine } = await context.supabase
       .from("survey_answers")
       .select("answers, completed")
@@ -34,12 +147,6 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const myAnswers = mine.answers as Answers;
     const myGender = normalized(myAnswers["2"]);
-    // Fail closed: without a gender on either side we cannot guarantee an
-    // opposite-gender match, so we refuse rather than match against everyone.
-    if (!myGender) {
-      throw new Error("Answer the gender question in your profile to generate matches");
-    }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: candidates, error: candidateError } = await supabaseAdmin
       .from("survey_answers")
@@ -52,13 +159,10 @@ export const generateMatches = createServerFn({ method: "POST" })
       .from("privacy_settings")
       .select("user_id, visibility");
     const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
-    const excludedUserIds = await getExcludedUserIds();
     const pool = (candidates ?? []).filter((candidate) => {
-      if (excludedUserIds.has(candidate.user_id)) return false;
       if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
       const candidateGender = normalized((candidate.answers as Answers)["2"]);
-      if (!candidateGender) return false;
-      return candidateGender !== myGender;
+      return !myGender || !candidateGender || myGender !== candidateGender;
     });
 
     const scoredPool = pool.map((candidate, index) => ({
@@ -67,15 +171,15 @@ export const generateMatches = createServerFn({ method: "POST" })
       answers: candidate.answers as Answers,
       fixed_score: fixedCompatibilityScore(myAnswers, candidate.answers as Answers),
     }));
-    const { reviews: openAIReviews, configured: openAIConfigured } = await reviewCandidates(
-      myAnswers,
-      scoredPool,
-    );
+    const openAIReviews = await getOpenAIReviews(myAnswers, scoredPool);
+    const openAIConfigured = !!process.env.OPENAI_API_KEY?.trim();
 
     const enriched = scoredPool
       .map((candidate) => {
         const review = openAIReviews.get(candidate.candidate_id);
-        const finalScore = weightedFinalScore(candidate.fixed_score, review?.score);
+        const finalScore = review
+          ? Math.round(candidate.fixed_score * 0.8 + review.score * 0.2)
+          : candidate.fixed_score;
 
         return {
           match_user_id: candidate.real_id,
@@ -84,7 +188,7 @@ export const generateMatches = createServerFn({ method: "POST" })
           openai_score: review?.score ?? null,
           scoring_method: review ? "fixed-rubric-v1-with-openai-review" : "fixed-rubric-v1",
           strengths:
-            review?.strengths ?? "Strong alignment across the fixed MeetHaq compatibility rubric.",
+            review?.strengths ?? "Strong alignment across the fixed Mithaq compatibility rubric.",
           considerations:
             review?.considerations ??
             (openAIConfigured
@@ -122,7 +226,6 @@ export const generateMatches = createServerFn({ method: "POST" })
 export const getLatestMatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const { data, error } = await context.supabase
       .from("matches")
       .select("id, results, created_at")
@@ -140,7 +243,6 @@ export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .upsert(
@@ -160,7 +262,6 @@ export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
-    await assertActiveMembership(context);
     const { error } = await context.supabase
       .from("interests")
       .update({ status: data.accept ? "accepted" : "declined" })
@@ -173,7 +274,6 @@ export const respondInterest = createServerFn({ method: "POST" })
 export const listInterests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertActiveMembership(context);
     const uid = context.userId;
     const { data: sent } = await context.supabase
       .from("interests")

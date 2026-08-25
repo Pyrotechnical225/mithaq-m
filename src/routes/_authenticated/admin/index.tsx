@@ -1,15 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { adminStats } from "@/lib/admin.functions";
-import { useAsyncResource } from "@/lib/use-async-resource";
-import {
-  CardGridSkeleton,
-  EmptyState,
-  ErrorState,
-  PageHeadingSkeleton,
-  StatGridSkeleton,
-} from "@/components/admin/async-states";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
@@ -20,31 +12,40 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 
 function AdminHome() {
   const fetchStats = useServerFn(adminStats);
-  const { status, data: stats, error, retry, refreshing } = useAsyncResource(fetchStats);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (status === "error") {
+  const loadStats = () => {
+    setError(null);
+    fetchStats()
+      .then(setStats)
+      .catch((loadError) => {
+        setError(loadError instanceof Error ? loadError.message : "Admin overview could not load.");
+      });
+  };
+
+  useEffect(() => {
+    loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) {
     return (
-      <ErrorState
-        title="The overview didn't load"
-        message={error}
-        onRetry={retry}
-        retrying={refreshing}
-      />
+      <section className="rounded-3xl border border-destructive/30 bg-card p-7 text-center">
+        <h1 className="text-2xl text-foreground">Admin overview could not load</h1>
+        <p className="mt-3 text-sm text-destructive">{error}</p>
+        <button
+          type="button"
+          onClick={loadStats}
+          className="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground"
+        >
+          Try again
+        </button>
+      </section>
     );
   }
 
-  if (status === "loading" || !stats) {
-    return (
-      <div className="space-y-8">
-        <PageHeadingSkeleton />
-        <StatGridSkeleton />
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <PageHeadingSkeleton />
-        </div>
-        <CardGridSkeleton count={4} />
-      </div>
-    );
-  }
+  if (!stats) return <p className="text-sm text-muted-foreground">Loading admin overview…</p>;
 
   return (
     <div className="space-y-8">
@@ -52,13 +53,6 @@ function AdminHome() {
         <h1 className="text-3xl text-foreground">Overview</h1>
         <p className="text-sm text-muted-foreground">Everything happening on Mithaq right now.</p>
       </div>
-
-      {/*
-        Leads with what needs attention rather than a wall of equal-weight
-        cards. Only surfaces a row when there is genuinely something to do, so
-        an empty panel means "nothing outstanding" rather than "no data".
-      */}
-      <NeedsAttention stats={stats} />
 
       <div className="grid gap-4 md:grid-cols-4">
         <Stat label="Profiles" value={stats.profileCount} />
@@ -84,20 +78,7 @@ function AdminHome() {
             </li>
           ))}
           {stats.recentUsers.length === 0 && (
-            <li className="py-4">
-              <EmptyState
-                title="No members have signed up yet"
-                message="Once someone registers they'll appear here. To try the flows now, seed the example members."
-                action={
-                  <Link
-                    to="/admin/seed"
-                    className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
-                  >
-                    Seed example data
-                  </Link>
-                }
-              />
-            </li>
+            <li className="py-4 text-muted-foreground">No users yet.</li>
           )}
         </ul>
       </div>
@@ -112,132 +93,93 @@ function AdminHome() {
           <ControlCard
             title="Spouses database"
             body="Member profiles, survey answers, visibility and exports."
-          >
-            <Link to="/admin/profiles" className={PRIMARY_ACTION}>
-              Browse & edit profiles
-            </Link>
-            <Link to="/admin/new-profile" className={SECONDARY_ACTION}>
-              + Add profile
-            </Link>
-            <Link to="/admin/profiles" search={{ export: true }} className={SECONDARY_ACTION}>
-              Export JSON / CSV
-            </Link>
-          </ControlCard>
+            actions={[
+              { to: "/admin/profiles", label: "Browse & edit profiles", primary: true },
+              { to: "/admin/new-profile", label: "+ Add profile" },
+              { to: "/admin/profiles", label: "Export JSON / CSV" },
+            ]}
+          />
 
           <ControlCard
             title="Imams database"
             body="Imam directory: mosque, city, contact details and languages."
-          >
-            <Link to="/admin/imams" className={PRIMARY_ACTION}>
-              Browse & edit imams
-            </Link>
-            <Link to="/admin/imams" search={{ add: true }} className={SECONDARY_ACTION}>
-              + Add imam
-            </Link>
-            <Link to="/admin/seed" className={SECONDARY_ACTION}>
-              Seed / clear example data
-            </Link>
-          </ControlCard>
+            actions={[
+              { to: "/admin/imams", label: "Browse & edit imams", primary: true },
+              { to: "/admin/imams", label: "+ Add imam" },
+              { to: "/admin/seed", label: "Seed / clear example data" },
+            ]}
+          />
 
           <ControlCard
             title="Imam applications & pairings"
             body="Approve or decline imam applicants, activate or suspend imam dashboard access, and oversee every pairing and arranged meetup."
-          >
-            <Link to="/admin/imam-applications" className={PRIMARY_ACTION}>
-              Review applications
-            </Link>
-            <Link
-              to="/admin/imam-applications"
-              search={{ section: "pairings" }}
-              className={SECONDARY_ACTION}
-            >
-              All pairings & meetups
-            </Link>
-          </ControlCard>
+            actions={[
+              { to: "/admin/imam-applications", label: "Review applications", primary: true },
+              { to: "/admin/imam-applications", label: "All pairings & meetups" },
+            ]}
+          />
 
           <ControlCard
             title="Memberships & billing"
             body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
-          >
-            <Link to="/admin/memberships" className={PRIMARY_ACTION}>
-              Manage memberships
-            </Link>
-            <Link to="/membership" className={SECONDARY_ACTION}>
-              Member-facing plans
-            </Link>
-          </ControlCard>
+            actions={[
+              { to: "/admin/memberships", label: "Manage memberships", primary: true },
+              { to: "/membership", label: "Member-facing plans" },
+            ]}
+          />
 
           <ControlCard
             title="Compatibility scoring audit"
             body="Compare the fixed-rubric score, OpenAI review and final weighted result for every generated match."
-          >
-            <Link to="/admin/compatibility" className={PRIMARY_ACTION}>
-              Compare scores
-            </Link>
-            {/* A raw JSON endpoint, not a router page — a <Link> here would 404. */}
-            <a
-              href="/api/public/compatibility-status"
-              target="_blank"
-              rel="noreferrer"
-              className={SECONDARY_ACTION}
-            >
-              OpenAI status (raw JSON)
-            </a>
-          </ControlCard>
+            actions={[
+              { to: "/admin/compatibility", label: "Compare scores", primary: true },
+              { to: "/api/public/compatibility-status", label: "OpenAI connection status" },
+            ]}
+          />
 
           <ControlCard
             title="Example & demo data"
             body="Seed example members and imams for testing, then clear them out again in one click."
-          >
-            <Link to="/admin/seed" className={PRIMARY_ACTION}>
-              Seed data tools
-            </Link>
-          </ControlCard>
+            actions={[{ to: "/admin/seed", label: "Seed data tools", primary: true }]}
+          />
 
           <ControlCard
             title="Member experience"
             body="Open the platform exactly as a member sees it — survey, privacy controls, matches, location and imam picker."
-          >
-            <Link to="/dashboard" className={PRIMARY_ACTION}>
-              Open user dashboard
-            </Link>
-            <Link to="/survey" className={SECONDARY_ACTION}>
-              Survey
-            </Link>
-            <Link to="/settings" className={SECONDARY_ACTION}>
-              Privacy settings
-            </Link>
-          </ControlCard>
+            actions={[
+              { to: "/dashboard", label: "Open user dashboard", primary: true },
+              { to: "/survey", label: "Survey" },
+              { to: "/settings", label: "Privacy settings" },
+            ]}
+          />
         </div>
       </section>
     </div>
   );
 }
 
-const PRIMARY_ACTION =
-  "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90";
-const SECONDARY_ACTION = "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent";
+type Action = { to: string; label: string; primary?: boolean };
 
-/**
- * Actions are passed as real <Link> children rather than a `{ to: string }`
- * array: the widened string form gave up TanStack's route typing, which is how
- * three of these buttons ended up pointing somewhere that didn't do what the
- * label said.
- */
-function ControlCard({
-  title,
-  body,
-  children,
-}: {
-  title: string;
-  body: string;
-  children: ReactNode;
-}) {
+function ControlCard({ title, body, actions }: { title: string; body: string; actions: Action[] }) {
   return (
     <div className="rounded-xl border border-border p-5">
       <h3 className="text-lg text-foreground">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-      <div className="mt-4 flex flex-wrap gap-2">{children}</div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {actions.map((a, i) => (
+          <Link
+            key={`${a.to}-${i}`}
+            to={a.to}
+            className={
+              a.primary
+                ? "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+                : "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+            }
+          >
+            {a.label}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -246,80 +188,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function NeedsAttention({ stats }: { stats: Awaited<ReturnType<typeof adminStats>> }) {
-  const stuckMidSurvey = Math.max(0, stats.profileCount - stats.completedCount);
-  const completedButHidden = Math.max(0, stats.completedCount - stats.discoverableCount);
-
-  const items = [
-    stuckMidSurvey > 0 && {
-      key: "stuck",
-      count: stuckMidSurvey,
-      label:
-        stuckMidSurvey === 1
-          ? "member has not finished their survey"
-          : "members have not finished their survey",
-      detail: "They cannot be matched until it is complete.",
-      to: "/admin/profiles" as const,
-      cta: "Review profiles",
-    },
-    completedButHidden > 0 && {
-      key: "hidden",
-      count: completedButHidden,
-      label:
-        completedButHidden === 1
-          ? "completed profile is not discoverable"
-          : "completed profiles are not discoverable",
-      detail: "Finished their survey but cannot be found by anyone.",
-      to: "/admin/profiles" as const,
-      cta: "Check visibility",
-    },
-  ].filter(Boolean) as Array<{
-    key: string;
-    count: number;
-    label: string;
-    detail: string;
-    to: "/admin/profiles";
-    cta: string;
-  }>;
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Needs attention</h2>
-        <p className="mt-2 text-sm text-foreground">
-          Nothing outstanding — every member has finished their survey and is discoverable.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Needs attention</h2>
-      <ul className="mt-3 divide-y divide-border">
-        {items.map((item) => (
-          <li key={item.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-semibold tabular-nums text-primary">{item.count}</span>
-              <span className="text-sm text-foreground">
-                {item.label}
-                <span className="block text-xs text-muted-foreground">{item.detail}</span>
-              </span>
-            </div>
-            <Link
-              to={item.to}
-              className="rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
-            >
-              {item.cta}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }

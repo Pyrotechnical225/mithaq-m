@@ -1,14 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import {
-  RUBRIC_VERSION,
-  fixedCompatibilityScore,
-  normalized,
-  reviewCandidates,
-  weightedFinalScore,
-  type Answers,
-} from "./compatibility.server";
+import { fixedCompatibilityScore } from "@/lib/matches.functions";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(context: { supabase: any; userId: string }) {
@@ -128,6 +121,104 @@ export const getProfileDetail = createServerFn({ method: "GET" })
           }
         : null,
     };
+  });
+
+// -----------------------------------------------------------------------------
+// Admin: compare one member with every eligible opposite-gender member
+// -----------------------------------------------------------------------------
+export const getProfileCompatibilityScoresAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [selectedResult, surveysResult, profilesResult, rolesResult, imamAccountsResult] =
+      await Promise.all([
+        supabaseAdmin
+          .from("survey_answers")
+          .select("user_id, answers, completed")
+          .eq("user_id", data.user_id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("survey_answers")
+          .select("user_id, answers, completed")
+          .eq("completed", true)
+          .neq("user_id", data.user_id),
+        supabaseAdmin.from("profiles").select("id, display_name, uk_city"),
+        supabaseAdmin.from("user_roles").select("user_id, role"),
+        supabaseAdmin.from("imam_accounts").select("user_id"),
+      ]);
+
+    for (const result of [
+      selectedResult,
+      surveysResult,
+      profilesResult,
+      rolesResult,
+      imamAccountsResult,
+    ]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+
+    const excludedIds = new Set<string>(
+      (imamAccountsResult.data ?? []).map((account) => account.user_id),
+    );
+    for (const role of rolesResult.data ?? []) {
+      if (role.role === "admin") excludedIds.add(role.user_id);
+    }
+
+    if (excludedIds.has(data.user_id)) {
+      return {
+        eligible: false as const,
+        reason: "Compatibility comparisons are not available for admin or imam accounts.",
+        scores: [],
+      };
+    }
+
+    const selected = selectedResult.data;
+    if (!selected?.completed) {
+      return {
+        eligible: false as const,
+        reason: "This member must complete their survey before compatibility can be calculated.",
+        scores: [],
+      };
+    }
+
+    const selectedAnswers = selected.answers as Record<string, string>;
+    const selectedGender = selectedAnswers["2"]?.trim().toLowerCase();
+    if (selectedGender !== "male" && selectedGender !== "female") {
+      return {
+        eligible: false as const,
+        reason: "This member needs a valid gender answer before compatibility can be calculated.",
+        scores: [],
+      };
+    }
+
+    const profileById = new Map(
+      (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
+    );
+    const scores = (surveysResult.data ?? [])
+      .filter((candidate) => !excludedIds.has(candidate.user_id))
+      .filter((candidate) => {
+        const answers = candidate.answers as Record<string, string>;
+        const gender = answers["2"]?.trim().toLowerCase();
+        return gender === (selectedGender === "male" ? "female" : "male");
+      })
+      .map((candidate) => {
+        const answers = candidate.answers as Record<string, string>;
+        const profile = profileById.get(candidate.user_id);
+        return {
+          user_id: candidate.user_id,
+          display_name: profile?.display_name ?? "Untitled profile",
+          city: profile?.uk_city ?? answers["3"] ?? null,
+          age: answers["1"] ?? null,
+          gender: answers["2"] ?? null,
+          score: fixedCompatibilityScore(selectedAnswers, answers),
+        };
+      })
+      .sort((left, right) => right.score - left.score);
+
+    return { eligible: true as const, reason: null, scores };
   });
 
 // -----------------------------------------------------------------------------
@@ -431,386 +522,16 @@ export const listCompatibilityComparisonsAdmin = createServerFn({ method: "GET" 
   });
 
 // -----------------------------------------------------------------------------
-// Admin: compare one member against the entire eligible pool.
-//
-// Deliberately different from the member-facing generateMatches: no
-// `discoverable` filter, no 70-point cut, no top-5 slice. The admin sees every
-// eligible candidate and every score. Imams and admins are excluded via the
-// same shared helper the member flow uses, so the two pools cannot drift.
-// -----------------------------------------------------------------------------
-const CompareInput = z.object({
-  userId: z.string().uuid(),
-  refresh: z.boolean().optional(),
-});
-
-export type PoolExclusionReason =
-  | "self"
-  | "incomplete_survey"
-  | "no_gender"
-  | "same_gender"
-  | "imam"
-  | "admin";
-
-type PoolCandidate = {
-  user_id: string;
-  answers: Answers;
-  discoverable: boolean;
-};
-
-/** Shared by both admin matrix handlers: builds the eligible pool + exclusions. */
-async function buildComparisonPool(subjectUserId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { getExcludedUserIdsByReason } = await import("./match-exclusions.server");
-
-  const [{ data: subjectRow }, { data: surveys, error: surveyError }, { data: privacyRows }] =
-    await Promise.all([
-      supabaseAdmin
-        .from("survey_answers")
-        .select("answers, completed")
-        .eq("user_id", subjectUserId)
-        .maybeSingle(),
-      supabaseAdmin.from("survey_answers").select("user_id, answers, completed"),
-      supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
-    ]);
-  if (surveyError) throw new Error(surveyError.message);
-
-  const subjectAnswers = (subjectRow?.answers ?? {}) as Answers;
-  const subjectComplete = !!subjectRow?.completed;
-  const subjectGender = normalized(subjectAnswers["2"]);
-
-  const { admins, imams } = await getExcludedUserIdsByReason();
-  const discoverableBy = new Map(
-    (privacyRows ?? []).map((row) => [row.user_id, row.visibility === "discoverable"]),
-  );
-
-  const exclusions: Record<PoolExclusionReason, number> = {
-    self: 0,
-    incomplete_survey: 0,
-    no_gender: 0,
-    same_gender: 0,
-    imam: 0,
-    admin: 0,
-  };
-
-  const pool: PoolCandidate[] = [];
-  for (const row of surveys ?? []) {
-    if (row.user_id === subjectUserId) {
-      exclusions.self += 1;
-      continue;
-    }
-    // Order matters only for reporting; each candidate is counted once.
-    if (imams.has(row.user_id)) {
-      exclusions.imam += 1;
-      continue;
-    }
-    if (admins.has(row.user_id)) {
-      exclusions.admin += 1;
-      continue;
-    }
-    if (!row.completed) {
-      exclusions.incomplete_survey += 1;
-      continue;
-    }
-    const answers = (row.answers ?? {}) as Answers;
-    const gender = normalized(answers["2"]);
-    if (!gender) {
-      exclusions.no_gender += 1;
-      continue;
-    }
-    if (subjectGender && gender === subjectGender) {
-      exclusions.same_gender += 1;
-      continue;
-    }
-    pool.push({
-      user_id: row.user_id,
-      answers,
-      discoverable: discoverableBy.get(row.user_id) === true,
-    });
-  }
-
-  return { subjectAnswers, subjectComplete, subjectGender, pool, exclusions };
-}
-
-async function loadProfileLabels(userIds: string[]) {
-  if (userIds.length === 0) return new Map<string, { display_name: string | null }>();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", userIds);
-  return new Map((data ?? []).map((row) => [row.id, { display_name: row.display_name }]));
-}
-
-export const compareMemberAgainstPool = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CompareInput.parse(input))
-  .handler(async ({ data, context }) => {
-    // Admin-only at the server function, not just the route guard.
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { subjectAnswers, subjectComplete, subjectGender, pool, exclusions } =
-      await buildComparisonPool(data.userId);
-
-    // The subject's own facts for the header card. Non-text answers only.
-    const subject = {
-      age: subjectAnswers["1"] ?? null,
-      city: subjectAnswers["3"] ?? null,
-      madhab: subjectAnswers["10"] ?? null,
-      practice_level: subjectAnswers["11"] ?? null,
-      gender: subjectAnswers["2"] ?? null,
-    };
-
-    if (!subjectComplete) {
-      return {
-        status: "subject_survey_incomplete" as const,
-        rows: [],
-        subject,
-        exclusions,
-        cacheAvailable: true,
-        rubricVersion: RUBRIC_VERSION,
-      };
-    }
-    if (!subjectGender) {
-      return {
-        status: "subject_no_gender" as const,
-        rows: [],
-        subject,
-        exclusions,
-        cacheAvailable: true,
-        rubricVersion: RUBRIC_VERSION,
-      };
-    }
-
-    // Cached AI portions for this subject at the current rubric version.
-    // The cache is an optimisation, never a dependency: if the table is missing
-    // (migration not yet applied) or unreadable, fall through to an uncached
-    // run rather than failing the page. `cacheAvailable` surfaces that in the
-    // UI so a silently uncached — and therefore repeatedly billed — run is
-    // visible rather than mysterious.
-    let cached: Array<{
-      candidate_user_id: string;
-      openai_score: number | null;
-      strengths: string | null;
-      considerations: string | null;
-      updated_at: string;
-    }> = [];
-    let cacheAvailable = true;
-    if (!data.refresh) {
-      const { data: rows, error } = await supabaseAdmin
-        .from("compatibility_scores")
-        .select("candidate_user_id, openai_score, strengths, considerations, updated_at")
-        .eq("subject_user_id", data.userId)
-        .eq("rubric_version", RUBRIC_VERSION);
-      if (error) {
-        cacheAvailable = false;
-        console.error(
-          `[compatibility] Score cache unavailable — every run will re-bill the AI review until ` +
-            `supabase/migrations/20260814010000_compatibility_scores.sql is applied. ${error.message}`,
-        );
-      } else {
-        cached = rows ?? [];
-      }
-    }
-    const cachedBy = new Map(cached.map((row) => [row.candidate_user_id, row]));
-
-    const labels = await loadProfileLabels(pool.map((c) => c.user_id));
-
-    const rows = pool
-      .map((candidate) => {
-        const fixedScore = fixedCompatibilityScore(subjectAnswers, candidate.answers);
-        const cachedRow = cachedBy.get(candidate.user_id);
-        const openAIScore =
-          typeof cachedRow?.openai_score === "number" ? cachedRow.openai_score : null;
-        return {
-          user_id: candidate.user_id,
-          display_name: labels.get(candidate.user_id)?.display_name ?? null,
-          age: candidate.answers["1"] ?? null,
-          city: candidate.answers["3"] ?? null,
-          madhab: candidate.answers["10"] ?? null,
-          practice_level: candidate.answers["11"] ?? null,
-          discoverable: candidate.discoverable,
-          fixed_score: fixedScore,
-          openai_score: openAIScore,
-          final_score: weightedFinalScore(fixedScore, openAIScore),
-          strengths: cachedRow?.strengths ?? null,
-          considerations: cachedRow?.considerations ?? null,
-          cached_at: cachedRow?.updated_at ?? null,
-          fallback_reason: null as string | null,
-        };
-      })
-      .sort((left, right) => right.final_score - left.final_score);
-
-    return {
-      status: "ok" as const,
-      rows,
-      subject,
-      exclusions,
-      cacheAvailable,
-      rubricVersion: RUBRIC_VERSION,
-    };
-  });
-
-/**
- * Runs the OpenAI portion in bounded batches and upserts the cache. Split from
- * the call above so the table can paint fixed scores immediately rather than
- * blocking on the slowest batch.
- */
-export const refreshPoolAiReviews = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CompareInput.parse(input))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { subjectAnswers, subjectComplete, subjectGender, pool } = await buildComparisonPool(
-      data.userId,
-    );
-    if (!subjectComplete || !subjectGender || pool.length === 0) {
-      return { status: "skipped" as const, reviews: [], failures: [], model: null };
-    }
-
-    // Opaque handles only — no name, email or uuid ever reaches the model.
-    const anonymised = pool.map((candidate, index) => ({
-      candidate_id: `candidate_${index + 1}`,
-      answers: candidate.answers,
-    }));
-    const handleToUser = new Map(
-      anonymised.map((candidate, index) => [candidate.candidate_id, pool[index].user_id]),
-    );
-
-    const { reviews, failures, model } = await reviewCandidates(subjectAnswers, anonymised);
-
-    const failureByHandle = new Map<string, string>();
-    for (const failure of failures) {
-      for (const handle of failure.candidate_ids) failureByHandle.set(handle, failure.reason);
-    }
-
-    const upserts: Array<{
-      subject_user_id: string;
-      candidate_user_id: string;
-      rubric_version: string;
-      fixed_score: number;
-      openai_score: number | null;
-      final_score: number;
-      scoring_method: string;
-      strengths: string | null;
-      considerations: string | null;
-      openai_model: string | null;
-      updated_at: string;
-    }> = [];
-    const out: Array<{
-      user_id: string;
-      openai_score: number | null;
-      final_score: number;
-      strengths: string | null;
-      considerations: string | null;
-      fallback_reason: string | null;
-    }> = [];
-
-    for (const candidate of anonymised) {
-      const userId = handleToUser.get(candidate.candidate_id)!;
-      const poolEntry = pool.find((entry) => entry.user_id === userId)!;
-      const fixedScore = fixedCompatibilityScore(subjectAnswers, poolEntry.answers);
-      const review = reviews.get(candidate.candidate_id);
-      const finalScore = weightedFinalScore(fixedScore, review?.score);
-      const fallbackReason = review ? null : (failureByHandle.get(candidate.candidate_id) ?? null);
-
-      out.push({
-        user_id: userId,
-        openai_score: review?.score ?? null,
-        final_score: finalScore,
-        strengths: review?.strengths ?? null,
-        considerations: review?.considerations ?? null,
-        fallback_reason: fallbackReason,
-      });
-
-      // Only cache rows that actually carry an AI review; caching a fallback
-      // would freeze a transient failure in place until the next manual refresh.
-      if (review) {
-        upserts.push({
-          subject_user_id: data.userId,
-          candidate_user_id: userId,
-          rubric_version: RUBRIC_VERSION,
-          fixed_score: fixedScore,
-          openai_score: review.score,
-          final_score: finalScore,
-          scoring_method: "fixed-rubric-v1-with-openai-review",
-          strengths: review.strengths,
-          considerations: review.considerations,
-          openai_model: model,
-          updated_at: new Date().toISOString(),
-        });
-      }
-    }
-
-    if (upserts.length > 0) {
-      const { error } = await supabaseAdmin
-        .from("compatibility_scores")
-        .upsert(upserts, { onConflict: "subject_user_id,candidate_user_id,rubric_version" });
-      // Caching is best-effort. A missing table must not discard a completed
-      // (and already paid for) AI run — the scores are returned either way.
-      if (error) {
-        console.error(
-          `[compatibility] Could not write the score cache; results are returned uncached. ` +
-            `${error.message}`,
-        );
-      }
-    }
-
-    return { status: "ok" as const, reviews: out, failures, model };
-  });
-
-/** Member picker source: everyone who could be a comparison subject. */
-export const listComparableMembers = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getExcludedUserIdsByReason } = await import("./match-exclusions.server");
-
-    const [{ data: profiles }, { data: surveys }, { data: privacy }, excluded] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, display_name, contact_email"),
-      supabaseAdmin.from("survey_answers").select("user_id, answers, completed"),
-      supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
-      getExcludedUserIdsByReason(),
-    ]);
-
-    const surveyBy = new Map((surveys ?? []).map((row) => [row.user_id, row]));
-    const visibilityBy = new Map((privacy ?? []).map((row) => [row.user_id, row.visibility]));
-
-    return (profiles ?? [])
-      .map((profile) => {
-        const survey = surveyBy.get(profile.id);
-        const answers = (survey?.answers ?? {}) as Answers;
-        return {
-          user_id: profile.id,
-          display_name: profile.display_name,
-          contact_email: profile.contact_email,
-          gender: answers["2"] ?? null,
-          survey_completed: !!survey?.completed,
-          discoverable: visibilityBy.get(profile.id) === "discoverable",
-          is_imam: excluded.imams.has(profile.id),
-          is_admin: excluded.admins.has(profile.id),
-        };
-      })
-      .sort((left, right) =>
-        (left.display_name ?? left.contact_email ?? "").localeCompare(
-          right.display_name ?? right.contact_email ?? "",
-        ),
-      );
-  });
-
-// -----------------------------------------------------------------------------
 // Check if current user is admin (for UI gating)
 // -----------------------------------------------------------------------------
 export const amIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await context.supabase.rpc("has_role", {
+    const { data, error } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: "admin",
     });
+    if (error) throw new Error(`Admin access check failed: ${error.message}`);
     return { isAdmin: !!data };
   });
 
