@@ -6,7 +6,7 @@
 
 @theme inline {
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
-  --font-display: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -39,43 +39,43 @@
   --color-gold-foreground: var(--gold-foreground);
   --color-cream: var(--cream);
 
-  --shadow-soft: 0 1px 2px rgba(20, 40, 30, 0.04), 0 8px 24px rgba(20, 40, 30, 0.06);
-  --shadow-elevated: 0 4px 12px rgba(20, 40, 30, 0.08), 0 20px 40px rgba(20, 40, 30, 0.1);
+  --shadow-soft: 0 1px 2px rgba(20, 36, 28, 0.05), 0 4px 12px rgba(20, 36, 28, 0.04);
+  --shadow-elevated: 0 12px 32px rgba(20, 36, 28, 0.1);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Warm cream background, deep emerald primary, muted gold accent */
-  --background: oklch(0.985 0.012 85);
-  --foreground: oklch(0.24 0.03 155);
+  /* Restrained warm neutral palette with deep green and a quiet brass accent. */
+  --background: oklch(0.982 0.008 86);
+  --foreground: oklch(0.23 0.025 155);
 
-  --card: oklch(0.995 0.008 85);
-  --card-foreground: oklch(0.24 0.03 155);
-  --popover: oklch(0.995 0.008 85);
-  --popover-foreground: oklch(0.24 0.03 155);
+  --card: oklch(0.997 0.003 86);
+  --card-foreground: oklch(0.23 0.025 155);
+  --popover: oklch(0.997 0.003 86);
+  --popover-foreground: oklch(0.23 0.025 155);
 
-  --primary: oklch(0.36 0.07 160);
-  --primary-foreground: oklch(0.985 0.012 85);
+  --primary: oklch(0.33 0.065 158);
+  --primary-foreground: oklch(0.985 0.008 86);
 
-  --secondary: oklch(0.94 0.02 90);
-  --secondary-foreground: oklch(0.28 0.05 160);
+  --secondary: oklch(0.945 0.012 88);
+  --secondary-foreground: oklch(0.28 0.04 158);
 
-  --muted: oklch(0.95 0.015 85);
-  --muted-foreground: oklch(0.48 0.02 155);
+  --muted: oklch(0.95 0.009 86);
+  --muted-foreground: oklch(0.47 0.018 155);
 
-  --accent: oklch(0.92 0.04 90);
-  --accent-foreground: oklch(0.28 0.05 160);
+  --accent: oklch(0.93 0.018 88);
+  --accent-foreground: oklch(0.28 0.04 158);
 
-  --gold: oklch(0.72 0.13 80);
-  --gold-foreground: oklch(0.22 0.03 155);
-  --cream: oklch(0.97 0.02 85);
+  --gold: oklch(0.62 0.075 78);
+  --gold-foreground: oklch(0.22 0.025 155);
+  --cream: oklch(0.965 0.012 86);
 
   --destructive: oklch(0.55 0.2 27);
   --destructive-foreground: oklch(0.985 0.012 85);
-  --border: oklch(0.88 0.02 90);
-  --input: oklch(0.9 0.015 90);
-  --ring: oklch(0.55 0.08 160);
+  --border: oklch(0.87 0.012 88);
+  --input: oklch(0.88 0.012 88);
+  --ring: oklch(0.48 0.065 158);
 }
 
 @layer base {
@@ -97,17 +97,15 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(1200px 600px at 80% -10%, oklch(0.92 0.05 90 / 0.5), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, oklch(0.88 0.06 160 / 0.35), transparent 60%);
-    background-attachment: fixed;
+    line-height: 1.5;
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.025em;
   }
 
   img,
@@ -128,6 +126,18 @@
   button,
   a {
     touch-action: manipulation;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-primary) 20%, transparent);
   }
 
   :focus-visible {

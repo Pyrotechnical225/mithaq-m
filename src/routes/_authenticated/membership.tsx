@@ -1,276 +1,95 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import {
-  confirmCheckout,
-  diagnoseStripe,
-  getMyMembership,
-  openBillingPortal,
-  startCheckout,
-} from "@/lib/membership.functions";
-import { MEMBERSHIP_BENEFITS, PLANS, formatPrice, type PlanId } from "@/lib/membership-plans";
+import { Check } from "lucide-react";
+import { BrandName } from "@/components/BrandName";
+import { formatPence, MEETING_PACKAGES } from "@/lib/meeting-packages";
 
 export const Route = createFileRoute("/_authenticated/membership")({
   head: () => ({
     meta: [
-      { title: "Mithaq membership" },
-      { name: "description", content: "Unlock your matches with a Mithaq membership." },
+      { title: "Meeting support — Mithaq" },
+      {
+        name: "description",
+        content: "Mithaq meeting packages for mutually accepted, imam-approved introductions.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MembershipPage,
+  component: MeetingSupportPage,
 });
 
-function MembershipPage() {
-  const fetchMembership = useServerFn(getMyMembership);
-  const checkout = useServerFn(startCheckout);
-  const portal = useServerFn(openBillingPortal);
-  const confirm = useServerFn(confirmCheckout);
-  const diagnose = useServerFn(diagnoseStripe);
-
-  const [state, setState] = useState<Awaited<ReturnType<typeof getMyMembership>> | null>(null);
-  const [busy, setBusy] = useState<PlanId | "portal" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [diag, setDiag] = useState<Awaited<ReturnType<typeof diagnoseStripe>> | null>(null);
-  const [diagBusy, setDiagBusy] = useState(false);
-
-  useEffect(() => {
-    const load = () =>
-      fetchMembership()
-        .then(setState)
-        .catch(() => setState(null));
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session_id");
-    if (params.get("checkout") === "success" && sessionId) {
-      setNotice("Confirming your payment…");
-      confirm({ data: { session_id: sessionId } })
-        .then((r) =>
-          setNotice(
-            r.ok
-              ? "Payment confirmed — your membership is active."
-              : "Payment received. Your membership will activate shortly; refresh in a moment.",
-          ),
-        )
-        .catch(() =>
-          setNotice(
-            "Payment received. Your membership will activate shortly; refresh in a moment.",
-          ),
-        )
-        .finally(load);
-    } else {
-      if (params.get("checkout") === "cancelled") setNotice("Checkout was cancelled.");
-      load();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const go = async (plan: PlanId) => {
-    setError(null);
-    setBusy(plan);
-    try {
-      const { url } = await checkout({ data: { plan, origin: window.location.origin } });
-      window.location.href = url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start checkout");
-      setBusy(null);
-    }
-  };
-
-  const runDiagnostic = async () => {
-    setDiagBusy(true);
-    try {
-      setDiag(await diagnose());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Diagnostic failed");
-    } finally {
-      setDiagBusy(false);
-    }
-  };
-
-  const manage = async () => {
-    setError(null);
-    setBusy("portal");
-    try {
-      const { url } = await portal({ data: { origin: window.location.origin } });
-      window.location.href = url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not open billing");
-      setBusy(null);
-    }
-  };
+function MeetingSupportPage() {
+  const packages = Object.values(MEETING_PACKAGES);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-6 py-12">
-        <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Back to dashboard
-        </Link>
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-between px-5 sm:px-6">
+          <Link to="/" className="flex items-center gap-3">
+            <BrandName className="text-xl" />
+            <span className="border-l border-border pl-3 font-arabic text-lg text-primary">
+              ميثاق
+            </span>
+          </Link>
+          <Link
+            to="/dashboard"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      </header>
 
-        <h1 className="mt-6 text-3xl text-foreground">Mithaq membership</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Your survey and privacy controls are always free. Membership unlocks your matches and the
-          imam-arranged meeting process, and helps us keep Mithaq serious, moderated and halal.
-        </p>
-
-        {state?.active && (
-          <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5">
-            <p className="text-sm font-medium text-foreground">
-              Your membership is active ({state.plan}).
-              {state.current_period_end &&
-                (state.cancel_at_period_end
-                  ? ` Access ends ${new Date(state.current_period_end).toLocaleDateString()} — cancellation scheduled.`
-                  : ` Renews ${new Date(state.current_period_end).toLocaleDateString()}.`)}
-            </p>
-            {state.has_billing_portal && (
-              <button
-                onClick={manage}
-                disabled={busy === "portal"}
-                className="mt-3 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
-              >
-                {busy === "portal" ? "Opening…" : "Manage billing"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {state && !state.active && ["past_due", "unpaid", "incomplete"].includes(state.status) && (
-          <div className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/5 p-5 text-sm text-foreground">
-            <p className="font-medium">Your last payment didn’t go through.</p>
-            <p className="mt-1 text-muted-foreground">
-              Update your card in the billing portal to restore access.
-            </p>
-            {state.has_billing_portal && (
-              <button
-                onClick={manage}
-                disabled={busy === "portal"}
-                className="mt-3 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
-              >
-                {busy === "portal" ? "Opening…" : "Update payment method"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {state &&
-          !state.active &&
-          state.has_billing_portal &&
-          !["past_due", "unpaid", "incomplete"].includes(state.status) && (
-            <button
-              onClick={manage}
-              disabled={busy === "portal"}
-              className="mt-6 rounded-full border border-border px-4 py-1.5 text-sm hover:bg-accent disabled:opacity-60"
-            >
-              {busy === "portal" ? "Opening…" : "Manage billing"}
-            </button>
-          )}
-
-        {notice && (
-          <p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
-            {notice}
+      <main id="main-content" className="mx-auto max-w-6xl px-5 py-12 sm:px-6 lg:py-16">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            After mutual acceptance
           </p>
-        )}
-        {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-        {state?.is_admin && (
-          <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-medium text-foreground">Admin: Stripe diagnostic</h3>
-              <button
-                onClick={runDiagnostic}
-                disabled={diagBusy}
-                className="rounded-full border border-border bg-card px-4 py-1.5 text-xs hover:bg-accent disabled:opacity-60"
-              >
-                {diagBusy ? "Testing…" : "Test Stripe connection"}
-              </button>
-            </div>
-            {diag && (
-              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                {diag.key.configured ? (
-                  <p>
-                    Key: <strong>{diag.key.kind}</strong> ({diag.key.source}), mode{" "}
-                    <strong>{diag.key.mode}</strong>, prefix <code>{diag.key.prefix}</code> ·
-                    webhook secret{" "}
-                    {diag.key.webhook_secret_present
-                      ? diag.key.webhook_secret_looks_valid
-                        ? "saved (whsec_…)"
-                        : "saved but does NOT start with whsec_"
-                      : "missing"}
-                  </p>
-                ) : (
-                  <p>No Stripe key saved.</p>
-                )}
-                <ul className="space-y-1">
-                  {diag.checks.map((c) => (
-                    <li key={c.name}>
-                      <span className={c.ok ? "text-primary" : "text-destructive"}>
-                        {c.ok ? "✓" : "✕"}
-                      </span>{" "}
-                      {c.name} — <span className="break-all">{c.detail}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="pt-1">
-                  These checks are read-only. Checkout also needs <em>write</em> access to Checkout
-                  Sessions, Billing Portal Sessions, Customers and Products/Prices on the key.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {state && !state.payments_configured && (
-          <p className="mt-4 rounded-xl bg-muted p-4 text-xs text-muted-foreground">
-            Card payments aren’t connected yet, so checkout is disabled. An admin can also grant
-            complimentary access from the admin panel.
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl">
+            Imam-supported meetings
+          </h1>
+          <p className="mt-5 text-lg leading-8 text-muted-foreground">
+            Matching and anonymous profile review are free. A meeting package becomes available only
+            after both members accept the introduction and the imam approves it.
           </p>
-        )}
+        </div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
-          {(Object.values(PLANS) as (typeof PLANS)[PlanId][]).map((plan) => (
-            <div
-              key={plan.id}
-              className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+        <div className="mt-12 grid overflow-hidden rounded-lg border border-border bg-card md:grid-cols-3 md:divide-x md:divide-border">
+          {packages.map((meetingPackage) => (
+            <article
+              key={meetingPackage.id}
+              className="border-b border-border p-6 last:border-b-0 md:border-b-0 lg:p-8"
             >
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-xl text-foreground">{plan.name}</h2>
-                {plan.highlight && (
-                  <span className="rounded-full bg-gold/30 px-3 py-1 text-xs text-foreground">
-                    {plan.highlight}
-                  </span>
-                )}
-              </div>
-              <p className="mt-3 font-display text-3xl text-foreground">
-                {formatPrice(plan.amount)}
-                <span className="text-sm text-muted-foreground"> / {plan.interval}</span>
+              <p className="text-sm font-semibold text-primary">{meetingPackage.label}</p>
+              <p className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-foreground">
+                {formatPence(meetingPackage.amountPence)}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">{plan.blurb}</p>
-              <button
-                onClick={() => go(plan.id)}
-                disabled={busy !== null || state?.active || state?.payments_configured === false}
-                className="mt-5 w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {state?.active
-                  ? "Already a member"
-                  : busy === plan.id
-                    ? "Redirecting…"
-                    : `Choose ${plan.name.toLowerCase()}`}
-              </button>
-            </div>
+              <p className="mt-3 min-h-12 text-sm leading-6 text-muted-foreground">
+                {meetingPackage.description}
+              </p>
+              <p className="mt-6 flex items-start gap-2 border-t border-border pt-5 text-sm text-foreground">
+                <Check size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                Offered inside an approved introduction
+              </p>
+            </article>
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-border bg-card p-6">
-          <h3 className="text-lg text-foreground">What membership includes</h3>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            {MEMBERSHIP_BENEFITS.map((b) => (
-              <li key={b} className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+        <section className="mt-10 grid gap-6 border-t border-border pt-8 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">No payment is needed now</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Continue your member journey. If an introduction reaches mutual acceptance, the
+              package choices and secure checkout will appear in that introduction.
+            </p>
+          </div>
+          <Link
+            to="/dashboard"
+            className="inline-flex justify-center rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Continue my journey
+          </Link>
+        </section>
+      </main>
     </div>
   );
 }

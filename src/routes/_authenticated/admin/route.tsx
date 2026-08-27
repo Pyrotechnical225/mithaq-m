@@ -2,9 +2,9 @@ import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-rout
 import { useServerFn } from "@tanstack/react-start";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { amIAdmin } from "@/lib/admin.functions";
 import { BrandName } from "@/components/BrandName";
 import { supabase } from "@/integrations/supabase/client";
+import { amIAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -44,101 +44,150 @@ function AdminLayout() {
     navigate({ to: "/auth" });
   };
 
-  const navLinks = (
+  const mainLinks = (
     <>
       <AdminLink to="/admin" label="Overview" exact onNavigate={() => setMenu(false)} />
-      <AdminLink to="/admin/profiles" label="Profiles" onNavigate={() => setMenu(false)} />
-      <AdminLink to="/admin/new-profile" label="New profile" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/profiles" label="Member profiles" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/new-profile" label="Add a profile" onNavigate={() => setMenu(false)} />
       <AdminLink to="/admin/imams" label="Imams" onNavigate={() => setMenu(false)} />
       <AdminLink
         to="/admin/imam-applications"
         label="Imam applications"
         onNavigate={() => setMenu(false)}
       />
-      <AdminLink to="/admin/memberships" label="Memberships" onNavigate={() => setMenu(false)} />
       <AdminLink
         to="/admin/compatibility"
-        label="Compatibility"
+        label="Compatibility audit"
         onNavigate={() => setMenu(false)}
       />
-      <AdminLink to="/admin/seed" label="Seed data" onNavigate={() => setMenu(false)} />
+    </>
+  );
+
+  const systemLinks = (
+    <>
+      <AdminLink to="/admin/seed" label="Example data" onNavigate={() => setMenu(false)} />
       <Link
         to="/dashboard"
         onClick={() => setMenu(false)}
-        className="rounded-full border border-border px-3 py-1.5 text-foreground hover:bg-accent"
+        className="block border-l-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground"
       >
-        User view
+        Open member view
       </Link>
     </>
   );
 
+  const navigation =
+    access === "granted" ? (
+      <>
+        <div>
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Operations
+          </p>
+          <div className="mt-2 grid gap-1">{mainLinks}</div>
+        </div>
+        <div className="mt-8">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            System
+          </p>
+          <div className="mt-2 grid gap-1">{systemLinks}</div>
+        </div>
+      </>
+    ) : (
+      <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+        Open member view
+      </Link>
+    );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-secondary/25">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-6">
-          <Link to="/admin" className="flex items-center gap-2">
-            <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
-              Admin
-            </span>
-            <span className="flex items-baseline gap-1">
-              <BrandName className="text-lg" />
-              <span className="text-sm text-muted-foreground">control</span>
+        <div className="mx-auto flex h-[4.5rem] max-w-[90rem] items-center justify-between px-5 sm:px-6 lg:px-8">
+          <Link to="/admin" className="flex items-center gap-3">
+            <BrandName className="text-xl" />
+            <span className="border-l border-border pl-3 text-sm font-medium text-muted-foreground">
+              Admin workspace
             </span>
           </Link>
-          <nav className="hidden items-center gap-4 text-sm lg:flex">
-            {access === "granted" ? navLinks : <Link to="/dashboard">User view</Link>}
-          </nav>
-          <button
-            type="button"
-            aria-label={menu ? "Close admin navigation" : "Open admin navigation"}
-            aria-expanded={menu}
-            onClick={() => setMenu((open) => !open)}
-            className="rounded-xl border border-border p-2 lg:hidden"
-          >
-            {menu ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/dashboard"
+              className="hidden rounded-md border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-accent sm:inline-flex"
+            >
+              Member view
+            </Link>
+            <button
+              type="button"
+              aria-label={menu ? "Close admin navigation" : "Open admin navigation"}
+              aria-expanded={menu}
+              onClick={() => setMenu((open) => !open)}
+              className="rounded-md border border-border p-2 lg:hidden"
+            >
+              {menu ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
-        {menu && (
-          <nav className="grid gap-4 border-t border-border px-5 py-5 text-sm lg:hidden">
-            {access === "granted" ? navLinks : <Link to="/dashboard">User view</Link>}
+        {menu ? (
+          <nav
+            className="border-t border-border bg-card px-5 py-5 lg:hidden"
+            aria-label="Admin navigation"
+          >
+            {navigation}
           </nav>
-        )}
+        ) : null}
       </header>
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6">
-        {access === "checking" && (
-          <AccessPanel title="Checking admin access…">
-            <p>Please wait while Mithaq verifies your signed-in account.</p>
-          </AccessPanel>
-        )}
-        {access === "denied" && (
-          <AccessPanel title="This account does not have admin access">
-            <p>Sign out and use the Mithaq administrator account, then open this page again.</p>
-            <button
-              type="button"
-              onClick={switchAccount}
-              className="mt-5 rounded-full bg-primary px-5 py-2.5 font-medium text-primary-foreground"
-            >
-              Switch account
-            </button>
-          </AccessPanel>
-        )}
-        {access === "error" && (
-          <AccessPanel title="Admin access could not be verified">
-            <p>{accessError}</p>
-            <button
-              type="button"
-              onClick={verifyAccess}
-              className="mt-5 rounded-full bg-primary px-5 py-2.5 font-medium text-primary-foreground"
-            >
-              Try again
-            </button>
-          </AccessPanel>
-        )}
-        {access === "granted" && <Outlet />}
+
+      <div className="mx-auto grid max-w-[90rem] lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <aside className="hidden min-h-[calc(100vh-4.5rem)] border-r border-border bg-card px-5 py-8 lg:block">
+          <nav className="sticky top-24" aria-label="Admin navigation">
+            {navigation}
+          </nav>
+        </aside>
+
+        <main id="main-content" className="min-w-0 px-5 py-8 sm:px-6 lg:px-10 lg:py-10">
+          {access === "checking" ? (
+            <AccessPanel title="Checking admin access…">
+              <p>Please wait while Mithaq verifies your signed-in account.</p>
+            </AccessPanel>
+          ) : null}
+          {access === "denied" ? (
+            <AccessPanel title="This account does not have admin access">
+              <p>Sign out and use the Mithaq administrator account, then open this page again.</p>
+              <button
+                type="button"
+                onClick={switchAccount}
+                className="mt-5 rounded-md bg-primary px-5 py-2.5 font-medium text-primary-foreground"
+              >
+                Switch account
+              </button>
+            </AccessPanel>
+          ) : null}
+          {access === "error" ? (
+            <AccessPanel title="Admin access could not be verified">
+              <p>{accessError}</p>
+              <button
+                type="button"
+                onClick={verifyAccess}
+                className="mt-5 rounded-md bg-primary px-5 py-2.5 font-medium text-primary-foreground"
+              >
+                Try again
+              </button>
+            </AccessPanel>
+          ) : null}
+          {access === "granted" ? <Outlet /> : null}
+        </main>
       </div>
     </div>
   );
 }
+
+type AdminPath =
+  | "/admin"
+  | "/admin/profiles"
+  | "/admin/new-profile"
+  | "/admin/imams"
+  | "/admin/imam-applications"
+  | "/admin/compatibility"
+  | "/admin/seed";
 
 function AdminLink({
   to,
@@ -146,15 +195,7 @@ function AdminLink({
   exact = false,
   onNavigate,
 }: {
-  to:
-    | "/admin"
-    | "/admin/profiles"
-    | "/admin/new-profile"
-    | "/admin/imams"
-    | "/admin/imam-applications"
-    | "/admin/memberships"
-    | "/admin/compatibility"
-    | "/admin/seed";
+  to: AdminPath;
   label: string;
   exact?: boolean;
   onNavigate: () => void;
@@ -163,9 +204,12 @@ function AdminLink({
     <Link
       to={to}
       onClick={onNavigate}
-      className="text-muted-foreground hover:text-foreground"
+      className="block border-l-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground"
       activeOptions={{ exact }}
-      activeProps={{ className: "font-medium text-foreground" }}
+      activeProps={{
+        className:
+          "block border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm font-medium text-foreground",
+      }}
     >
       {label}
     </Link>
@@ -174,8 +218,8 @@ function AdminLink({
 
 function AccessPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mx-auto max-w-xl rounded-3xl border border-border bg-card p-7 text-center shadow-[var(--shadow-soft)] sm:p-10">
-      <h1 className="text-2xl text-foreground">{title}</h1>
+    <section className="mx-auto max-w-xl rounded-lg border border-border bg-card p-7 text-center sm:p-10">
+      <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
       <div className="mt-3 text-sm leading-6 text-muted-foreground">{children}</div>
     </section>
   );

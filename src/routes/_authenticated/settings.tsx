@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { BrandName } from "@/components/BrandName";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteMyAccount, getMyPrivacy, updateMyPrivacy } from "@/lib/privacy.functions";
 
@@ -63,23 +64,31 @@ function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-3xl px-6 py-4">
+        <div className="mx-auto flex h-[4.5rem] max-w-4xl items-center justify-between px-6">
+          <Link to="/" className="flex items-center gap-3">
+            <BrandName className="text-xl" />
+            <span className="border-l border-border pl-3 font-arabic text-lg text-primary">
+              ميثاق
+            </span>
+          </Link>
           <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Dashboard
+            Back to dashboard
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
-        <h1 className="text-3xl text-foreground">Privacy & settings</h1>
+      <main id="main-content" className="mx-auto max-w-4xl space-y-6 px-6 py-10">
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground">
+          Privacy & settings
+        </h1>
         <p className="text-sm text-muted-foreground">
           You control who can see your profile and what information is shared before you approve a
           match.
           {savedAt && <span className="ml-2 text-primary">Saved {savedAt}</span>}
         </p>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="text-lg text-foreground">Profile visibility</h2>
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Profile visibility</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Only <strong>Discoverable</strong> profiles appear in other people's matches.
           </p>
@@ -88,7 +97,7 @@ function SettingsPage() {
               <button
                 key={v}
                 onClick={() => save({ ...p, visibility: v })}
-                className={`rounded-xl border px-4 py-3 text-sm capitalize ${
+                className={`rounded-md border px-4 py-3 text-sm capitalize ${
                   p.visibility === v
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background hover:bg-accent"
@@ -100,8 +109,8 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="text-lg text-foreground">What matches can see</h2>
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">What matches can see</h2>
           <div className="mt-4 space-y-3">
             <Toggle
               label="Show my city / country"
@@ -126,8 +135,8 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-destructive/40 bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="text-lg text-foreground">Delete my account</h2>
+        <section className="rounded-lg border border-destructive/40 bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Delete my account</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Removes your profile, all survey answers, matches, and interests permanently. This
             cannot be undone.
@@ -136,13 +145,13 @@ function SettingsPage() {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={wipe}
-                className="rounded-full bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground"
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground"
               >
                 Yes, delete everything
               </button>
               <button
                 onClick={() => setConfirming(false)}
-                className="rounded-full border border-border px-4 py-2 text-sm"
+                className="rounded-md border border-border px-4 py-2 text-sm"
               >
                 Cancel
               </button>
@@ -150,7 +159,7 @@ function SettingsPage() {
           ) : (
             <button
               onClick={() => setConfirming(true)}
-              className="mt-4 rounded-full border border-destructive px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
+              className="mt-4 rounded-md border border-destructive px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
             >
               Delete my account
             </button>
@@ -173,11 +182,14 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border p-4 hover:bg-accent">
+    <div className="flex items-center justify-between gap-4 rounded-md border border-border p-4 hover:bg-accent">
       <span className="text-sm text-foreground">{label}</span>
       <button
         type="button"
         onClick={() => onChange(!on)}
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
         className={`h-6 w-11 rounded-full transition-colors ${on ? "bg-primary" : "bg-muted"}`}
       >
         <span
@@ -186,6 +198,6 @@ function Toggle({
           }`}
         />
       </button>
-    </label>
+    </div>
   );
 }

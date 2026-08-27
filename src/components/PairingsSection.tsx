@@ -66,8 +66,8 @@ export function PairingsSection() {
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <h2 className="text-xl text-foreground">Imam-arranged meetings</h2>
+    <section className="rounded-lg border border-border bg-card p-6">
+      <h2 className="text-xl font-semibold text-foreground">Imam-arranged meetings</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Once both sides accept an interest, a local imam reviews the pairing and arranges a
         wali-attended meeting. You can message the imam and the other family here.
@@ -78,14 +78,14 @@ export function PairingsSection() {
       {pairings === null ? (
         <p className="mt-5 text-sm text-muted-foreground">Loading…</p>
       ) : pairings.length === 0 ? (
-        <p className="mt-5 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+        <p className="mt-5 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           No pairings yet. When an interest is accepted on both sides, it appears here for imam
           review.
         </p>
       ) : (
         <div className="mt-5 space-y-4">
           {pairings.map((p) => (
-            <div key={p.id} className="rounded-xl border border-border p-4">
+            <div key={p.id} className="rounded-md border border-border p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium text-foreground">
@@ -173,7 +173,7 @@ export function PairingsSection() {
 
               {["approved", "awaiting_payment", "payment_pending"].includes(p.status) &&
                 (p.i_am === "a" ? p.payment_a_status : p.payment_b_status) !== "paid" && (
-                  <div className="mt-4 rounded-2xl border border-gold/40 bg-gold/10 p-4">
+                  <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-4">
                     <p className="font-medium text-foreground">Choose your meeting package</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Matching and anonymous profile review are free. Both members choose and pay
@@ -183,7 +183,7 @@ export function PairingsSection() {
                       {Object.values(MEETING_PACKAGES).map((meetingPackage) => (
                         <div
                           key={meetingPackage.id}
-                          className="flex flex-col rounded-2xl border border-border bg-card p-4"
+                          className="flex flex-col rounded-md border border-border bg-card p-4"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -223,7 +223,7 @@ export function PairingsSection() {
                                 );
                               }
                             }}
-                            className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
                           >
                             Choose {meetingPackage.label}
                           </button>

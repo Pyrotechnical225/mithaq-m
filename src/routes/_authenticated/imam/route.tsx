@@ -21,24 +21,24 @@ function ImamLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/imam" className="flex items-center gap-2">
-            <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
-              Imam
+        <div className="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-between px-6">
+          <Link to="/imam" className="flex items-center gap-3">
+            <BrandName className="text-xl" />
+            <span className="border-l border-border pl-3 text-sm font-medium text-muted-foreground">
+              Imam workspace
             </span>
-            <BrandName className="text-lg" />
           </Link>
           <Link
             to="/dashboard"
-            className="rounded-full border border-border px-3 py-1 text-sm hover:bg-accent"
+            className="rounded-md border border-border px-3.5 py-2 text-sm font-medium hover:bg-accent"
           >
             My member view
           </Link>
         </div>
       </header>
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <main id="main-content" className="mx-auto max-w-6xl px-6 py-10">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }

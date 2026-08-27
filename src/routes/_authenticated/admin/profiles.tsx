@@ -61,23 +61,28 @@ function ProfilesList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-3xl text-foreground">Profiles</h1>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Members</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-foreground">
+            Profiles
+          </h1>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => exportAll("json")}
-            className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
+            className="rounded-md border border-border bg-card px-3 py-2 text-xs hover:bg-accent"
           >
             Export all JSON
           </button>
           <button
             onClick={() => exportAll("csv")}
-            className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent"
+            className="rounded-md border border-border bg-card px-3 py-2 text-xs hover:bg-accent"
           >
             Export all CSV
           </button>
           <Link
             to="/admin/new-profile"
-            className="rounded-full bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+            className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             + New profile
           </Link>
@@ -88,10 +93,10 @@ function ProfilesList() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search by name, email, or id…"
-        className="w-full max-w-md rounded-xl border border-input bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+        className="w-full max-w-md rounded-md border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
       />
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs uppercase tracking-widest text-muted-foreground">
             <tr>
@@ -130,25 +135,25 @@ function ProfilesList() {
                     <Link
                       to="/admin/profiles/$userId"
                       params={{ userId: r.id }}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
                     >
                       Edit
                     </Link>
                     <button
                       onClick={() => exportOne(r.id, "json")}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
                     >
                       JSON
                     </button>
                     <button
                       onClick={() => exportOne(r.id, "csv")}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
                     >
                       CSV
                     </button>
                     <button
                       onClick={() => remove(r.id)}
-                      className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10"
+                      className="rounded-md border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
                     >
                       Delete
                     </button>

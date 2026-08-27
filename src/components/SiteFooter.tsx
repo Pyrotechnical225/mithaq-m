@@ -16,16 +16,16 @@ const learningLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-card/55">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
+    <footer className="border-t border-border bg-card">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8 lg:py-16">
         <div>
           <Link to="/" className="inline-flex items-center gap-3" aria-label="Mithaq home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary font-arabic text-primary-foreground">
-              م
+            <BrandName className="text-[1.4rem]" />
+            <span className="border-l border-border pl-3 font-arabic text-lg text-primary">
+              ميثاق
             </span>
-            <BrandName className="text-2xl" />
           </Link>
-          <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
+          <p className="mt-5 max-w-sm text-sm leading-6 text-muted-foreground">
             Meet haq in marriage through a private, respectful process supported by families and
             imams.
           </p>
@@ -54,9 +54,11 @@ export function SiteFooter() {
         </nav>
       </div>
 
-      <div className="border-t border-border/70 px-5 py-6 text-center text-sm text-muted-foreground">
-        <p className="font-arabic text-lg text-primary">بسم الله</p>
-        <p className="mt-1">© {new Date().getFullYear()} Mithaq. Marriage is half of your deen.</p>
+      <div className="border-t border-border px-5 py-5 text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:px-3">
+          <p>© {new Date().getFullYear()} Mithaq.</p>
+          <p>Private matchmaking. Imam-supported introductions.</p>
+        </div>
       </div>
     </footer>
   );

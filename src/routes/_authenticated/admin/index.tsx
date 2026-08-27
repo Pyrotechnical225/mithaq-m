@@ -50,18 +50,25 @@ function AdminHome() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl text-foreground">Overview</h1>
-        <p className="text-sm text-muted-foreground">Everything happening on Mithaq right now.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Admin workspace
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-foreground">
+          Overview
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          A clear view of members, introductions, and work that needs attention.
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
         <Stat label="Profiles" value={stats.profileCount} />
         <Stat label="Completed surveys" value={stats.completedCount} />
         <Stat label="Discoverable" value={stats.discoverableCount} />
         <Stat label="Interests exchanged" value={stats.interestCount} />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg text-foreground">Recent signups</h2>
           <Link to="/admin/profiles" className="text-xs text-primary hover:underline">
@@ -83,13 +90,13 @@ function AdminHome() {
         </ul>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Admin controls</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Everything this admin account can do, in one place.
+      <section className="border-t border-border pt-7">
+        <h2 className="text-xl font-semibold text-foreground">Common tasks</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Shortcuts to the main operational areas. Full navigation is always available on the left.
         </p>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid gap-x-8 md:grid-cols-2">
           <ControlCard
             title="Spouses database"
             body="Member profiles, survey answers, visibility and exports."
@@ -116,15 +123,6 @@ function AdminHome() {
             actions={[
               { to: "/admin/imam-applications", label: "Review applications", primary: true },
               { to: "/admin/imam-applications", label: "All pairings & meetups" },
-            ]}
-          />
-
-          <ControlCard
-            title="Memberships & billing"
-            body="See who has an active membership, grant or revoke complimentary access, and check plan renewal dates."
-            actions={[
-              { to: "/admin/memberships", label: "Manage memberships", primary: true },
-              { to: "/membership", label: "Member-facing plans" },
             ]}
           />
 
@@ -162,8 +160,8 @@ type Action = { to: string; label: string; primary?: boolean };
 
 function ControlCard({ title, body, actions }: { title: string; body: string; actions: Action[] }) {
   return (
-    <div className="rounded-xl border border-border p-5">
-      <h3 className="text-lg text-foreground">{title}</h3>
+    <article className="border-t border-border py-5">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {actions.map((a, i) => (
@@ -172,23 +170,23 @@ function ControlCard({ title, body, actions }: { title: string; body: string; ac
             to={a.to}
             className={
               a.primary
-                ? "rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
-                : "rounded-full border border-border px-4 py-1.5 text-xs hover:bg-accent"
+                ? "rounded-md bg-primary px-3.5 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                : "rounded-md border border-border bg-card px-3.5 py-2 text-xs hover:bg-accent"
             }
           >
             {a.label}
           </Link>
         ))}
       </div>
-    </div>
+    </article>
   );
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
+    <div className="border-b border-border p-5 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:[&:nth-child(odd)]:border-r-0">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">{value}</p>
     </div>
   );
 }
