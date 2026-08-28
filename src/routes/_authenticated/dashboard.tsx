@@ -52,8 +52,16 @@ function Dashboard() {
         setIsAdmin(!!admin.isAdmin);
         setIsImam(!!imam.isImam);
       })
-      .catch((error) => {
-        setMessage(error instanceof Error ? error.message : "Your journey could not be loaded.");
+      .catch(async (error) => {
+        const detail = error instanceof Error ? error.message : String(error);
+        if (detail.startsWith("Unauthorized:")) {
+          await supabase.auth.signOut({ scope: "local" });
+          window.location.replace("/auth?next=%2Fdashboard");
+          return;
+        }
+
+        console.error("Mithaq journey could not be loaded", error);
+        setMessage("Your journey could not be loaded. Please refresh and try again.");
       })
       .finally(() => setLoading(false));
 
