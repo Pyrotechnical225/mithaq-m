@@ -39,3 +39,6 @@ dist-ssr
 
 # graphify code-graph output (regenerate with: graphify update .)
 graphify-out/
+
+# Superdesign upload staging (generated locally; never commit).
+.superdesign/tmp/

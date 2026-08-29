@@ -12,11 +12,18 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
+      GET: async () =>
+        new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } }),
       POST: async ({ request }) => {
         const secret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
+        const declaredLength = Number(request.headers.get("content-length") ?? "0");
+        if (Number.isFinite(declaredLength) && declaredLength > 1_000_000) {
+          return new Response("Payload too large", { status: 413 });
+        }
         const payload = await request.text();
+        if (payload.length > 1_000_000) return new Response("Payload too large", { status: 413 });
         const {
           verifyStripeSignature,
           syncSubscriptionFromSession,

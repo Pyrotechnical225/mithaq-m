@@ -211,7 +211,6 @@ export function PairingsSection() {
                                   data: {
                                     pairing_id: p.id,
                                     package_id: meetingPackage.id,
-                                    origin: window.location.origin,
                                   },
                                 });
                                 window.location.href = result.url;

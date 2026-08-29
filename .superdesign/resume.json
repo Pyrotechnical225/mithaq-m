@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "106ebdeb-2d4d-4e6e-9486-429829e24f54",
+      "activeDraftId": "106ebdeb-2d4d-4e6e-9486-429829e24f54",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/routes/index.tsx",
+        "src/components/SiteHeader.tsx",
+        "src/components/SiteFooter.tsx",
+        "src/components/BrandName.tsx",
+        "src/styles.css",
+        ".superdesign/website/meet-haq.vercel.app/content-structure.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/routes/index.tsx": "e8e68fa8f555c9d2294598e37c1de5280d37506c3f61917a6ccb27d38440518b",
+        "src/components/SiteHeader.tsx": "13dbf55a7d942957859c9330413e896260853e05c2bb19eb98fec3d78d4c110d",
+        "src/components/SiteFooter.tsx": "d67fdcc0ad7fc8029f83dfb4c95b3ca93a9de34b5f682175d5a992b811905fac",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        ".superdesign/website/meet-haq.vercel.app/content-structure.md": "67b62d81ec98e24f7dc562e216b6365c0f1ac705db11f27c3da74e142b1e2c86"
+      },
+      "components": [
+        {
+          "name": "SiteHeader",
+          "id": "e9cc60e7-a82f-4298-9473-a79ba7e3a5b2",
+          "sourcePath": "src/components/SiteHeader.tsx"
+        },
+        {
+          "name": "SiteFooter",
+          "id": "9890bbf5-b7b0-48f1-8825-77c61b869b48",
+          "sourcePath": "src/components/SiteFooter.tsx"
+        }
+      ],
+      "drafts": {
+        "106ebdeb-2d4d-4e6e-9486-429829e24f54": {
+          "title": "Mithaq Homepage — Mutual Acceptance Trust Section",
+          "visualDirection": "trust-first post-acceptance pricing section",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-28T22:45:00Z"
+    },
+    "/survey": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "dc963c39-f353-45bf-a76c-47d552819259",
+      "activeDraftId": "dc963c39-f353-45bf-a76c-47d552819259",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/routes/_authenticated/survey.tsx",
+        "src/lib/survey-questions.ts",
+        "src/styles.css",
+        "src/routes/_authenticated/route.tsx",
+        "src/components/BrandName.tsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/routes/_authenticated/survey.tsx": "db45348fe6874d41438d7cfa3faf99d8171db814737366c958c256e45ecc2db9",
+        "src/lib/survey-questions.ts": "06eef5af2894b3a8802fad4ed913e38f2cc44e12928466a750184597fbe4b87f",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        "src/routes/_authenticated/route.tsx": "356b5baae76a048f3a17d130e6bc1814ea77c706ea71ebdd0c0d717046d01296",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67"
+      },
+      "components": [],
+      "drafts": {
+        "dc963c39-f353-45bf-a76c-47d552819259": {
+          "title": "Mithaq Progressive Survey Flow",
+          "visualDirection": "progressive single-scroll survey with skip and required-answer review",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-28T23:41:56Z"
+    }
+  }
+}

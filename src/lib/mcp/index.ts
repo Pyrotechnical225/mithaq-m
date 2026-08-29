@@ -1,4 +1,5 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
+import { MITHAQ_SUPABASE_PUBLIC_CONFIG } from "@/integrations/supabase/public-config";
 import getMyProfile from "./tools/get-my-profile";
 import getMySurvey from "./tools/get-my-survey";
 import saveMySurvey from "./tools/save-my-survey";
@@ -9,7 +10,10 @@ import listInterests from "./tools/list-interests";
 import expressInterest from "./tools/express-interest";
 import respondInterest from "./tools/respond-interest";
 
-const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
+const configuredSupabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL || MITHAQ_SUPABASE_PUBLIC_CONFIG.url;
+const projectRef =
+  import.meta.env.VITE_SUPABASE_PROJECT_ID || new URL(configuredSupabaseUrl).hostname.split(".")[0];
 
 export default defineMcp({
   name: "mithaq-mcp",

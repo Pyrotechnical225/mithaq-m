@@ -182,21 +182,34 @@ export const decidePairing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DecideInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: account } = await supabaseAdmin
+      .from("imam_accounts")
+      .select("imam_id,active")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!account?.active) throw new Error("Forbidden: imam only");
+
+    const { data: updated, error } = await supabaseAdmin
       .from("pairings")
       .update({
         status: data.decision,
         decision_note: data.note?.trim() || null,
         decided_at: new Date().toISOString(),
       })
-      .eq("id", data.pairing_id);
+      .eq("id", data.pairing_id)
+      .eq("imam_id", account.imam_id)
+      .eq("status", "awaiting_review")
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!updated) throw new Error("This pairing is not available for your review");
     return { ok: true };
   });
 
 const MeetupInput = z.object({
   pairing_id: z.string().uuid(),
-  scheduled_at: z.string().min(4),
+  scheduled_at: z.string().datetime({ offset: true }),
   venue: z.string().min(2).max(160),
   address: z.string().max(300).optional().nullable(),
   wali_required: z.boolean().default(true),
@@ -207,11 +220,16 @@ export const proposeMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => MeetupInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: imamId } = await context.supabase.rpc("my_imam_id", {
-      _user_id: context.userId,
-    });
-    if (!imamId) throw new Error("Forbidden: imam only");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: account } = await supabaseAdmin
+      .from("imam_accounts")
+      .select("imam_id,active")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!account?.active) throw new Error("Forbidden: imam only");
+    const imamId = account.imam_id;
+    const scheduledAt = new Date(data.scheduled_at);
+    if (scheduledAt.getTime() <= Date.now()) throw new Error("Meeting time must be in the future");
     const { data: pairing } = await supabaseAdmin
       .from("pairings")
       .select("payment_a_status,payment_b_status")
@@ -239,7 +257,7 @@ export const proposeMeetup = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("meetups").insert({
       pairing_id: data.pairing_id,
       imam_id: imamId,
-      scheduled_at: new Date(data.scheduled_at).toISOString(),
+      scheduled_at: scheduledAt.toISOString(),
       venue: data.venue.trim(),
       address: data.address?.trim() || null,
       wali_required: data.wali_required,
@@ -255,10 +273,31 @@ export const cancelMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CancelInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: account }, { data: meetup }] = await Promise.all([
+      supabaseAdmin
+        .from("imam_accounts")
+        .select("imam_id,active")
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+      supabaseAdmin.from("meetups").select("pairing_id").eq("id", data.meetup_id).maybeSingle(),
+    ]);
+    if (!account?.active || !meetup) throw new Error("Meeting not found");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("id")
+      .eq("id", meetup.pairing_id)
+      .eq("imam_id", account.imam_id)
+      .maybeSingle();
+    if (!pairing) throw new Error("Forbidden: assigned imam only");
+
+    const { data: updated, error } = await supabaseAdmin
       .from("meetups")
       .update({ status: "cancelled" })
-      .eq("id", data.meetup_id);
+      .eq("id", data.meetup_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!updated) throw new Error("Meeting could not be cancelled");
     return { ok: true };
   });

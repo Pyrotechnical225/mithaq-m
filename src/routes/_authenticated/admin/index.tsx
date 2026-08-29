@@ -129,10 +129,7 @@ function AdminHome() {
           <ControlCard
             title="Compatibility scoring audit"
             body="Compare the fixed-rubric score, OpenAI review and final weighted result for every generated match."
-            actions={[
-              { to: "/admin/compatibility", label: "Compare scores", primary: true },
-              { to: "/api/public/compatibility-status", label: "OpenAI connection status" },
-            ]}
+            actions={[{ to: "/admin/compatibility", label: "Compare scores", primary: true }]}
           />
 
           <ControlCard

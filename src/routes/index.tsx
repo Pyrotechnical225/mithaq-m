@@ -67,6 +67,12 @@ const safeguards = [
   "Matching and anonymous profile review remain free",
 ] as const;
 
+const meetingPackages = [
+  { label: "One meeting", price: "£50" },
+  { label: "Three meetings", price: "£120" },
+  { label: "Five meetings", price: "£175" },
+] as const;
+
 function JourneyPreview() {
   return (
     <aside className="border border-border bg-card shadow-[var(--shadow-elevated)]">
@@ -235,6 +241,44 @@ function Index() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section id="after-acceptance" className="scroll-mt-28 border-b border-border bg-card">
+          <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-24">
+            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  After mutual acceptance
+                </p>
+                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+                  Meet with support, not pressure.
+                </h2>
+                <p className="mt-5 leading-7 text-muted-foreground">
+                  Matching and anonymous profile review remain free. Meeting packages appear only
+                  after both people accept an introduction, so there is no payment before mutual
+                  interest is clear.
+                </p>
+                <p className="mt-6 text-sm font-medium text-primary">
+                  Both accept <span className="mx-2 text-muted-foreground">→</span> Choose a package
+                  <span className="mx-2 text-muted-foreground">→</span> Imam-supported meeting
+                </p>
+              </div>
+
+              <div className="grid self-start border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
+                {meetingPackages.map((meetingPackage) => (
+                  <div
+                    key={meetingPackage.label}
+                    className="border-t border-border py-6 first:border-t-0 sm:border-t-0 sm:px-6 sm:first:pl-0 sm:last:pr-0"
+                  >
+                    <p className="text-sm text-muted-foreground">{meetingPackage.label}</p>
+                    <p className="mt-2 text-xl font-semibold tracking-[-0.025em] text-foreground">
+                      {meetingPackage.price}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 

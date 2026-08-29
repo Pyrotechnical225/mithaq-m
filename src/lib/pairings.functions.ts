@@ -146,7 +146,6 @@ export const listMyPairings = createServerFn({ method: "GET" })
 const MeetingCheckoutInput = z.object({
   pairing_id: z.string().uuid(),
   package_id: z.enum(["single", "three", "five"]),
-  origin: z.string().url(),
 });
 
 export const startMeetingPackageCheckout = createServerFn({ method: "POST" })
@@ -190,7 +189,7 @@ export const startMeetingPackageCheckout = createServerFn({ method: "POST" })
       packageId: data.package_id,
       userId: context.userId,
       email: (context.claims as { email?: string } | undefined)?.email ?? null,
-      origin: data.origin,
+      origin: (await import("./request-origin.server")).getRequestOrigin(),
     });
   });
 
@@ -213,19 +212,23 @@ export const respondToMeetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondMeetupInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: meetup, error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: meetup, error } = await supabaseAdmin
       .from("meetups")
       .select("id, pairing_id, response_a, response_b, status")
       .eq("id", data.meetup_id)
       .maybeSingle();
     if (error || !meetup) throw new Error("Meeting not found");
 
-    const { data: pairing } = await context.supabase
+    const { data: pairing } = await supabaseAdmin
       .from("pairings")
       .select("user_a, user_b")
       .eq("id", meetup.pairing_id)
       .maybeSingle();
     if (!pairing) throw new Error("Pairing not found");
+    if (pairing.user_a !== context.userId && pairing.user_b !== context.userId) {
+      throw new Error("Forbidden: only a participant can respond to this meeting");
+    }
 
     const side = pairing.user_a === context.userId ? "a" : "b";
     const value = data.accept ? "accepted" : "declined";
@@ -238,11 +241,14 @@ export const respondToMeetup = createServerFn({ method: "POST" })
           ? "confirmed"
           : "proposed";
 
-    const { error: updErr } = await context.supabase
+    const { data: updated, error: updErr } = await supabaseAdmin
       .from("meetups")
       .update({ response_a: responseA, response_b: responseB, status })
-      .eq("id", data.meetup_id);
+      .eq("id", data.meetup_id)
+      .select("id")
+      .maybeSingle();
     if (updErr) throw new Error(updErr.message);
+    if (!updated) throw new Error("Meeting could not be updated");
     return { ok: true, status };
   });
 
@@ -273,13 +279,28 @@ export const postPairingMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PostMessageInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isImam } = await context.supabase.rpc("is_imam", {
-      _user_id: context.userId,
-    });
-    const { error } = await context.supabase.from("pairing_messages").insert({
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: pairing }, { data: imamAccount }] = await Promise.all([
+      supabaseAdmin
+        .from("pairings")
+        .select("user_a,user_b,imam_id")
+        .eq("id", data.pairing_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("imam_accounts")
+        .select("imam_id,active")
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
+    if (!pairing) throw new Error("Pairing not found");
+    const isMember = [pairing.user_a, pairing.user_b].includes(context.userId);
+    const isAssignedImam = imamAccount?.active === true && imamAccount.imam_id === pairing.imam_id;
+    if (!isMember && !isAssignedImam) throw new Error("Forbidden: pairing participants only");
+
+    const { error } = await supabaseAdmin.from("pairing_messages").insert({
       pairing_id: data.pairing_id,
       sender_id: context.userId,
-      sender_role: isImam ? "imam" : "member",
+      sender_role: isAssignedImam ? "imam" : "member",
       body: data.body.trim(),
     });
     if (error) throw new Error(error.message);

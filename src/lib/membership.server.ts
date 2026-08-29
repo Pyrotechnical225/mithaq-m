@@ -8,11 +8,10 @@ const STRIPE_API = "https://api.stripe.com/v1";
 /** Stripe statuses that mean the member should keep access. */
 export const ACCESS_STATUSES = ["active", "trialing", "complimentary"] as const;
 
-// Prefer the full secret key; fall back to a restricted key (rk_...) which
-// works for Checkout/Billing calls as long as it has write access to those
-// resources.
+// Prefer a least-privilege restricted key. A full secret remains a fallback
+// for deployments that have not completed the key migration yet.
 function stripeKey() {
-  return process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_API_KEY;
+  return process.env.STRIPE_RESTRICTED_API_KEY || process.env.STRIPE_SECRET_KEY;
 }
 
 export function stripeConfigured() {
@@ -23,12 +22,12 @@ export function stripeConfigured() {
 export function stripeKeyInfo() {
   const full = process.env.STRIPE_SECRET_KEY;
   const restricted = process.env.STRIPE_RESTRICTED_API_KEY;
-  const key = full || restricted;
+  const key = restricted || full;
   if (!key) return { configured: false as const };
   const prefix = key.slice(0, key.indexOf("_", 3) + 1 || 8);
   return {
     configured: true as const,
-    source: full ? ("STRIPE_SECRET_KEY" as const) : ("STRIPE_RESTRICTED_API_KEY" as const),
+    source: restricted ? ("STRIPE_RESTRICTED_API_KEY" as const) : ("STRIPE_SECRET_KEY" as const),
     kind: key.startsWith("rk_") ? ("restricted" as const) : ("secret" as const),
     mode: key.includes("_live_") ? ("live" as const) : ("test" as const),
     prefix,
@@ -69,6 +68,7 @@ async function stripeCall(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": "2026-07-29.dahlia",
   };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API}${path}`, {
@@ -104,9 +104,8 @@ async function stripeCall(
 /* ------------------------------------------------------------------ */
 
 /**
- * Returns the Stripe customer for this user, reusing the stored one when we
- * have it, then an existing Stripe customer with the same email, and only
- * creating a new customer as a last resort.
+ * Returns the Stripe customer recorded for this user, or creates a new one.
+ * Email alone is not an ownership proof and must never link two accounts.
  */
 export async function getOrCreateCustomer(opts: {
   userId: string;
@@ -126,21 +125,6 @@ export async function getOrCreateCustomer(opts: {
     }
   }
 
-  if (opts.email) {
-    try {
-      const list = (await stripeCall(
-        `/customers?limit=1&email=${encodeURIComponent(opts.email)}`,
-        undefined,
-        "GET",
-      )) as { data?: { id: string }[] };
-      const found = list.data?.[0]?.id;
-      if (found) return found;
-    } catch (e) {
-      // Missing read permission on customers must not block checkout.
-      if (!(e instanceof StripeError)) throw e;
-    }
-  }
-
   const created = await stripeCall(
     "/customers",
     form({
@@ -155,25 +139,30 @@ export async function getOrCreateCustomer(opts: {
 
 /** True when this Stripe customer already has a live (billable) subscription. */
 export async function customerHasLiveSubscription(customerId: string) {
-  try {
-    const list = (await stripeCall(
-      `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
-      undefined,
-      "GET",
-    )) as { data?: { id: string; status: string }[] };
-    return (list.data ?? []).some((s) =>
-      ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
-    );
-  } catch {
-    // If we can't check, don't block the member — Stripe Checkout and the
-    // billing portal still prevent genuine double-charging on the same plan.
-    return false;
-  }
+  const list = (await stripeCall(
+    `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
+    undefined,
+    "GET",
+  )) as { data?: { id: string; status: string }[] };
+  return (list.data ?? []).some((s) =>
+    ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Checkout / portal                                                   */
 /* ------------------------------------------------------------------ */
+
+async function integrationIdentifier(flow: "membership" | "meeting", seed: string) {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mithaq:${flow}:${seed}`)),
+  );
+  const suffix = Array.from(digest.slice(0, 8), (value) => alphabet[value % alphabet.length]).join(
+    "",
+  );
+  return `mithaq_${flow}_${suffix}`;
+}
 
 export async function createCheckoutSession(opts: {
   plan: PlanId;
@@ -186,6 +175,10 @@ export async function createCheckoutSession(opts: {
   if (!plan) throw new StripeError(0, "Unknown plan", "invalid_plan", null);
   const body = form({
     mode: "subscription",
+    integration_identifier: await integrationIdentifier(
+      "membership",
+      `${opts.userId}:${opts.plan}`,
+    ),
     success_url: `${opts.origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/membership?checkout=cancelled`,
     client_reference_id: opts.userId,
@@ -201,7 +194,12 @@ export async function createCheckoutSession(opts: {
     "metadata[plan]": plan.id,
     allow_promotion_codes: true,
   });
-  const session = await stripeCall("/checkout/sessions", body);
+  const session = await stripeCall(
+    "/checkout/sessions",
+    body,
+    "POST",
+    `membership-checkout:${opts.userId}:${opts.plan}`,
+  );
   return { url: session.url as string };
 }
 
@@ -215,6 +213,10 @@ export async function createMeetingPackageCheckout(opts: {
   const selected = MEETING_PACKAGES[opts.packageId];
   const body = form({
     mode: "payment",
+    integration_identifier: await integrationIdentifier(
+      "meeting",
+      `${opts.pairingId}:${opts.userId}:${opts.packageId}`,
+    ),
     success_url: `${opts.origin}/dashboard?meeting_payment=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/dashboard?meeting_payment=cancelled`,
     client_reference_id: opts.userId,
@@ -499,7 +501,7 @@ export async function claimStripeEvent(id: string, type: string) {
     // Unique violation = already processed.
     if (error.code === "23505") return false;
     console.error("stripe_events insert failed:", error.message);
-    return true; // fail open so a ledger problem doesn't drop real events
+    throw new Error("Could not claim Stripe event for idempotent processing");
   }
   return true;
 }

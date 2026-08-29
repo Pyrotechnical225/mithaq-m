@@ -29,6 +29,7 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPrivacy().then((row) => {
@@ -54,9 +55,14 @@ function SettingsPage() {
   };
 
   const wipe = async () => {
-    await deleteAcct();
-    await supabase.auth.signOut();
-    navigate({ to: "/" });
+    setDeleteError(null);
+    try {
+      await deleteAcct();
+      await supabase.auth.signOut();
+      navigate({ to: "/" });
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Account deletion could not start");
+    }
   };
 
   if (!p) return <div className="p-16 text-center text-muted-foreground">Loading…</div>;
@@ -113,22 +119,21 @@ function SettingsPage() {
           <h2 className="text-lg font-semibold text-foreground">What matches can see</h2>
           <div className="mt-4 space-y-3">
             <Toggle
-              label="Show my city / country"
+              label="Allow my city / country in anonymous match summaries"
               on={p.show_location}
               onChange={(v) => save({ ...p, show_location: v })}
             />
             <Toggle
-              label="Show my occupation"
+              label="Allow my occupation in anonymous match summaries"
               on={p.show_occupation}
               onChange={(v) => save({ ...p, show_occupation: v })}
             />
+            <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
+              Free-text answers are excluded from external AI scoring for every member, regardless
+              of this saved legacy preference.
+            </p>
             <Toggle
-              label="Include my free-text answers when the matchmaker scores compatibility"
-              on={p.show_free_text}
-              onChange={(v) => save({ ...p, show_free_text: v })}
-            />
-            <Toggle
-              label="Only reveal my contact email after both sides accept a mutual interest"
+              label="Reveal my contact email after both sides accept (off keeps it private)"
               on={p.reveal_contact_on_mutual}
               onChange={(v) => save({ ...p, reveal_contact_on_mutual: v })}
             />
@@ -163,6 +168,11 @@ function SettingsPage() {
             >
               Delete my account
             </button>
+          )}
+          {deleteError && (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {deleteError}
+            </p>
           )}
         </section>
 

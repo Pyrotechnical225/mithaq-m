@@ -7,6 +7,7 @@ import {
   createOpenAICompatibilityProvider,
   getOpenAIModelName,
 } from "./openai-compatibility.server";
+import { requiredSurveyAnswersAreValid } from "./survey-validation";
 
 const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
 const AI_SAFE_IDS = new Set(
@@ -147,6 +148,9 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const myAnswers = mine.answers as Answers;
     const myGender = normalized(myAnswers["2"]);
+    if (!requiredSurveyAnswersAreValid(myAnswers) || !["male", "female"].includes(myGender)) {
+      throw new Error("Review your required survey answers before generating matches");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: candidates, error: candidateError } = await supabaseAdmin
       .from("survey_answers")
@@ -157,12 +161,17 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const { data: privacyRows } = await supabaseAdmin
       .from("privacy_settings")
-      .select("user_id, visibility");
+      .select("user_id, visibility, show_location, show_occupation");
     const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
     const pool = (candidates ?? []).filter((candidate) => {
       if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
-      const candidateGender = normalized((candidate.answers as Answers)["2"]);
-      return !myGender || !candidateGender || myGender !== candidateGender;
+      const answers = candidate.answers as Answers;
+      const candidateGender = normalized(answers["2"]);
+      return (
+        requiredSurveyAnswersAreValid(answers) &&
+        ["male", "female"].includes(candidateGender) &&
+        myGender !== candidateGender
+      );
     });
 
     const scoredPool = pool.map((candidate, index) => ({
@@ -195,7 +204,14 @@ export const generateMatches = createServerFn({ method: "POST" })
               ? "OpenAI was temporarily unavailable, so this result uses the fixed rubric only."
               : "This result uses the fixed rubric; OpenAI review is not configured."),
           age: candidate.answers["1"] ?? null,
-          location: candidate.answers["3"] ?? null,
+          location:
+            privacyByUser.get(candidate.real_id)?.show_location === false
+              ? null
+              : (candidate.answers["3"] ?? null),
+          occupation:
+            privacyByUser.get(candidate.real_id)?.show_occupation === false
+              ? null
+              : (candidate.answers["9"] ?? null),
           practice_level: candidate.answers["11"] ?? null,
           madhab: candidate.answers["10"] ?? null,
           timeline: candidate.answers["19"] ?? null,
@@ -205,7 +221,7 @@ export const generateMatches = createServerFn({ method: "POST" })
       .sort((left, right) => right.score - left.score)
       .slice(0, 5);
 
-    const { data: saved, error: saveError } = await context.supabase
+    const { data: saved, error: saveError } = await supabaseAdmin
       .from("matches")
       .insert({
         user_id: context.userId,
@@ -243,7 +259,21 @@ export const expressInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InterestInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    if (data.to_user === context.userId) throw new Error("You cannot express interest in yourself");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: latest } = await supabaseAdmin
+      .from("matches")
+      .select("results")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const savedMatches = (latest?.results as { matches?: Array<{ match_user_id?: string }> } | null)
+      ?.matches;
+    if (!savedMatches?.some((candidate) => candidate.match_user_id === data.to_user)) {
+      throw new Error("This member is not in your current compatibility results");
+    }
+    const { error } = await supabaseAdmin
       .from("interests")
       .upsert(
         { from_user: context.userId, to_user: data.to_user, status: "pending" },
@@ -262,12 +292,17 @@ export const respondInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RespondInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: updated, error } = await supabaseAdmin
       .from("interests")
       .update({ status: data.accept ? "accepted" : "declined" })
       .eq("id", data.interest_id)
-      .eq("to_user", context.userId);
+      .eq("to_user", context.userId)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!updated) throw new Error("This interest is not available to respond to");
     return { ok: true };
   });
 
@@ -298,10 +333,20 @@ export const listInterests = createServerFn({ method: "GET" })
         .from("profiles")
         .select("id, display_name, contact_email")
         .in("id", Array.from(acceptedIds));
+      const { data: privacyRows } = await supabaseAdmin
+        .from("privacy_settings")
+        .select("user_id, reveal_contact_on_mutual")
+        .in("user_id", Array.from(acceptedIds));
+      const revealByUser = new Map(
+        (privacyRows ?? []).map((row) => [row.user_id, row.reveal_contact_on_mutual]),
+      );
       contacts = Object.fromEntries(
         (profiles ?? []).map((profile) => [
           profile.id,
-          { display_name: profile.display_name, contact_email: profile.contact_email },
+          {
+            display_name: profile.display_name,
+            contact_email: revealByUser.get(profile.id) === true ? profile.contact_email : null,
+          },
         ]),
       );
     }

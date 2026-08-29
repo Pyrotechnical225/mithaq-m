@@ -58,7 +58,9 @@ function SeedPage() {
           <h2 className="text-lg text-foreground">Example users</h2>
           <p className="text-xs text-muted-foreground">
             Creates 6 auto-confirmed users with full survey answers and UK locations. Their emails
-            all end in <code>@mithaq.demo</code>. Default password: <code>Example123!</code>.
+            all end in <code>@mithaq.demo</code>. A unique password must be supplied through the
+            server's <code>EXAMPLE_USER_PASSWORD</code> secret. Production seeding is disabled by
+            default.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

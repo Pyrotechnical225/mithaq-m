@@ -37,7 +37,6 @@ export const getMyMembership = createServerFn({ method: "GET" })
 const CheckoutInput = z.object({
   // Allowlisted plan ids only — no client-supplied price or amount.
   plan: z.enum(["monthly", "yearly"]),
-  origin: z.string().url(),
 });
 
 export const startCheckout = createServerFn({ method: "POST" })
@@ -110,7 +109,7 @@ export const startCheckout = createServerFn({ method: "POST" })
         plan: data.plan,
         userId: context.userId,
         customerId,
-        origin: data.origin,
+        origin: (await import("./request-origin.server")).getRequestOrigin(),
       });
     } catch (e) {
       // Full detail stays in the server logs; members see a plain message.
@@ -161,12 +160,9 @@ export const diagnoseStripe = createServerFn({ method: "POST" })
     return diagnoseStripeKey();
   });
 
-const PortalInput = z.object({ origin: z.string().url() });
-
 export const openBillingPortal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => PortalInput.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ context }) => {
     // The customer id always comes from this user's own DB row.
     const { data: sub } = await context.supabase
       .from("subscriptions")
@@ -176,7 +172,10 @@ export const openBillingPortal = createServerFn({ method: "POST" })
     if (!sub?.provider_customer_id) throw new Error("No billing account yet");
     const { createBillingPortalSession } = await import("./membership.server");
     try {
-      return await createBillingPortalSession(sub.provider_customer_id, data.origin);
+      return await createBillingPortalSession(
+        sub.provider_customer_id,
+        (await import("./request-origin.server")).getRequestOrigin(),
+      );
     } catch (e) {
       console.error("billing portal failed:", e);
       throw new Error("We couldn’t open the billing portal just now. Please try again shortly.");

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRelativePath } from "@/lib/safe-navigation";
 
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({
@@ -82,8 +83,7 @@ function AuthCallback() {
           }
         }
 
-        const nextRaw = url.searchParams.get("next") ?? "";
-        const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+        const next = safeRelativePath(url.searchParams.get("next"));
         const { data } = await supabase.auth.getUser();
         if (data.user?.email_confirmed_at) {
           setStatus("success");

@@ -13,6 +13,12 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
+function assertExampleDataAllowed() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_EXAMPLE_DATA !== "true") {
+    throw new Error("Example data is disabled in production");
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Admin: list all profiles with auth email + status flags
 // -----------------------------------------------------------------------------
@@ -610,6 +616,7 @@ export const seedExampleImams = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertExampleDataAllowed();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: existing } = await supabaseAdmin.from("imams").select("name, city");
     const have = new Set((existing ?? []).map((r) => `${r.name}::${r.city}`));
@@ -644,6 +651,11 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertExampleDataAllowed();
+    const fixturePassword = process.env.EXAMPLE_USER_PASSWORD?.trim();
+    if (!fixturePassword || fixturePassword.length < 12) {
+      throw new Error("Set a unique EXAMPLE_USER_PASSWORD of at least 12 characters first");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
@@ -660,7 +672,7 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
       if (!userId) {
         const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
           email: ex.email,
-          password: ex.password,
+          password: fixturePassword,
           email_confirm: true,
           user_metadata: { display_name: ex.display_name },
         });

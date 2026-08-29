@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { validateSurveyAnswers } from "./survey-validation";
 
 export const getMyAnswers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -23,9 +24,10 @@ export const saveMyAnswers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SaveInput.parse(input))
   .handler(async ({ data, context }) => {
+    const answers = validateSurveyAnswers(data.answers, data.completed);
     const { error } = await context.supabase.from("survey_answers").upsert({
       user_id: context.userId,
-      answers: data.answers,
+      answers,
       completed: data.completed,
       updated_at: new Date().toISOString(),
     });

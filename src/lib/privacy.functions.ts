@@ -47,6 +47,10 @@ export const updateMyPrivacy = createServerFn({ method: "POST" })
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const issuedAt = Number((context.claims as { iat?: unknown } | undefined)?.iat);
+    if (!Number.isFinite(issuedAt) || Date.now() / 1000 - issuedAt > 10 * 60) {
+      throw new Error("For security, sign out and sign in again before deleting your account");
+    }
     const userId = context.userId;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Cascades take care of profile/answers/etc.

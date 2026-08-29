@@ -1,6 +1,5 @@
 export interface ExampleUser {
   email: string;
-  password: string;
   display_name: string;
   uk_city: string;
   answers: Record<string, string>;
@@ -13,7 +12,6 @@ export const EXAMPLE_USER_DOMAIN = "@mithaq.demo";
 export const EXAMPLE_USERS: ExampleUser[] = [
   {
     email: `aisha${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Aisha (example)",
     uk_city: "London",
     answers: {
@@ -51,7 +49,6 @@ export const EXAMPLE_USERS: ExampleUser[] = [
   },
   {
     email: `yusuf${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Yusuf (example)",
     uk_city: "Birmingham",
     answers: {
@@ -89,7 +86,6 @@ export const EXAMPLE_USERS: ExampleUser[] = [
   },
   {
     email: `maryam${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Maryam (example)",
     uk_city: "Manchester",
     answers: {
@@ -127,7 +123,6 @@ export const EXAMPLE_USERS: ExampleUser[] = [
   },
   {
     email: `ibrahim${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Ibrahim (example)",
     uk_city: "Leicester",
     answers: {
@@ -165,7 +160,6 @@ export const EXAMPLE_USERS: ExampleUser[] = [
   },
   {
     email: `khadija${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Khadija (example)",
     uk_city: "Leeds",
     answers: {
@@ -203,7 +197,6 @@ export const EXAMPLE_USERS: ExampleUser[] = [
   },
   {
     email: `hamza${EXAMPLE_USER_DOMAIN}`,
-    password: "Example123!",
     display_name: "Hamza (example)",
     uk_city: "Glasgow",
     answers: {

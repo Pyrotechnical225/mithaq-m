@@ -1,0 +1,245 @@
+# Mithaq theme
+
+## Compact token summary
+
+- Visual direction: restrained editorial product design, warm ivory backgrounds, deep green actions, minimal decoration, small radii, quiet borders, and limited shadows.
+- Fonts: Inter for all Latin interface and display text; Amiri/Noto Naskh Arabic for the Arabic wordmark.
+- Background: `oklch(0.982 0.008 86)`; card: `oklch(0.997 0.003 86)`; foreground: `oklch(0.23 0.025 155)`.
+- Primary: `oklch(0.33 0.065 158)`; primary foreground: `oklch(0.985 0.008 86)`.
+- Secondary: `oklch(0.945 0.012 88)`; muted: `oklch(0.95 0.009 86)`; border: `oklch(0.87 0.012 88)`.
+- Brass accent: `oklch(0.62 0.075 78)`.
+- Radius: 0.5rem base. Shadows: subtle soft and one modest elevated shadow.
+- Responsive breakpoints follow Tailwind defaults; public content caps at `max-w-7xl` with 20px mobile and 32px desktop gutters.
+- Motion: short hover transitions; global reduced-motion support; smooth anchor scrolling otherwise.
+- No dark theme is currently defined; preserve the intentional warm light palette.
+
+## Raw sources
+
+## `src/styles.css`
+
+```css
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-cream: var(--cream);
+
+  --shadow-soft: 0 1px 2px rgba(20, 36, 28, 0.05), 0 4px 12px rgba(20, 36, 28, 0.04);
+  --shadow-elevated: 0 12px 32px rgba(20, 36, 28, 0.1);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Restrained warm neutral palette with deep green and a quiet brass accent. */
+  --background: oklch(0.982 0.008 86);
+  --foreground: oklch(0.23 0.025 155);
+
+  --card: oklch(0.997 0.003 86);
+  --card-foreground: oklch(0.23 0.025 155);
+  --popover: oklch(0.997 0.003 86);
+  --popover-foreground: oklch(0.23 0.025 155);
+
+  --primary: oklch(0.33 0.065 158);
+  --primary-foreground: oklch(0.985 0.008 86);
+
+  --secondary: oklch(0.945 0.012 88);
+  --secondary-foreground: oklch(0.28 0.04 158);
+
+  --muted: oklch(0.95 0.009 86);
+  --muted-foreground: oklch(0.47 0.018 155);
+
+  --accent: oklch(0.93 0.018 88);
+  --accent-foreground: oklch(0.28 0.04 158);
+
+  --gold: oklch(0.62 0.075 78);
+  --gold-foreground: oklch(0.22 0.025 155);
+  --cream: oklch(0.965 0.012 86);
+
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.985 0.012 85);
+  --border: oklch(0.87 0.012 88);
+  --input: oklch(0.88 0.012 88);
+  --ring: oklch(0.48 0.065 158);
+}
+
+@layer base {
+  html {
+    max-width: 100%;
+    overflow-x: clip;
+    scroll-behavior: smooth;
+  }
+
+  * {
+    border-color: var(--color-border);
+    min-width: 0;
+  }
+
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  p,
+  a,
+  button,
+  td,
+  th {
+    overflow-wrap: anywhere;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-primary) 20%, transparent);
+  }
+
+  :focus-visible {
+    outline: 3px solid color-mix(in oklch, var(--color-ring) 70%, transparent);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@utility font-arabic {
+  font-family: var(--font-arabic);
+}
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+```
+
+
+## `components.json`
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "css": "src/styles.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": {}
+}
+
+```
+
+
+## `vite.config.ts`
+
+```ts
+// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
+// or the app will break with duplicate plugins:
+//   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
+//     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
+//     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
+// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+
+export default defineConfig({
+  tanstackStart: {
+    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+    // nitro/vite builds from this
+    server: { entry: "server" },
+  },
+  vite: {
+    plugins: [mcpPlugin()],
+  },
+});
+
+```

@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { errResult, jsonResult, supabaseForUser, unauthed } from "../supabase-user";
+import { validateSurveyAnswers } from "@/lib/survey-validation";
 
 export default defineTool({
   name: "save_my_survey",
@@ -14,14 +15,19 @@ export default defineTool({
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ answers, completed }, ctx) => {
     if (!ctx.isAuthenticated()) return unauthed();
-    const supabase = supabaseForUser(ctx);
-    const { error } = await supabase.from("survey_answers").upsert({
-      user_id: ctx.getUserId()!,
-      answers,
-      completed,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) return errResult(error.message);
-    return jsonResult({ ok: true });
+    try {
+      const validated = validateSurveyAnswers(answers, completed);
+      const supabase = supabaseForUser(ctx);
+      const { error } = await supabase.from("survey_answers").upsert({
+        user_id: ctx.getUserId()!,
+        answers: validated,
+        completed,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) return errResult(error.message);
+      return jsonResult({ ok: true });
+    } catch (error) {
+      return errResult(error instanceof Error ? error.message : "Survey answers are invalid");
+    }
   },
 });

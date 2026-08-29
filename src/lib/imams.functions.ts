@@ -48,7 +48,8 @@ export const saveMyLocation = createServerFn({ method: "POST" })
       location_lat: known?.lat ?? null,
       location_lng: known?.lng ?? null,
     };
-    const { error } = await context.supabase.from("profiles").upsert(patch, { onConflict: "id" });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("profiles").upsert(patch, { onConflict: "id" });
     if (error) throw new Error(error.message);
     return { ok: true, matched_city: known?.name ?? null };
   });

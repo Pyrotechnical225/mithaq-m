@@ -4,6 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { getServerSupabasePublicConfigs } from "./public-config";
+import { supabaseConfigForToken } from "@/lib/supabase-token";
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
@@ -55,49 +56,39 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Error("Unauthorized: No token provided");
     }
 
-    let verified:
-      | {
-          supabase: ReturnType<typeof createClient<Database>>;
-          claims: { sub: string; [key: string]: unknown };
-        }
-      | undefined;
-
-    for (const config of getServerSupabasePublicConfigs()) {
-      const supabase = createClient<Database>(config.url, config.publishableKey, {
-        global: {
-          fetch: createSupabaseFetch(config.publishableKey),
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-        auth: {
-          storage: undefined,
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      });
-
-      try {
-        const { data, error } = await supabase.auth.getClaims(token);
-        if (!error && data?.claims?.sub) {
-          verified = { supabase, claims: data.claims };
-          break;
-        }
-      } catch {
-        // A stale deployment can point at a retired Supabase project. Try the
-        // next public configuration before treating the member session as invalid.
-      }
-    }
-
-    if (!verified) {
+    // Use the untrusted issuer only to choose the destination. Never send a
+    // member token to every configured Supabase project while looking for a match.
+    const config = supabaseConfigForToken(token, getServerSupabasePublicConfigs());
+    if (!config) {
       throw new Error("Unauthorized: Your session has expired. Please sign in again.");
     }
 
+    const supabase = createClient<Database>(config.url, config.publishableKey, {
+      global: {
+        fetch: createSupabaseFetch(config.publishableKey),
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      auth: {
+        storage: undefined,
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    let claims: { sub: string; [key: string]: unknown } | undefined;
+    try {
+      const result = await supabase.auth.getClaims(token);
+      if (!result.error && result.data?.claims?.sub) claims = result.data.claims;
+    } catch {
+      claims = undefined;
+    }
+    if (!claims) throw new Error("Unauthorized: Your session has expired. Please sign in again.");
+
     return next({
       context: {
-        supabase: verified.supabase,
-        userId: verified.claims.sub,
-        claims: verified.claims,
+        supabase,
+        userId: claims.sub,
+        claims,
       },
     });
   },
