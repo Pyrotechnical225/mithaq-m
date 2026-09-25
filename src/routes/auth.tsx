@@ -3,7 +3,6 @@ import { Check, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrandName } from "@/components/BrandName";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 
 const ADMIN_EMAIL = "admin@mithaq.com";
 
@@ -91,11 +90,14 @@ function AuthPage() {
 
   const google = async () => {
     setError(null);
-    const redirect_uri = next
+    const redirectTo = next
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      : window.location.origin;
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
-    if (result.error) setError(result.error.message);
+      : `${window.location.origin}/auth/callback`;
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (oauthError) setError(oauthError.message);
   };
 
   return (
