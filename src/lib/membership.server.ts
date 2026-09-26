@@ -710,3 +710,87 @@ export async function diagnoseStripeKey() {
 
   return { key: info, checks };
 }
+
+/**
+ * charge.refunded / charge.dispute.created for meeting packages.
+ *
+ * A full refund (or a chargeback) means the member no longer has a paid
+ * package: their side of the pairing goes back to "refunded" and, if no
+ * meeting has been arranged yet, the pairing returns to awaiting payment.
+ * Pairings that already have meetings are left alone for an admin to decide.
+ * Every case is written to the admin audit log.
+ */
+export async function syncMeetingPackageReversal(
+  object: Record<string, unknown>,
+  kind: "refund" | "dispute",
+) {
+  const paymentIntent = typeof object.payment_intent === "string" ? object.payment_intent : null;
+  if (!paymentIntent) return { ok: true as const, changed: false };
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: purchase, error: purchaseError } = await supabaseAdmin
+    .from("meeting_package_purchases")
+    .select("id,pairing_id,user_id,amount_pence,payment_status")
+    .eq("stripe_payment_intent_id", paymentIntent)
+    .maybeSingle();
+  if (purchaseError) throw new Error(`Could not look up payment: ${purchaseError.message}`);
+  // Not a meeting-package payment (or one this app never recorded).
+  if (!purchase) return { ok: true as const, changed: false };
+
+  const amount = Number(object.amount ?? 0);
+  const amountRefunded = Number(object.amount_refunded ?? 0);
+  const fullyReversed =
+    kind === "dispute" || object.refunded === true || (amount > 0 && amountRefunded >= amount);
+  const purchaseStatus = fullyReversed ? "refunded" : "partially_refunded";
+
+  const { error: updatePurchaseError } = await supabaseAdmin
+    .from("meeting_package_purchases")
+    .update({ payment_status: purchaseStatus })
+    .eq("id", purchase.id);
+  if (updatePurchaseError)
+    throw new Error(`Could not record refund: ${updatePurchaseError.message}`);
+
+  let pairingOutcome = "unchanged";
+  if (fullyReversed) {
+    const { data: pairing, error: pairingError } = await supabaseAdmin
+      .from("pairings")
+      .select("id,user_a,user_b,status")
+      .eq("id", purchase.pairing_id)
+      .maybeSingle();
+    if (pairingError) throw new Error(`Could not load pairing: ${pairingError.message}`);
+    if (pairing && [pairing.user_a, pairing.user_b].includes(purchase.user_id)) {
+      const side = pairing.user_a === purchase.user_id ? "a" : "b";
+      const beforeMeetings = ["payment_pending", "ready_to_schedule"].includes(pairing.status);
+      // Before any meeting is arranged the member can simply pay again, so
+      // their side becomes "due"; afterwards it is marked refunded for review.
+      const sideStatus = beforeMeetings ? "due" : "refunded";
+      const { error: updatePairingError } = await supabaseAdmin
+        .from("pairings")
+        .update({
+          ...(side === "a" ? { payment_a_status: sideStatus } : { payment_b_status: sideStatus }),
+          ...(beforeMeetings ? { status: "awaiting_payment" } : {}),
+        })
+        .eq("id", pairing.id);
+      if (updatePairingError)
+        throw new Error(`Could not update pairing after refund: ${updatePairingError.message}`);
+      pairingOutcome = beforeMeetings ? "returned_to_awaiting_payment" : "needs_admin_review";
+    }
+  }
+
+  const { error: auditError } = await supabaseAdmin.from("admin_audit_log").insert({
+    actor_user_id: null,
+    action: kind === "dispute" ? "stripe_dispute_received" : "stripe_refund_received",
+    target_type: "meeting_package_purchase",
+    target_id: purchase.id,
+    details: {
+      pairing_id: purchase.pairing_id,
+      purchase_status: purchaseStatus,
+      amount_pence: purchase.amount_pence,
+      amount_refunded_pence: kind === "refund" ? amountRefunded : null,
+      pairing_outcome: pairingOutcome,
+    },
+  });
+  if (auditError) console.error("Refund audit entry failed:", auditError.message);
+
+  return { ok: true as const, changed: true };
+}

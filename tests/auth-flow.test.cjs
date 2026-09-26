@@ -279,3 +279,17 @@ test("security fixes stay in place", () => {
   assert.match(auth, /const ADMIN_EMAIL = "admin@mithaq\.uk"/);
   assert.match(auth, /window\.location\.href = next \?\? "\/admin"/);
 });
+
+test("refunds, chargebacks and account deletion checks stay in place", () => {
+  const read = (file) => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const webhook = read("src/routes/api/public/stripe-webhook.ts");
+  const membership = read("src/lib/membership.server.ts");
+  const privacy = read("src/lib/privacy.functions.ts");
+  assert.match(webhook, /case "charge\.refunded":/);
+  assert.match(webhook, /case "charge\.dispute\.created":/);
+  assert.match(membership, /export async function syncMeetingPackageReversal/);
+  assert.match(membership, /stripe_refund_received/);
+  // Deletion must rely on the real sign-in time, not the refreshed token time.
+  assert.match(privacy, /context\.claims as \{ amr\?: unknown \}/);
+  assert.doesNotMatch(privacy, /claims as \{ iat\?: unknown \}/);
+});

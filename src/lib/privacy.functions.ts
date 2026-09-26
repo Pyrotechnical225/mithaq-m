@@ -47,8 +47,17 @@ export const updateMyPrivacy = createServerFn({ method: "POST" })
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const issuedAt = Number((context.claims as { iat?: unknown } | undefined)?.iat);
-    if (!Number.isFinite(issuedAt) || Date.now() / 1000 - issuedAt > 10 * 60) {
+    // `iat` is renewed on every silent token refresh, so it does not prove a
+    // recent sign-in. `amr` records when the member actually authenticated.
+    const amr = (context.claims as { amr?: unknown } | undefined)?.amr;
+    const lastSignIn = Array.isArray(amr)
+      ? Math.max(
+          ...amr
+            .map((entry) => Number((entry as { timestamp?: unknown } | null)?.timestamp))
+            .filter(Number.isFinite),
+        )
+      : Number.NaN;
+    if (!Number.isFinite(lastSignIn) || Date.now() / 1000 - lastSignIn > 10 * 60) {
       throw new Error("For security, sign out and sign in again before deleting your account");
     }
     const userId = context.userId;

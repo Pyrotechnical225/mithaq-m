@@ -7,7 +7,8 @@ import { createFileRoute } from "@tanstack/react-router";
  *
  * Events handled: checkout.session.completed,
  * customer.subscription.created/updated/deleted,
- * invoice.payment_succeeded, invoice.payment_failed.
+ * invoice.payment_succeeded, invoice.payment_failed,
+ * charge.refunded, charge.dispute.created.
  */
 const PERMANENT_REASONS = new Set([
   "invalid_session",
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           closeMeetingCheckoutAttempt,
           syncSubscriptionObject,
           syncFromInvoice,
+          syncMeetingPackageReversal,
           claimStripeEvent,
           completeStripeEvent,
           failStripeEvent,
@@ -119,6 +121,12 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
               break;
             case "invoice.payment_failed":
               ensureSynced(await syncFromInvoice(obj, true));
+              break;
+            case "charge.refunded":
+              ensureSynced(await syncMeetingPackageReversal(obj, "refund"));
+              break;
+            case "charge.dispute.created":
+              ensureSynced(await syncMeetingPackageReversal(obj, "dispute"));
               break;
             default:
               break;
