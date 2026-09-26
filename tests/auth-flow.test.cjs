@@ -209,3 +209,26 @@ test("password recovery uses the canonical callback and a local reset destinatio
   assert.match(resetPassword, /autoComplete="new-password"/);
   assert.doesNotMatch(forgotPassword + resetPassword, /localhost|127\.0\.0\.1/i);
 });
+
+test("the Resend send-email hook links to the callback with token hashes and is locked down", () => {
+  const sql = fs.readFileSync(
+    path.join(__dirname, "../supabase/migrations/20260926090000_resend_auth_email_hook.sql"),
+    "utf8",
+  );
+  assert.match(sql, /callback_url constant text := 'https:\/\/www\.mithaq\.uk\/auth\/callback'/);
+  assert.match(sql, /'\?token_hash=' \|\| token_hash \|\| '&type=email'/);
+  assert.match(sql, /'&type=recovery&next=%2Freset-password'/);
+  for (const alias of ["mithaq-verify-email", "mithaq-reset-password", "mithaq-account-link"]) {
+    assert.match(sql, new RegExp(`'${alias}'`));
+  }
+  assert.match(sql, /from vault\.decrypted_secrets/);
+  assert.doesNotMatch(sql, /re_[A-Za-z0-9]{10,}/, "API keys must stay in Vault, never in git");
+  assert.match(
+    sql,
+    /revoke all on function public\.send_auth_email_via_resend\(jsonb\) from public, anon, authenticated/,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.send_auth_email_via_resend\(jsonb\) to supabase_auth_admin/,
+  );
+});

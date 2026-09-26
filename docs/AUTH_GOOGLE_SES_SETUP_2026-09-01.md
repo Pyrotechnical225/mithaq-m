@@ -1,18 +1,21 @@
 # Mithaq auth, Google and SES setup
 
-> **Update, September 2026:** Supabase Auth email now goes through Resend (connected with
-> Resend's Supabase integration, sending from the verified `mithaq.uk` domain), not SES. The SES
-> SMTP section below is kept for history only.
+> **Update, September 2026:** Supabase Auth emails are designed in and sent by **Resend**.
 >
-> The email templates now link with a token hash instead of `{{ .ConfirmationURL }}`, so a link
-> opened on a different device or browser still works. In Supabase → Authentication → Email
-> Templates, paste:
+> - Designs: published Resend templates `mithaq-verify-email`, `mithaq-reset-password` and
+>   `mithaq-account-link` (source copies in `supabase/resend-templates/`). Edit copy in Resend and
+>   re-publish; no deploy needed.
+> - Sending: the Postgres function `public.send_auth_email_via_resend`
+>   (`supabase/migrations/20260926090000_resend_auth_email_hook.sql`) is Supabase's **Send Email
+>   hook**. It builds token-hash links to `https://www.mithaq.uk/auth/callback`, so they work on any
+>   device, and posts to the Resend API with a send-only key stored in Vault as `resend_api_key`.
+> - Enable it in Supabase → Authentication → Hooks → Send Email → Postgres →
+>   `public.send_auth_email_via_resend`. While the hook is off, Supabase falls back to Resend SMTP
+>   with the templates in `supabase/templates/`.
+> - Troubleshooting: `select * from net._http_response order by created desc` shows Resend's reply
+>   to each send; the Resend dashboard shows delivery.
 >
-> - **Confirm sign up**: subject `Verify your email — Mithaq`, body `supabase/templates/confirmation.html`
-> - **Reset password**: subject `Reset your password — Mithaq`, body `supabase/templates/recovery.html`
->
-> Links are hard-coded to `https://www.mithaq.uk/auth/callback` so they never depend on the Site URL
-> setting.
+> The SES SMTP section below is kept for history only.
 
 ## What is implemented in the app
 
