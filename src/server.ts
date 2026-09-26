@@ -7,6 +7,27 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+function errorDetails(error: unknown) {
+  return error instanceof Error
+    ? { errorName: error.name, errorMessage: error.message }
+    : { errorName: "UnknownError", errorMessage: String(error) };
+}
+
+function logRequestFailure(request: Request, status: number, startedAt: number, error?: unknown) {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      message: "Mithaq request failed",
+      method: request.method,
+      path: new URL(request.url).pathname,
+      requestId: request.headers.get("x-vercel-id"),
+      status,
+      durationMs: Date.now() - startedAt,
+      ...(error === undefined ? {} : errorDetails(error)),
+    }),
+  );
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -44,18 +65,54 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://storage.googleapis.com https://unpkg.com https://*.tile.openstreetmap.org",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "frame-src https://*.stripe.com",
+  "form-action 'self' https://*.stripe.com",
+  "upgrade-insecure-requests",
+].join("; ");
+
+function withSecurityHeaders(request: Request, response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("X-Frame-Options", "DENY");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (request.headers.has("authorization")) headers.set("Cache-Control", "no-store");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const startedAt = Date.now();
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      if (normalized.status >= 500) logRequestFailure(request, normalized.status, startedAt);
+      return withSecurityHeaders(request, normalized);
     } catch (error) {
-      console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      logRequestFailure(request, 500, startedAt, error);
+      return withSecurityHeaders(
+        request,
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };

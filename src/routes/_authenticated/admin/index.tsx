@@ -65,8 +65,28 @@ function AdminHome() {
         <Stat label="Profiles" value={stats.profileCount} />
         <Stat label="Completed surveys" value={stats.completedCount} />
         <Stat label="Discoverable" value={stats.discoverableCount} />
-        <Stat label="Interests exchanged" value={stats.interestCount} />
+        <Stat label="Private introductions" value={stats.introductionCount} />
       </div>
+
+      <section>
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Work requiring attention</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Live operational queues across the imam-led journey.
+            </p>
+          </div>
+          <Link to="/admin/imam-applications" className="text-xs text-primary hover:underline">
+            Open introduction operations →
+          </Link>
+        </div>
+        <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
+          <Stat label="Imam reviews" value={stats.imamReviewCount} />
+          <Stat label="Member reviews" value={stats.memberReviewCount} />
+          <Stat label="Awaiting payment" value={stats.paymentQueueCount} />
+          <Stat label="Safety reports" value={stats.safetyQueueCount} />
+        </div>
+      </section>
 
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-baseline justify-between">
@@ -118,6 +138,26 @@ function AdminHome() {
           />
 
           <ControlCard
+            title="Membership access"
+            body="Review subscription status and grant or revoke complimentary matching access."
+            actions={[{ to: "/admin/memberships", label: "Manage memberships", primary: true }]}
+          />
+
+          <ControlCard
+            title="Payment operations"
+            body="Meeting-package checkout attempts, settled payments, Stripe configuration and webhook delivery health."
+            actions={[{ to: "/admin/payments", label: "Review payment health", primary: true }]}
+          />
+
+          <ControlCard
+            title="Controlled-pilot readiness"
+            body="Run the live configuration, payment, imam, safety, and queue preflight before admitting pilot members."
+            actions={[
+              { to: "/admin/pilot-readiness", label: "Run pilot preflight", primary: true },
+            ]}
+          />
+
+          <ControlCard
             title="Imam applications & pairings"
             body="Approve or decline imam applicants, activate or suspend imam dashboard access, and oversee every pairing and arranged meetup."
             actions={[
@@ -129,10 +169,7 @@ function AdminHome() {
           <ControlCard
             title="Compatibility scoring audit"
             body="Compare the fixed-rubric score, OpenAI review and final weighted result for every generated match."
-            actions={[
-              { to: "/admin/compatibility", label: "Compare scores", primary: true },
-              { to: "/api/public/compatibility-status", label: "OpenAI connection status" },
-            ]}
+            actions={[{ to: "/admin/compatibility", label: "Compare scores", primary: true }]}
           />
 
           <ControlCard

@@ -4,21 +4,21 @@ import { useEffect, useState } from "react";
 import {
   createImam,
   deleteImam,
+  listAllImamsAdmin,
   seedExampleImams,
   updateImam,
   ADMIN_UK_CITIES,
 } from "@/lib/admin.functions";
-import { listImams } from "@/lib/imams.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/imams")({
   head: () => ({ meta: [{ title: "Imams — Admin" }, { name: "robots", content: "noindex" }] }),
   component: ImamsAdmin,
 });
 
-type Imam = Awaited<ReturnType<typeof listImams>>[number];
+type Imam = Awaited<ReturnType<typeof listAllImamsAdmin>>[number];
 
 function ImamsAdmin() {
-  const fetchAll = useServerFn(listImams);
+  const fetchAll = useServerFn(listAllImamsAdmin);
   const doCreate = useServerFn(createImam);
   const doUpdate = useServerFn(updateImam);
   const doDelete = useServerFn(deleteImam);
@@ -38,6 +38,7 @@ function ImamsAdmin() {
     website: "",
     languages: "",
     notes: "",
+    verification_status: "pending" as "pending" | "verified" | "suspended",
   };
   const [form, setForm] = useState(empty);
 
@@ -63,6 +64,7 @@ function ImamsAdmin() {
         .map((s) => s.trim())
         .filter(Boolean),
       notes: form.notes.trim() || null,
+      verification_status: form.verification_status,
     };
     try {
       if (editing) {
@@ -93,6 +95,7 @@ function ImamsAdmin() {
       website: r.website ?? "",
       languages: (r.languages ?? []).join(", "),
       notes: r.notes ?? "",
+      verification_status: r.verification_status as "pending" | "verified" | "suspended",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -134,6 +137,25 @@ function ImamsAdmin() {
           onChange={(v) => setForm({ ...form, name: v })}
           required
         />
+        <label className="block">
+          <span className="text-xs uppercase tracking-widest text-muted-foreground">
+            Verification
+          </span>
+          <select
+            value={form.verification_status}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                verification_status: event.target.value as typeof form.verification_status,
+              })
+            }
+            className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="pending">Pending review</option>
+            <option value="verified">Verified</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </label>
         <Field label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
         <Field
           label="Mosque"
@@ -209,6 +231,7 @@ function ImamsAdmin() {
               <th className="px-4 py-3">City</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Languages</th>
+              <th className="px-4 py-3">Verification</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -230,6 +253,19 @@ function ImamsAdmin() {
                 </td>
                 <td className="px-4 py-3 text-xs">{(r.languages ?? []).join(", ")}</td>
                 <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      r.verification_status === "verified"
+                        ? "bg-primary/10 text-primary"
+                        : r.verification_status === "suspended"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {r.verification_status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => edit(r)}
@@ -249,7 +285,7 @@ function ImamsAdmin() {
             ))}
             {rows && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   No imams yet. Add one above or seed examples.
                 </td>
               </tr>

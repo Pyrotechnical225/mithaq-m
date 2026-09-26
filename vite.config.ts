@@ -6,6 +6,10 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+import { sites } from "@openai/sites-vite-plugin";
+import { assertSupabaseEnvironment } from "./src/integrations/supabase/public-config";
+
+assertSupabaseEnvironment(process.env);
 
 export default defineConfig({
   tanstackStart: {
@@ -14,6 +18,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [mcpPlugin(), sites()],
   },
 });

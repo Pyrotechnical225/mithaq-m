@@ -26,7 +26,7 @@ function MahrPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="mx-auto max-w-3xl px-6 py-16">
+      <main id="main-content" className="article-content mx-auto max-w-3xl px-6 py-16">
         <p className="font-arabic text-2xl text-primary">المهر</p>
         <h1 className="mt-2 font-display text-4xl text-foreground md:text-5xl">
           Mahr — the bride's right

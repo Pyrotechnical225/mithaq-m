@@ -7,6 +7,22 @@ export interface Question {
   question: string;
   type: QuestionType;
   options?: string[];
+  legacyOptions?: string[];
+}
+
+const OTHER_ANSWER_SUFFIX = "_other";
+
+export function questionAllowsOtherDetail(question: Question): boolean {
+  return question.type === "choice" && Boolean(question.options?.includes("Other"));
+}
+
+export function getOtherAnswerKey(questionId: number): string {
+  return `${questionId}${OTHER_ANSWER_SUFFIX}`;
+}
+
+export function getOtherAnswerQuestionId(key: string): number | null {
+  const match = key.match(/^(\d+)_other$/);
+  return match ? Number(match[1]) : null;
 }
 
 export const questions: Question[] = [
@@ -85,7 +101,8 @@ export const questions: Question[] = [
     required: true,
     question: "What school of thought (madhab) do you follow?",
     type: "choice",
-    options: ["Hanafi", "Shafi'i", "Maliki or Hanbali", "Other", "No specific madhab"],
+    options: ["Hanafi", "Shafi'i", "Maliki", "Hanbali", "Other", "No specific madhab"],
+    legacyOptions: ["Maliki or Hanbali"],
   },
   {
     id: 11,

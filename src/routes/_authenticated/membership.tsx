@@ -39,12 +39,12 @@ function MeetingSupportPage() {
         </div>
       </header>
 
-      <main id="main-content" className="mx-auto max-w-6xl px-5 py-12 sm:px-6 lg:py-16">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-12 lg:py-16">
         <div className="max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             After mutual acceptance
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl">
             Imam-supported meetings
           </h1>
           <p className="mt-5 text-lg leading-8 text-muted-foreground">

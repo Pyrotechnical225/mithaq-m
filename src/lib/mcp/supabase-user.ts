@@ -1,15 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import type { Database } from "@/integrations/supabase/types";
+import { getServerSupabasePublicConfigs } from "@/integrations/supabase/public-config";
+import { supabaseConfigForToken } from "@/lib/supabase-token";
 
 function isNewKey(v: string) {
   return v.startsWith("sb_publishable_") || v.startsWith("sb_secret_");
 }
 
 export function supabaseForUser(ctx: ToolContext) {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
   const token = ctx.getToken()!;
+  const config = supabaseConfigForToken(token, getServerSupabasePublicConfigs());
+  if (!config) throw new Error("The authentication token was not issued for this Mithaq project");
+  const { url, publishableKey: key } = config;
   return createClient<Database>(url, key, {
     global: {
       headers: { Authorization: `Bearer ${token}` },

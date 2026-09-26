@@ -7,6 +7,8 @@ import {
   createOpenAICompatibilityProvider,
   getOpenAIModelName,
 } from "./openai-compatibility.server";
+import { requiredSurveyAnswersAreValid } from "./survey-validation";
+import { PRIVACY_NOTICE_VERSION } from "./privacy-notice";
 
 const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
 const AI_SAFE_IDS = new Set(
@@ -84,7 +86,11 @@ const OpenAIReviewSchema = z.object({
 
 type OpenAIReview = z.infer<typeof OpenAIReviewSchema>["matches"][number];
 
-const GenerateMatchesInput = z.object({ openaiConsent: z.literal(true) });
+const GenerateMatchesInput = z.object({
+  openaiConsent: z.literal(true),
+  adultConfirmed: z.literal(true),
+  privacyNoticeAccepted: z.literal(true),
+});
 
 async function getOpenAIReviews(
   mine: Answers,
@@ -136,8 +142,23 @@ For every candidate, return a 0-100 compatibility score plus concise strengths a
 
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => GenerateMatchesInput.parse(input))
+  .validator((input: unknown) => GenerateMatchesInput.parse(input))
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const now = new Date().toISOString();
+    const { error: consentError } = await supabaseAdmin.from("member_consents").upsert(
+      {
+        user_id: context.userId,
+        adult_confirmed_at: now,
+        privacy_notice_version: PRIVACY_NOTICE_VERSION,
+        privacy_notice_accepted_at: now,
+        compatibility_processing_consent_at: now,
+        compatibility_processing_withdrawn_at: null,
+      },
+      { onConflict: "user_id" },
+    );
+    if (consentError) throw new Error(consentError.message);
+
     const { data: mine } = await context.supabase
       .from("survey_answers")
       .select("answers, completed")
@@ -147,7 +168,9 @@ export const generateMatches = createServerFn({ method: "POST" })
 
     const myAnswers = mine.answers as Answers;
     const myGender = normalized(myAnswers["2"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!requiredSurveyAnswersAreValid(myAnswers) || !["male", "female"].includes(myGender)) {
+      throw new Error("Review your required survey answers before generating matches");
+    }
     const { data: candidates, error: candidateError } = await supabaseAdmin
       .from("survey_answers")
       .select("user_id, answers, completed")
@@ -155,14 +178,44 @@ export const generateMatches = createServerFn({ method: "POST" })
       .neq("user_id", context.userId);
     if (candidateError) throw new Error(candidateError.message);
 
-    const { data: privacyRows } = await supabaseAdmin
-      .from("privacy_settings")
-      .select("user_id, visibility");
+    const [privacyResult, consentResult, blockResult] = await Promise.all([
+      supabaseAdmin
+        .from("privacy_settings")
+        .select("user_id, visibility, show_location, show_occupation"),
+      supabaseAdmin
+        .from("member_consents")
+        .select("user_id,compatibility_processing_consent_at,compatibility_processing_withdrawn_at")
+        .not("compatibility_processing_consent_at", "is", null)
+        .is("compatibility_processing_withdrawn_at", null),
+      supabaseAdmin
+        .from("member_blocks")
+        .select("blocker_user_id,blocked_user_id")
+        .or(`blocker_user_id.eq.${context.userId},blocked_user_id.eq.${context.userId}`),
+    ]);
+    for (const result of [privacyResult, consentResult, blockResult]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const privacyRows = privacyResult.data;
+    const consentRows = consentResult.data;
+    const blockRows = blockResult.data;
     const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
+    const consentedUsers = new Set((consentRows ?? []).map((row) => row.user_id));
+    const blockedUsers = new Set(
+      (blockRows ?? []).map((row) =>
+        row.blocker_user_id === context.userId ? row.blocked_user_id : row.blocker_user_id,
+      ),
+    );
     const pool = (candidates ?? []).filter((candidate) => {
       if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
-      const candidateGender = normalized((candidate.answers as Answers)["2"]);
-      return !myGender || !candidateGender || myGender !== candidateGender;
+      if (!consentedUsers.has(candidate.user_id) || blockedUsers.has(candidate.user_id))
+        return false;
+      const answers = candidate.answers as Answers;
+      const candidateGender = normalized(answers["2"]);
+      return (
+        requiredSurveyAnswersAreValid(answers) &&
+        ["male", "female"].includes(candidateGender) &&
+        myGender !== candidateGender
+      );
     });
 
     const scoredPool = pool.map((candidate, index) => ({
@@ -195,7 +248,14 @@ export const generateMatches = createServerFn({ method: "POST" })
               ? "OpenAI was temporarily unavailable, so this result uses the fixed rubric only."
               : "This result uses the fixed rubric; OpenAI review is not configured."),
           age: candidate.answers["1"] ?? null,
-          location: candidate.answers["3"] ?? null,
+          location:
+            privacyByUser.get(candidate.real_id)?.show_location === false
+              ? null
+              : (candidate.answers["3"] ?? null),
+          occupation:
+            privacyByUser.get(candidate.real_id)?.show_occupation === false
+              ? null
+              : (candidate.answers["9"] ?? null),
           practice_level: candidate.answers["11"] ?? null,
           madhab: candidate.answers["10"] ?? null,
           timeline: candidate.answers["19"] ?? null,
@@ -205,7 +265,7 @@ export const generateMatches = createServerFn({ method: "POST" })
       .sort((left, right) => right.score - left.score)
       .slice(0, 5);
 
-    const { data: saved, error: saveError } = await context.supabase
+    const { data: saved, error: saveError } = await supabaseAdmin
       .from("matches")
       .insert({
         user_id: context.userId,
@@ -220,13 +280,158 @@ export const generateMatches = createServerFn({ method: "POST" })
       .select()
       .single();
     if (saveError) throw new Error(saveError.message);
-    return saved;
+
+    // Suitable results become private imam-review work. No candidate id or
+    // raw compatibility payload is returned to the member's browser.
+    const matchUserIds = enriched.map((match) => match.match_user_id);
+    const [{ data: profiles }, { data: imamAccounts }, { data: verifiedImams }] = await Promise.all(
+      [
+        supabaseAdmin
+          .from("profiles")
+          .select("id,uk_city,location_lat,location_lng")
+          .in("id", [context.userId, ...matchUserIds]),
+        supabaseAdmin.from("imam_accounts").select("user_id,imam_id,radius_km").eq("active", true),
+        supabaseAdmin.from("imams").select("id,city,lat,lng").eq("verification_status", "verified"),
+      ],
+    );
+
+    const verifiedById = new Map((verifiedImams ?? []).map((imam) => [imam.id, imam]));
+    const availableImams = (imamAccounts ?? []).filter((account) =>
+      verifiedById.has(account.imam_id),
+    );
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    const { data: currentReviews } = availableImams.length
+      ? await supabaseAdmin
+          .from("pairings")
+          .select("imam_id")
+          .eq("status", "imam_review")
+          .in(
+            "imam_id",
+            availableImams.map((account) => account.imam_id),
+          )
+      : { data: [] };
+    const reviewCount = new Map<string, number>();
+    for (const review of currentReviews ?? []) {
+      if (review.imam_id)
+        reviewCount.set(review.imam_id, (reviewCount.get(review.imam_id) ?? 0) + 1);
+    }
+
+    const { haversineKm } = await import("./geo");
+    const chooseImam = (candidateId: string) => {
+      if (availableImams.length === 0) return null;
+      const member = profileById.get(context.userId);
+      const candidate = profileById.get(candidateId);
+      const points = [member, candidate].filter(
+        (profile): profile is NonNullable<typeof profile> =>
+          !!profile && profile.location_lat != null && profile.location_lng != null,
+      );
+      const midpoint =
+        points.length > 0
+          ? {
+              lat:
+                points.reduce((sum, profile) => sum + (profile.location_lat as number), 0) /
+                points.length,
+              lng:
+                points.reduce((sum, profile) => sum + (profile.location_lng as number), 0) /
+                points.length,
+            }
+          : null;
+
+      return (
+        [...availableImams]
+          .map((account) => {
+            const imam = verifiedById.get(account.imam_id)!;
+            const distance =
+              midpoint && imam.lat != null && imam.lng != null
+                ? haversineKm(midpoint.lat, midpoint.lng, imam.lat, imam.lng)
+                : null;
+            const cityMatch = [member?.uk_city, candidate?.uk_city]
+              .filter(Boolean)
+              .some((city) => city?.toLocaleLowerCase() === imam.city.toLocaleLowerCase());
+            return {
+              account,
+              distance,
+              cityMatch,
+              workload: reviewCount.get(account.imam_id) ?? 0,
+            };
+          })
+          .sort((left, right) => {
+            const leftInRange =
+              left.distance != null && left.distance <= Math.max(left.account.radius_km, 5) * 2;
+            const rightInRange =
+              right.distance != null && right.distance <= Math.max(right.account.radius_km, 5) * 2;
+            if (leftInRange !== rightInRange) return leftInRange ? -1 : 1;
+            if (left.cityMatch !== right.cityMatch) return left.cityMatch ? -1 : 1;
+            if (left.workload !== right.workload) return left.workload - right.workload;
+            if (left.distance != null && right.distance != null)
+              return left.distance - right.distance;
+            if (left.distance != null) return -1;
+            if (right.distance != null) return 1;
+            return left.account.imam_id.localeCompare(right.account.imam_id);
+          })[0]?.account ?? null
+      );
+    };
+
+    const { data: existingPairings } = await supabaseAdmin
+      .from("pairings")
+      .select("user_a,user_b")
+      .or(`user_a.eq.${context.userId},user_b.eq.${context.userId}`);
+    const existingPairs = new Set(
+      (existingPairings ?? []).map((pairing) => [pairing.user_a, pairing.user_b].sort().join(":")),
+    );
+    let submittedForReview = 0;
+    for (const match of enriched) {
+      const [userA, userB] = [context.userId, match.match_user_id].sort();
+      const pairKey = `${userA}:${userB}`;
+      if (existingPairs.has(pairKey)) continue;
+      const imamAccount = chooseImam(match.match_user_id);
+      const { data: pairing, error: pairingError } = await supabaseAdmin
+        .from("pairings")
+        .insert({
+          user_a: userA,
+          user_b: userB,
+          imam_id: imamAccount?.imam_id ?? null,
+          status: "imam_review",
+          compatibility_score: match.score,
+          compatibility_summary: {
+            strengths: match.strengths,
+            considerations: match.considerations,
+            scoring_method: match.scoring_method,
+          },
+        })
+        .select("id")
+        .maybeSingle();
+      if (pairingError?.code === "23505") continue;
+      if (pairingError) throw new Error("A suitable result could not be sent for imam review");
+      if (!pairing) continue;
+      existingPairs.add(pairKey);
+      submittedForReview += 1;
+      if (imamAccount) {
+        reviewCount.set(imamAccount.imam_id, (reviewCount.get(imamAccount.imam_id) ?? 0) + 1);
+        const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
+          user_id: imamAccount.user_id,
+          pairing_id: pairing.id,
+          kind: "imam_match_review",
+          title: "New compatibility review",
+          body: `A ${match.score}% compatibility result is ready for private review.`,
+        });
+        if (notificationError) throw new Error(notificationError.message);
+      }
+    }
+
+    return {
+      id: saved.id,
+      created_at: saved.created_at,
+      suitable_match_count: enriched.length,
+      submitted_for_imam_review: submittedForReview,
+    };
   });
 
 export const getLatestMatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
       .from("matches")
       .select("id, results, created_at")
       .eq("user_id", context.userId)
@@ -234,77 +439,34 @@ export const getLatestMatches = createServerFn({ method: "GET" })
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data;
-  });
-
-const InterestInput = z.object({ to_user: z.string().uuid() });
-
-export const expressInterest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => InterestInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("interests")
-      .upsert(
-        { from_user: context.userId, to_user: data.to_user, status: "pending" },
-        { onConflict: "from_user,to_user" },
-      );
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-const RespondInput = z.object({
-  interest_id: z.string().uuid(),
-  accept: z.boolean(),
-});
-
-export const respondInterest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => RespondInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("interests")
-      .update({ status: data.accept ? "accepted" : "declined" })
-      .eq("id", data.interest_id)
-      .eq("to_user", context.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const listInterests = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const uid = context.userId;
-    const { data: sent } = await context.supabase
-      .from("interests")
-      .select("id, to_user, status, created_at")
-      .eq("from_user", uid)
-      .order("created_at", { ascending: false });
-    const { data: received } = await context.supabase
-      .from("interests")
-      .select("id, from_user, status, created_at")
-      .eq("to_user", uid)
-      .order("created_at", { ascending: false });
-
-    const acceptedIds = new Set<string>();
-    for (const row of sent ?? []) if (row.status === "accepted") acceptedIds.add(row.to_user);
-    for (const row of received ?? []) if (row.status === "accepted") acceptedIds.add(row.from_user);
-
-    let contacts: Record<string, { display_name: string | null; contact_email: string | null }> =
-      {};
-    if (acceptedIds.size > 0) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: profiles } = await supabaseAdmin
-        .from("profiles")
-        .select("id, display_name, contact_email")
-        .in("id", Array.from(acceptedIds));
-      contacts = Object.fromEntries(
-        (profiles ?? []).map((profile) => [
-          profile.id,
-          { display_name: profile.display_name, contact_email: profile.contact_email },
-        ]),
-      );
-    }
-
-    return { sent: sent ?? [], received: received ?? [], contacts };
+    if (!data) return null;
+    const { data: pairings, error: pairingError } = await supabaseAdmin
+      .from("pairings")
+      .select("status")
+      .or(`user_a.eq.${context.userId},user_b.eq.${context.userId}`);
+    if (pairingError) throw new Error(pairingError.message);
+    const statuses = pairings ?? [];
+    const savedMatches = (data.results as { matches?: unknown[] } | null)?.matches ?? [];
+    return {
+      id: data.id,
+      created_at: data.created_at,
+      submitted: true,
+      suitable_match_count: savedMatches.length,
+      awaiting_imam_review: statuses.filter((pairing) =>
+        ["pending", "imam_review"].includes(pairing.status),
+      ).length,
+      ready_for_member_review: statuses.filter((pairing) => pairing.status === "member_review")
+        .length,
+      active_introductions: statuses.filter((pairing) =>
+        [
+          "member_review",
+          "awaiting_payment",
+          "payment_pending",
+          "ready_to_schedule",
+          "scheduled",
+          "completed",
+          "approved",
+        ].includes(pairing.status),
+      ).length,
+    };
   });

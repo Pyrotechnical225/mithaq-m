@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VercelMeethaqProductionOnly",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::AWS_ACCOUNT_ID:oidc-provider/oidc.vercel.com/m46-1241"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.vercel.com/m46-1241:aud": "https://vercel.com/m46-1241",
+          "oidc.vercel.com/m46-1241:sub": "owner:m46-1241:project:meethaq:environment:production"
+        }
+      }
+    }
+  ]
+}

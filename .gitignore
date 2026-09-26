@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vercel/
 .output
 .vinxi
 .tanstack/**
@@ -39,3 +40,15 @@ dist-ssr
 
 # graphify code-graph output (regenerate with: graphify update .)
 graphify-out/
+
+# Superdesign upload staging (generated locally; never commit).
+.superdesign/tmp/
+
+# Generated notification previews contain fixed copy only; regenerate on demand.
+artifacts/notification-email-preview/
+
+# Supabase CLI state is machine-specific.
+supabase/.branches/
+supabase/.temp/
+.vercel
+.env*

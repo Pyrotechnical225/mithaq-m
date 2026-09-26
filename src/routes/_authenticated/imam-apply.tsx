@@ -82,8 +82,11 @@ function ImamApply() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-6 py-12">
-        <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+      <main id="main-content" className="mx-auto max-w-2xl px-4 py-7 sm:px-6 sm:py-12">
+        <Link
+          to="/dashboard"
+          className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Back to dashboard
         </Link>
         <h1 className="mt-6 text-3xl text-foreground">Apply as a Mithaq imam</h1>
@@ -115,7 +118,7 @@ function ImamApply() {
         {!done && (
           <form
             onSubmit={submit}
-            className="mt-8 space-y-3 rounded-2xl border border-border bg-card p-6"
+            className="mt-6 space-y-4 rounded-lg border border-border bg-card p-4 sm:mt-8 sm:p-6"
           >
             <Field label="Full name" value={form.name} onChange={set("name")} required />
             <Field label="Mosque / institution" value={form.mosque} onChange={set("mosque")} />
@@ -181,7 +184,7 @@ function ImamApply() {
             meeting before granting access.
           </p>
         )}
-      </div>
+      </main>
     </div>
   );
 }

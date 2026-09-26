@@ -4,10 +4,8 @@
   "path": "/mcp",
   "auth": {
     "type": "oauth",
-    "issuer": "https://ezczqpvlsnrgpdhqzcpi.supabase.co/auth/v1",
-    "accepted_audiences": [
-      "authenticated"
-    ]
+    "issuer": "https://oxhpvawqmrdvkrlntswl.supabase.co/auth/v1",
+    "accepted_audiences": ["authenticated"]
   },
   "mcp": {
     "server": {
@@ -76,10 +74,7 @@
               "description": "Whether the survey is fully completed."
             }
           },
-          "required": [
-            "answers",
-            "completed"
-          ]
+          "required": ["answers", "completed"]
         },
         "outputSchema": null
       },
@@ -114,11 +109,7 @@
           "properties": {
             "visibility": {
               "type": "string",
-              "enum": [
-                "discoverable",
-                "paused",
-                "hidden"
-              ]
+              "enum": ["discoverable", "paused", "hidden"]
             },
             "show_location": {
               "type": "boolean"
@@ -139,93 +130,6 @@
             "show_occupation",
             "show_free_text",
             "reveal_contact_on_mutual"
-          ]
-        },
-        "outputSchema": null
-      },
-      {
-        "name": "list_latest_matches",
-        "title": "List latest matches",
-        "description": "Return the signed-in user's most recent AI-generated match results.",
-        "annotations": {
-          "readOnlyHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {}
-        },
-        "outputSchema": null
-      },
-      {
-        "name": "list_interests",
-        "title": "List interests",
-        "description": "List interests sent and received by the signed-in Mithaq user.",
-        "annotations": {
-          "readOnlyHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {}
-        },
-        "outputSchema": null
-      },
-      {
-        "name": "express_interest",
-        "title": "Express interest",
-        "description": "Express interest in another Mithaq user by their user id (uuid). Creates or refreshes a pending interest from the signed-in user.",
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "openWorldHint": false
-        },
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {
-            "to_user": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-              "description": "Recipient user id (uuid)."
-            }
-          },
-          "required": [
-            "to_user"
-          ]
-        },
-        "outputSchema": null
-      },
-      {
-        "name": "respond_to_interest",
-        "title": "Respond to interest",
-        "description": "Accept or decline a received interest by its id.",
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "openWorldHint": false
-        },
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {
-            "interest_id": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "accept": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "interest_id",
-            "accept"
           ]
         },
         "outputSchema": null

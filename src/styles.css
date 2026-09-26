@@ -44,6 +44,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.5rem;
 
   /* Restrained warm neutral palette with deep green and a quiet brass accent. */
@@ -76,6 +77,34 @@
   --border: oklch(0.87 0.012 88);
   --input: oklch(0.88 0.012 88);
   --ring: oklch(0.48 0.065 158);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: oklch(0.18 0.018 155);
+    --foreground: oklch(0.93 0.012 86);
+    --card: oklch(0.22 0.018 155);
+    --card-foreground: oklch(0.93 0.012 86);
+    --popover: oklch(0.22 0.018 155);
+    --popover-foreground: oklch(0.93 0.012 86);
+    --primary: oklch(0.7 0.085 158);
+    --primary-foreground: oklch(0.16 0.02 155);
+    --secondary: oklch(0.27 0.018 155);
+    --secondary-foreground: oklch(0.9 0.012 86);
+    --muted: oklch(0.27 0.015 155);
+    --muted-foreground: oklch(0.74 0.014 86);
+    --accent: oklch(0.3 0.025 155);
+    --accent-foreground: oklch(0.93 0.012 86);
+    --gold: oklch(0.76 0.08 78);
+    --gold-foreground: oklch(0.17 0.02 155);
+    --cream: oklch(0.26 0.015 86);
+    --destructive: oklch(0.7 0.16 27);
+    --destructive-foreground: oklch(0.16 0.02 27);
+    --border: oklch(0.35 0.018 155);
+    --input: oklch(0.4 0.018 155);
+    --ring: oklch(0.7 0.085 158);
+  }
 }
 
 @layer base {
@@ -165,4 +194,79 @@
 }
 @utility font-display {
   font-family: var(--font-display);
+}
+
+/* Mobile is the same product, with room for fingers, keyboards and safe areas. */
+.mobile-navigation nav :is(a, button) {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 12px;
+}
+
+@media (max-width: 639px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+  main {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 44px;
+    max-width: 100%;
+  }
+  button:not([role="checkbox"]):not([role="radio"]):not([role="switch"]),
+  a[class*="rounded"] {
+    min-height: 44px;
+  }
+  button {
+    white-space: normal;
+  }
+  header > div[class*="h-[4.5rem]"] {
+    height: 4rem;
+  }
+  .admin-content :is(th, td) {
+    overflow-wrap: normal;
+  }
+  .admin-content table:not(.mobile-record-table) {
+    min-width: 680px;
+  }
+  .admin-content div:has(> table) {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .article-content {
+    padding: 2rem 1.25rem;
+  }
+  .article-content h1 {
+    font-size: 2rem;
+    line-height: 1.15;
+  }
+  .article-content h2 {
+    font-size: 1.375rem;
+  }
+  .article-content > p {
+    font-size: 1rem;
+  }
+  .member-settings > section {
+    padding: 1rem;
+  }
+  header a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .imam-content :is(.rounded-2xl, .rounded-xl, .rounded-full) {
+    border-radius: 0.5rem;
+  }
+  .imam-content [role="tab"] {
+    white-space: normal;
+  }
 }

@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "106ebdeb-2d4d-4e6e-9486-429829e24f54",
+      "activeDraftId": "106ebdeb-2d4d-4e6e-9486-429829e24f54",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/routes/index.tsx",
+        "src/components/SiteHeader.tsx",
+        "src/components/SiteFooter.tsx",
+        "src/components/BrandName.tsx",
+        "src/styles.css",
+        ".superdesign/website/meet-haq.vercel.app/content-structure.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/routes/index.tsx": "e8e68fa8f555c9d2294598e37c1de5280d37506c3f61917a6ccb27d38440518b",
+        "src/components/SiteHeader.tsx": "13dbf55a7d942957859c9330413e896260853e05c2bb19eb98fec3d78d4c110d",
+        "src/components/SiteFooter.tsx": "d67fdcc0ad7fc8029f83dfb4c95b3ca93a9de34b5f682175d5a992b811905fac",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        ".superdesign/website/meet-haq.vercel.app/content-structure.md": "67b62d81ec98e24f7dc562e216b6365c0f1ac705db11f27c3da74e142b1e2c86"
+      },
+      "components": [
+        {
+          "name": "SiteHeader",
+          "id": "e9cc60e7-a82f-4298-9473-a79ba7e3a5b2",
+          "sourcePath": "src/components/SiteHeader.tsx"
+        },
+        {
+          "name": "SiteFooter",
+          "id": "9890bbf5-b7b0-48f1-8825-77c61b869b48",
+          "sourcePath": "src/components/SiteFooter.tsx"
+        }
+      ],
+      "drafts": {
+        "106ebdeb-2d4d-4e6e-9486-429829e24f54": {
+          "title": "Mithaq Homepage — Mutual Acceptance Trust Section",
+          "visualDirection": "trust-first post-acceptance pricing section",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-28T22:45:00Z"
+    },
+    "/survey": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "dc963c39-f353-45bf-a76c-47d552819259",
+      "activeDraftId": "dc963c39-f353-45bf-a76c-47d552819259",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/routes/_authenticated/survey.tsx",
+        "src/lib/survey-questions.ts",
+        "src/styles.css",
+        "src/routes/_authenticated/route.tsx",
+        "src/components/BrandName.tsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/routes/_authenticated/survey.tsx": "db45348fe6874d41438d7cfa3faf99d8171db814737366c958c256e45ecc2db9",
+        "src/lib/survey-questions.ts": "06eef5af2894b3a8802fad4ed913e38f2cc44e12928466a750184597fbe4b87f",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        "src/routes/_authenticated/route.tsx": "356b5baae76a048f3a17d130e6bc1814ea77c706ea71ebdd0c0d717046d01296",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67"
+      },
+      "components": [],
+      "drafts": {
+        "dc963c39-f353-45bf-a76c-47d552819259": {
+          "title": "Mithaq Progressive Survey Flow",
+          "visualDirection": "progressive single-scroll survey with skip and required-answer review",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-28T23:41:56Z"
+    },
+    "/admin/members": {
+      "targetKind": "new-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "activeDraftId": "d0d56d9d-70dd-4b23-8cc9-a5ea368ef371",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/styles.css",
+        "src/routes/_authenticated/admin/route.tsx",
+        "src/routes/_authenticated/admin/profiles.tsx",
+        "src/components/BrandName.tsx",
+        "src/components/ui/table.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/button.tsx",
+        "src/lib/utils.ts"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        "src/routes/_authenticated/admin/route.tsx": "3cc05cca39a9682c0b851c83f729da7a8f9e2dc55e3e0133a0c0f44682196e59",
+        "src/routes/_authenticated/admin/profiles.tsx": "f8dd89542434a5deb3587172c61b58d9362395999cb4f9b79d61967b8cd0a0b9",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/components/ui/table.tsx": "1e945e564c2cc5ca3ef33019ba7da7a8b94cbc73feb3cbc2b7b33c36ea648d92",
+        "src/components/ui/input.tsx": "92debb7d6d2d96d9e607a42d5ce8f37b2d63384ae5dd9ffbbf5f047b680ffb85",
+        "src/components/ui/button.tsx": "e39813b666ba434660ec088356a0349246b6803a4e99961295d0c82bab1ab862",
+        "src/lib/utils.ts": "d1f1e0d62cb8d8d1e04c26e14de842d8a151f75812d81b046c65b5d1fe8e4b27"
+      },
+      "components": [
+        {
+          "name": "AdminMemberShell",
+          "id": "1866296b-5d8f-41eb-8950-6b224d1fc491",
+          "sourcePath": "src/routes/_authenticated/admin/route.tsx"
+        }
+      ],
+      "drafts": {
+        "d0d56d9d-70dd-4b23-8cc9-a5ea368ef371": {
+          "title": "Member spreadsheet",
+          "visualDirection": "dense two-table member activity and potential matches workspace; fictional sample data; awaiting layout approval",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-30T11:30:41.976Z"
+    },
+    "/imam": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "a70f3f15-3193-4fcb-a0fb-024ce1f24d53",
+      "activeDraftId": "a70f3f15-3193-4fcb-a0fb-024ce1f24d53",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/styles.css",
+        "src/routes/_authenticated/imam/index.tsx",
+        "src/routes/_authenticated/imam/route.tsx",
+        "src/components/BrandName.tsx",
+        "src/lib/meeting-packages.ts",
+        "docs/MATCHING_IMAM_REVAMP_SPEC_2026-08-30.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        "src/routes/_authenticated/imam/index.tsx": "efc698849331bf1acd7217d89887896a5a421631c6e9fab39474b6c12cd23fc5",
+        "src/routes/_authenticated/imam/route.tsx": "086c3c1a8dc5aac74ae47226e3ee3ed470a7aad882c7cc85da168b96f7e21c88",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/lib/meeting-packages.ts": "ae8d7ccc64d235fcc9ce3f7edee8094d8beb1667770cc9d10600705ac9db0541",
+        "docs/MATCHING_IMAM_REVAMP_SPEC_2026-08-30.md": "b1a71201fb2d366a83bebe129d4970b96df1a247dc3751ca2e496eddc9a1d683"
+      },
+      "components": [
+        {
+          "name": "ImamWorkspaceShell",
+          "id": "3aebe00b-bf7f-4f88-b486-777421c49c76",
+          "sourcePath": "src/routes/_authenticated/imam/route.tsx",
+          "currentVersion": 2
+        }
+      ],
+      "drafts": {
+        "a70f3f15-3193-4fcb-a0fb-024ce1f24d53": {
+          "title": "Mithaq Imam Workspace",
+          "visualDirection": "Four-tab spreadsheet imam workspace with assigned algorithm-selected pairs, side-by-side review, meetings, read-only payments, and admin-reviewed referrals; fictional interactive prototype; awaiting user design approval",
+          "currentVersion": 3
+        }
+      },
+      "updatedAt": "2026-08-30T14:28:56.483Z"
+    },
+    "mobile:/imam": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "a70f3f15-3193-4fcb-a0fb-024ce1f24d53",
+      "activeDraftId": "196388df-8558-4efb-810e-79df0b9f3ec7",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/styles.css",
+        "src/routes/_authenticated/imam/index.tsx",
+        "src/routes/_authenticated/imam/route.tsx",
+        "src/components/BrandName.tsx",
+        "src/lib/meeting-packages.ts",
+        "docs/MATCHING_IMAM_REVAMP_SPEC_2026-08-30.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/styles.css": "0253e52088b6f59bad17fd8c6406faed977477eeffe20fb0f4e4046ae41410fb",
+        "src/routes/_authenticated/imam/index.tsx": "efc698849331bf1acd7217d89887896a5a421631c6e9fab39474b6c12cd23fc5",
+        "src/routes/_authenticated/imam/route.tsx": "086c3c1a8dc5aac74ae47226e3ee3ed470a7aad882c7cc85da168b96f7e21c88",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/lib/meeting-packages.ts": "ae8d7ccc64d235fcc9ce3f7edee8094d8beb1667770cc9d10600705ac9db0541",
+        "docs/MATCHING_IMAM_REVAMP_SPEC_2026-08-30.md": "b1a71201fb2d366a83bebe129d4970b96df1a247dc3751ca2e496eddc9a1d683"
+      },
+      "components": [
+        {
+          "name": "ImamWorkspaceShell",
+          "id": "3aebe00b-bf7f-4f88-b486-777421c49c76",
+          "sourcePath": "src/routes/_authenticated/imam/route.tsx",
+          "currentVersion": 2
+        }
+      ],
+      "drafts": {
+        "a70f3f15-3193-4fcb-a0fb-024ce1f24d53": {
+          "title": "Mithaq Imam Workspace",
+          "visualDirection": "Four-tab spreadsheet imam workspace with assigned algorithm-selected pairs, side-by-side review, meetings, read-only payments, and admin-reviewed referrals; fictional interactive prototype; awaiting user design approval",
+          "currentVersion": 3
+        },
+        "196388df-8558-4efb-810e-79df0b9f3ec7": {
+          "title": "Mithaq Imam Workspace · Mobile",
+          "currentVersion": 3,
+          "visualDirection": "Phone-first counterpart: four touch-friendly tabs, labelled pair records plus optional spreadsheet, two-column profile comparison; synthetic prototype verified at 320 and 390px; awaiting approval before whole-site mobile implementation"
+        }
+      },
+      "updatedAt": "2026-08-30T15:27:07.052Z",
+      "parentDraftId": "a70f3f15-3193-4fcb-a0fb-024ce1f24d53",
+      "device": "mobile"
+    },
+    "/auth": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "ad0cc6b4-331a-4eaa-a0cd-82f85c982afa",
+      "activeDraftId": "ad0cc6b4-331a-4eaa-a0cd-82f85c982afa",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/styles.css",
+        "src/components/BrandName.tsx",
+        "src/routes/auth.tsx",
+        "src/routes/auth.callback.tsx",
+        "src/routes/verify-email.tsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/styles.css": "d2687149fdd8688f1902067779705ebd4bc43ddac87fd6f987c459d2ad748320",
+        "src/components/BrandName.tsx": "60a598cfb125df2cdfcc893de539f0041105fa745f3f746b1552e81127551e67",
+        "src/routes/auth.tsx": "499f38766a76134a765a9444da01e297ba66369afcb490cbc666e34c30d58ab2",
+        "src/routes/auth.callback.tsx": "68d43c718bf0f61b9759b16bd3c573a7e518a476f1f2755675aa1f8b3784d43c",
+        "src/routes/verify-email.tsx": "989ab06325ac3115653d0187e694156fe456706519d917a3d9dc3cb5b8e6ce8a"
+      },
+      "components": [],
+      "drafts": {
+        "ad0cc6b4-331a-4eaa-a0cd-82f85c982afa": {
+          "title": "Mithaq Authentication Page",
+          "visualDirection": "Pixel-perfect current authentication flow with continuous email-pending, callback and verification-success states",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-09-01T12:18:15+01:00"
+    },
+    "email:notifications": {
+      "targetKind": "existing-ui",
+      "projectId": "7b7a10d4-7d26-4b78-afb3-36920a51f35f",
+      "baselineDraftId": "df8e6b9d-d91b-44e5-9c12-b7121e4e5c2c",
+      "activeDraftId": "df8e6b9d-d91b-44e5-9c12-b7121e4e5c2c",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/styles.css",
+        "src/lib/notification-email-policy.ts",
+        "docs/AUTOMATED_EMAIL_CATALOGUE_2026-08-31.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "01b459f9d694d697331e9181b05cf73e2fe9c036d6c1dc95b0c04e31558f61e5",
+        "src/styles.css": "d2687149fdd8688f1902067779705ebd4bc43ddac87fd6f987c459d2ad748320",
+        "src/lib/notification-email-policy.ts": "6adab6c0a597667e3c0a70163fc3e1940d07e6b07064303c546bdca8253193e4",
+        "docs/AUTOMATED_EMAIL_CATALOGUE_2026-08-31.md": "fbeaceb29443f6437f37c0d7ac6ce77f09e9f0031d4304207fd6d9ad6c971ec8"
+      },
+      "drafts": {
+        "df8e6b9d-d91b-44e5-9c12-b7121e4e5c2c": {
+          "title": "Mithaq Responsive Notification Email",
+          "visualDirection": "Responsive transactional email system using the current warm ivory, deep green and restrained brass design; 600px desktop container, 320px mobile-safe layout and full-width touch action",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-31T23:15:00Z"
+    }
+  }
+}

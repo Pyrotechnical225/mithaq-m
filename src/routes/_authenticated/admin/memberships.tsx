@@ -32,24 +32,31 @@ function AdminMemberships() {
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
-    const [profiles, subs] = await Promise.all([fetchProfiles(), fetchMemberships()]);
-    const subMap = new Map(subs.map((s) => [s.user_id, s]));
-    setRows(
-      profiles.map((p) => {
-        const s = subMap.get(p.id);
-        return {
-          id: p.id,
-          email: p.contact_email ?? p.auth_email,
-          plan: s?.plan ?? "none",
-          status: s?.status ?? "inactive",
-          period_end: s?.current_period_end ?? null,
-        };
-      }),
-    );
+    setError("");
+    try {
+      const [profiles, subs] = await Promise.all([fetchProfiles(), fetchMemberships()]);
+      const subMap = new Map(subs.map((s) => [s.user_id, s]));
+      setRows(
+        profiles.map((p) => {
+          const s = subMap.get(p.id);
+          return {
+            id: p.id,
+            email: p.contact_email ?? p.auth_email,
+            plan: s?.plan ?? "none",
+            status: s?.status ?? "inactive",
+            period_end: s?.current_period_end ?? null,
+          };
+        }),
+      );
+    } catch (loadError) {
+      console.error("Memberships could not be loaded", loadError);
+      setError("Memberships could not be loaded. Please try again.");
+      setRows((current) => current ?? []);
+    }
   }, [fetchProfiles, fetchMemberships]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const toggle = async (userId: string, give: boolean) => {

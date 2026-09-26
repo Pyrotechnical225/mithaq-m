@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SendOnlyFromMithaq",
+      "Effect": "Allow",
+      "Action": "ses:SendEmail",
+      "Resource": "arn:aws:ses:eu-north-1:AWS_ACCOUNT_ID:identity/mithaq.uk",
+      "Condition": {
+        "StringEquals": {
+          "ses:FromAddress": "no-reply@mithaq.uk",
+          "aws:RequestedRegion": "eu-north-1"
+        }
+      }
+    },
+    {
+      "Sid": "CheckMithaqDomainVerification",
+      "Effect": "Allow",
+      "Action": "ses:GetEmailIdentity",
+      "Resource": "arn:aws:ses:eu-north-1:AWS_ACCOUNT_ID:identity/mithaq.uk",
+      "Condition": { "StringEquals": { "aws:RequestedRegion": "eu-north-1" } }
+    },
+    {
+      "Sid": "CheckSendingSafety",
+      "Effect": "Allow",
+      "Action": ["ses:GetAccount", "ses:GetSuppressedDestination"],
+      "Resource": "*",
+      "Condition": { "StringEquals": { "aws:RequestedRegion": "eu-north-1" } }
+    }
+  ]
+}

@@ -61,36 +61,60 @@ const steps = [
 ] as const;
 
 const safeguards = [
-  "Member identities stay private during compatibility assessment",
-  "Only suitable results move to imam review",
-  "Both members must accept before any meeting is arranged",
-  "Matching and anonymous profile review remain free",
+  "No public member directory, open profile browsing, or direct messaging",
+  "You control when your profile is available and which anonymous details are shown",
+  "Names and contact details stay outside compatibility scoring and anonymous review",
+  "Both members decide independently before an imam-supported meeting is arranged",
 ] as const;
 
-function JourneyPreview() {
+const meetingPackages = [
+  { label: "One meeting", price: "£50" },
+  { label: "Three meetings", price: "£120" },
+  { label: "Five meetings", price: "£175" },
+] as const;
+
+const trustPoints = [
+  {
+    number: "01",
+    title: "Private, not public",
+    body: "Your profile never appears in an open member directory.",
+  },
+  {
+    number: "02",
+    title: "Structured, not swipe-led",
+    body: "Compatibility follows your answers and the privacy choices you control.",
+  },
+  {
+    number: "03",
+    title: "Supported, not pressured",
+    body: "Both people decide independently before an imam-supported meeting.",
+  },
+] as const;
+
+function TrustPreview() {
   return (
-    <aside className="border border-border bg-card shadow-[var(--shadow-elevated)]">
+    <aside className="overflow-hidden rounded-lg border border-border bg-card sm:shadow-[var(--shadow-elevated)]">
       <div className="border-b border-border px-6 py-5 sm:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          The Mithaq process
+          What makes Mithaq different
         </p>
         <h2 className="mt-2 text-xl font-semibold text-foreground">
-          A supervised path to an introduction
+          Built around dignity and intention
         </h2>
       </div>
 
       <ol className="px-6 sm:px-8">
-        {steps.map((step) => (
+        {trustPoints.map((point) => (
           <li
-            key={step.number}
+            key={point.number}
             className="grid grid-cols-[2rem_1fr] gap-4 border-b border-border py-5 last:border-0"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-primary">
-              {step.number}
+              {point.number}
             </span>
             <div>
-              <p className="text-sm font-semibold text-foreground">{step.title}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.body}</p>
+              <p className="text-sm font-semibold text-foreground">{point.title}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{point.body}</p>
             </div>
           </li>
         ))}
@@ -124,19 +148,19 @@ function Index() {
 
       <main id="main-content">
         <section className="border-b border-border">
-          <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+          <div className="mx-auto grid max-w-7xl items-center gap-9 px-5 py-10 sm:gap-14 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
             <div>
               <p className="text-sm font-semibold text-primary">Meet haq in marriage</p>
-              <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-[1.02] tracking-[-0.045em] text-foreground sm:text-6xl lg:text-[4.5rem]">
+              <h1 className="mt-4 max-w-3xl text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.045em] text-foreground sm:mt-5 sm:text-6xl sm:leading-[1.02] lg:text-[4.5rem]">
                 A serious way to find a spouse.
               </h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground">
+              <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:mt-7 sm:text-lg sm:leading-8">
                 Mithaq helps practicing Muslims find marriage-minded introductions through shared
                 deen, family values, and long-term goals—with privacy, wali involvement, and imam
                 support built into the process.
               </p>
 
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="mt-6 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:items-center">
                 <Link
                   to={ctaTo}
                   className="group inline-flex items-center justify-center gap-3 rounded-md bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition hover:bg-primary/90"
@@ -156,7 +180,7 @@ function Index() {
                 </a>
               </div>
 
-              <div className="mt-8 grid max-w-2xl gap-3 border-t border-border pt-6 text-sm text-muted-foreground sm:grid-cols-3">
+              <div className="mt-6 flex max-w-2xl flex-wrap gap-x-4 gap-y-2 border-t border-border pt-5 text-xs text-muted-foreground sm:mt-8 sm:grid sm:grid-cols-3 sm:gap-3 sm:pt-6 sm:text-sm">
                 {["No swiping", "Private profiles", "Imam-supported"].map((item) => (
                   <span key={item} className="flex items-center gap-2">
                     <Check size={15} className="text-primary" aria-hidden="true" />
@@ -166,17 +190,17 @@ function Index() {
               </div>
             </div>
 
-            <JourneyPreview />
+            <TrustPreview />
           </div>
         </section>
 
         <section id="principles" className="scroll-mt-28 bg-card">
-          <div className="mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-24">
+          <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:gap-12 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-24">
             <div className="max-w-xl">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                 Our principles
               </p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
                 Marriage deserves a careful beginning.
               </h2>
               <p className="mt-5 leading-7 text-muted-foreground">
@@ -205,19 +229,19 @@ function Index() {
         </section>
 
         <section id="how" className="scroll-mt-28 border-y border-border bg-secondary/45">
-          <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-7xl px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                   How it works
                 </p>
-                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
                   One clear step at a time.
                 </h2>
               </div>
               <Link
                 to={ctaTo}
-                className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"
+                className="inline-flex min-h-11 items-center gap-2 font-semibold text-primary hover:underline"
               >
                 {ctaLabel} <ArrowRight size={17} aria-hidden="true" />
               </Link>
@@ -238,21 +262,75 @@ function Index() {
           </div>
         </section>
 
-        <section id="safety" className="scroll-mt-28 px-5 py-20 lg:px-8 lg:py-24">
+        <section id="after-acceptance" className="scroll-mt-28 border-b border-border bg-card">
+          <div className="mx-auto max-w-7xl px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
+            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  After mutual acceptance
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+                  Meet with support, not pressure.
+                </h2>
+                <p className="mt-5 leading-7 text-muted-foreground">
+                  Matching and anonymous profile review remain free. Meeting packages appear only
+                  after both people accept an introduction, so there is no payment before mutual
+                  interest is clear.
+                </p>
+                <p className="mt-6 text-sm font-medium text-primary">
+                  Both accept <span className="mx-2 text-muted-foreground">→</span> Choose a package
+                  <span className="mx-2 text-muted-foreground">→</span> Imam-supported meeting
+                </p>
+              </div>
+
+              <div className="grid self-start border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
+                {meetingPackages.map((meetingPackage) => (
+                  <div
+                    key={meetingPackage.label}
+                    className="border-t border-border py-6 first:border-t-0 sm:border-t-0 sm:px-6 sm:first:pl-0 sm:last:pr-0"
+                  >
+                    <p className="text-sm text-muted-foreground">{meetingPackage.label}</p>
+                    <p className="mt-2 text-xl font-semibold tracking-[-0.025em] text-foreground">
+                      {meetingPackage.price}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="safety" className="scroll-mt-28 px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
           <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg bg-primary text-primary-foreground lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="p-8 sm:p-12 lg:p-14">
+            <div className="p-5 sm:p-12 lg:p-14">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">
                 Safety and dignity
               </p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
-                Private where it matters.
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] sm:text-5xl">
+                Privacy throughout your journey.
               </h2>
               <p className="mt-5 max-w-xl leading-7 text-primary-foreground/75">
-                Mithaq limits what is shown and when. Compatibility happens privately, and an imam
-                helps suitable introductions move forward respectfully.
+                Your profile is never placed in a public catalogue. You choose when it can enter
+                private matching and which details may appear anonymously. Compatibility is assessed
+                away from public view, while names and contact details remain protected as a
+                suitable introduction moves through the supervised process.
               </p>
+              <h3 className="mt-8 text-lg font-semibold">How we do it better</h3>
+              <p className="mt-3 max-w-xl leading-7 text-primary-foreground/75">
+                Instead of swiping, open inboxes, and unrestricted profile browsing, Mithaq uses
+                controlled introductions. Only available members enter matching, both people review
+                an introduction independently, and no meeting moves forward without mutual
+                acceptance. Where an optional AI review is used with consent, it receives bounded,
+                anonymised answers—not names, contact details, account IDs, or free-text responses.
+              </p>
+              <Link
+                to="/privacy"
+                className="mt-7 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary-foreground underline decoration-primary-foreground/35 underline-offset-4 hover:decoration-primary-foreground"
+              >
+                Read the full privacy notice <ArrowRight size={16} aria-hidden="true" />
+              </Link>
             </div>
-            <div className="grid content-center border-t border-white/15 px-8 py-5 sm:px-12 lg:border-l lg:border-t-0 lg:px-14">
+            <div className="grid content-center border-t border-white/15 px-5 py-4 sm:px-12 sm:py-5 lg:border-l lg:border-t-0 lg:px-14">
               {safeguards.map((item) => (
                 <div
                   key={item}

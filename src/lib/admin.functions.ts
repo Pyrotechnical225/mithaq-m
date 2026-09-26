@@ -2,15 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { fixedCompatibilityScore } from "@/lib/matches.functions";
+import { assertAdmin, assertAdminMfa } from "@/lib/admin-authorization";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function assertAdmin(context: { supabase: any; userId: string }) {
-  const { data, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin only");
+function assertExampleDataAllowed() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_EXAMPLE_DATA !== "true") {
+    throw new Error("Example data is disabled in production");
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -20,21 +17,27 @@ export const listAllProfiles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [
-      { data: profiles },
-      { data: privacy },
-      { data: surveys },
-      { data: usersList },
-      { data: roles },
-    ] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, display_name, contact_email, created_at"),
-      supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
-      supabaseAdmin.from("survey_answers").select("user_id, completed, updated_at"),
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 }),
-      supabaseAdmin.from("user_roles").select("user_id, role"),
-    ]);
+    const [profilesResult, privacyResult, surveysResult, usersResult, rolesResult] =
+      await Promise.all([
+        supabaseAdmin.from("profiles").select("id, display_name, contact_email, created_at"),
+        supabaseAdmin.from("privacy_settings").select("user_id, visibility"),
+        supabaseAdmin.from("survey_answers").select("user_id, completed, updated_at"),
+        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 }),
+        supabaseAdmin.from("user_roles").select("user_id, role"),
+      ]);
+
+    for (const result of [profilesResult, privacyResult, surveysResult, usersResult, rolesResult]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+
+    const profiles = profilesResult.data;
+    const privacy = privacyResult.data;
+    const surveys = surveysResult.data;
+    const usersList = usersResult.data;
+    const roles = rolesResult.data;
 
     const privacyMap = new Map((privacy ?? []).map((p) => [p.user_id, p.visibility]));
     const surveyMap = new Map((surveys ?? []).map((s) => [s.user_id, s]));
@@ -78,9 +81,10 @@ const IdInput = z.object({ user_id: z.string().uuid() });
 
 export const getProfileDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [
       { data: profile },
@@ -128,9 +132,10 @@ export const getProfileDetail = createServerFn({ method: "GET" })
 // -----------------------------------------------------------------------------
 export const getProfileCompatibilityScoresAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [selectedResult, surveysResult, profilesResult, rolesResult, imamAccountsResult] =
@@ -239,9 +244,10 @@ const UpdateProfileInput = z.object({
 
 export const updateProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateProfileInput.parse(input))
+  .validator((input: unknown) => UpdateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (data.display_name !== undefined || data.contact_email !== undefined) {
@@ -275,6 +281,16 @@ export const updateProfileAdmin = createServerFn({ method: "POST" })
         .from("privacy_settings")
         .upsert({ user_id: data.user_id, ...privPatch }, { onConflict: "user_id" });
     }
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profile.updated",
+      targetType: "profile",
+      targetId: data.user_id,
+      details: {
+        changed_fields: Object.keys(data).filter((key) => key !== "user_id"),
+      },
+    });
     return { ok: true };
   });
 
@@ -290,9 +306,10 @@ const CreateProfileInput = z.object({
 
 export const createProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CreateProfileInput.parse(input))
+  .validator((input: unknown) => CreateProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -321,6 +338,14 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
         { onConflict: "user_id" },
       );
     }
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profile.created",
+      targetType: "profile",
+      targetId: id,
+      details: { survey_answers_supplied: !!data.answers },
+    });
     return { id };
   });
 
@@ -329,12 +354,23 @@ export const createProfileAdmin = createServerFn({ method: "POST" })
 // -----------------------------------------------------------------------------
 export const deleteProfileAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => IdInput.parse(input))
+  .validator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
+    if (data.user_id === context.userId) {
+      throw new Error("Administrators cannot delete their own account from the admin workspace");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profile.deleted",
+      targetType: "profile",
+      targetId: data.user_id,
+    });
     return { ok: true };
   });
 
@@ -359,9 +395,10 @@ const ExportInput = z.object({
 
 export const exportProfilesAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ExportInput.parse(input))
+  .validator((input: unknown) => ExportInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let profileQ = supabaseAdmin.from("profiles").select("*");
     let surveyQ = supabaseAdmin.from("survey_answers").select("*");
@@ -390,28 +427,43 @@ export const exportProfilesAdmin = createServerFn({ method: "POST" })
         answers: s?.answers ?? {},
       };
     });
-    if (data.format === "json") {
-      return {
-        filename: `mithaq-profiles-${Date.now()}.json`,
-        mime: "application/json",
-        body: JSON.stringify(merged, null, 2),
-      };
-    }
-    // For CSV flatten answer keys
-    const flat = merged.map((m) => {
-      const answers = (m.answers ?? {}) as Record<string, unknown>;
-      const out: Record<string, unknown> = {
-        id: m.id,
-        display_name: m.display_name,
-        contact_email: m.contact_email,
-        created_at: m.created_at,
-        visibility: m.visibility,
-        survey_completed: m.survey_completed,
-      };
-      for (const [k, v] of Object.entries(answers)) out[`q${k}`] = v;
-      return out;
+    const result =
+      data.format === "json"
+        ? {
+            filename: `mithaq-profiles-${Date.now()}.json`,
+            mime: "application/json",
+            body: JSON.stringify(merged, null, 2),
+          }
+        : (() => {
+            // For CSV flatten answer keys
+            const flat = merged.map((m) => {
+              const answers = (m.answers ?? {}) as Record<string, unknown>;
+              const out: Record<string, unknown> = {
+                id: m.id,
+                display_name: m.display_name,
+                contact_email: m.contact_email,
+                created_at: m.created_at,
+                visibility: m.visibility,
+                survey_completed: m.survey_completed,
+              };
+              for (const [k, v] of Object.entries(answers)) out[`q${k}`] = v;
+              return out;
+            });
+            return {
+              filename: `mithaq-profiles-${Date.now()}.csv`,
+              mime: "text/csv",
+              body: toCsv(flat),
+            };
+          })();
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profiles.exported",
+      targetType: data.user_id ? "profile" : "profile_collection",
+      targetId: data.user_id ?? null,
+      details: { format: data.format, record_count: merged.length },
     });
-    return { filename: `mithaq-profiles-${Date.now()}.csv`, mime: "text/csv", body: toCsv(flat) };
+    return result;
   });
 
 // -----------------------------------------------------------------------------
@@ -421,13 +473,15 @@ export const adminStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [
-      { count: profileCount },
-      { count: completedCount },
-      { count: discoverableCount },
-      { count: interestCount },
-      { data: users },
+      profilesResult,
+      completedResult,
+      discoverableResult,
+      pairingsResult,
+      reportsResult,
+      usersResult,
     ] = await Promise.all([
       supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
       supabaseAdmin
@@ -438,15 +492,40 @@ export const adminStats = createServerFn({ method: "GET" })
         .from("privacy_settings")
         .select("*", { count: "exact", head: true })
         .eq("visibility", "discoverable"),
-      supabaseAdmin.from("interests").select("*", { count: "exact", head: true }),
+      supabaseAdmin.from("pairings").select("status"),
+      supabaseAdmin
+        .from("member_reports")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["new", "reviewing"]),
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 5 }),
     ]);
+
+    for (const result of [
+      profilesResult,
+      completedResult,
+      discoverableResult,
+      pairingsResult,
+      reportsResult,
+      usersResult,
+    ]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+
+    const pairings = pairingsResult.data ?? [];
     return {
-      profileCount: profileCount ?? 0,
-      completedCount: completedCount ?? 0,
-      discoverableCount: discoverableCount ?? 0,
-      interestCount: interestCount ?? 0,
-      recentUsers: (users?.users ?? []).slice(0, 5).map((u) => ({
+      profileCount: profilesResult.count ?? 0,
+      completedCount: completedResult.count ?? 0,
+      discoverableCount: discoverableResult.count ?? 0,
+      introductionCount: pairings.length,
+      imamReviewCount: pairings.filter((pairing) =>
+        ["pending", "imam_review"].includes(pairing.status),
+      ).length,
+      memberReviewCount: pairings.filter((pairing) => pairing.status === "member_review").length,
+      paymentQueueCount: pairings.filter((pairing) =>
+        ["awaiting_payment", "payment_pending"].includes(pairing.status),
+      ).length,
+      safetyQueueCount: reportsResult.count ?? 0,
+      recentUsers: (usersResult.data?.users ?? []).slice(0, 5).map((u) => ({
         id: u.id,
         email: u.email,
         created_at: u.created_at,
@@ -468,6 +547,7 @@ export const listCompatibilityComparisonsAdmin = createServerFn({ method: "GET" 
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: generations, error } = await supabaseAdmin
       .from("matches")
@@ -532,7 +612,98 @@ export const amIAdmin = createServerFn({ method: "GET" })
       _role: "admin",
     });
     if (error) throw new Error(`Admin access check failed: ${error.message}`);
-    return { isAdmin: !!data };
+    return {
+      isAdmin: !!data,
+      assuranceLevel: context.claims?.aal === "aal2" ? ("aal2" as const) : ("aal1" as const),
+      mfaRequired: !!data && context.claims?.aal !== "aal2",
+    };
+  });
+
+export const listAdminAuditLog = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    assertAdminMfa(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("admin_audit_log")
+      .select("id,actor_user_id,action,target_type,target_id,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(250);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const ReportStatusInput = z.object({
+  report_id: z.string().uuid(),
+  status: z.enum(["reviewing", "actioned", "dismissed"]),
+});
+
+export const listMemberReportsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    assertAdminMfa(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: reports, error } = await supabaseAdmin
+      .from("member_reports")
+      .select(
+        "id,reporter_user_id,reported_user_id,pairing_id,category,details,status,reviewed_by,reviewed_at,created_at,updated_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(250);
+    if (error) throw new Error(error.message);
+
+    const memberIds = Array.from(
+      new Set(
+        (reports ?? []).flatMap((report) => [report.reporter_user_id, report.reported_user_id]),
+      ),
+    );
+    const { data: profiles, error: profilesError } = memberIds.length
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id,display_name,contact_email")
+          .in("id", memberIds)
+      : { data: [], error: null };
+    if (profilesError) throw new Error(profilesError.message);
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+    return (reports ?? []).map((report) => ({
+      ...report,
+      reporter: profileById.get(report.reporter_user_id) ?? null,
+      reported: profileById.get(report.reported_user_id) ?? null,
+    }));
+  });
+
+export const reviewMemberReportAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => ReportStatusInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    assertAdminMfa(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: report, error } = await supabaseAdmin
+      .from("member_reports")
+      .update({
+        status: data.status,
+        reviewed_by: context.userId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", data.report_id)
+      .select("id,status")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!report) throw new Error("Safety report not found");
+
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "member_report.reviewed",
+      targetType: "member_report",
+      targetId: report.id,
+      details: { status: report.status },
+    });
+    return { ok: true, status: report.status };
   });
 
 // -----------------------------------------------------------------------------
@@ -555,6 +726,7 @@ const ImamInput = z.object({
   website: z.string().max(500).optional().nullable(),
   languages: z.array(z.string().max(60)).optional(),
   notes: z.string().max(2000).optional().nullable(),
+  verification_status: z.enum(["pending", "verified", "suspended"]).default("pending"),
 });
 
 function withCityCoords(input: z.infer<typeof ImamInput>) {
@@ -566,17 +738,31 @@ function withCityCoords(input: z.infer<typeof ImamInput>) {
 
 export const createImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ImamInput.parse(input))
+  .validator((input: unknown) => ImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = withCityCoords(data);
     const { data: row, error } = await supabaseAdmin
       .from("imams")
-      .insert({ ...payload, languages: payload.languages ?? [] })
+      .insert({
+        ...payload,
+        languages: payload.languages ?? [],
+        verified_at: payload.verification_status === "verified" ? new Date().toISOString() : null,
+        verified_by: payload.verification_status === "verified" ? context.userId : null,
+      })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "imam.created",
+      targetType: "imam",
+      targetId: row.id,
+      details: { verification_status: row.verification_status },
+    });
     return row;
   });
 
@@ -584,25 +770,69 @@ const UpdateImamInput = ImamInput.partial().extend({ id: z.string().uuid() });
 
 export const updateImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateImamInput.parse(input))
+  .validator((input: unknown) => UpdateImamInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, ...patch } = data;
-    const { error } = await supabaseAdmin.from("imams").update(patch).eq("id", id);
+    const verificationPatch =
+      patch.verification_status === undefined
+        ? {}
+        : patch.verification_status === "verified"
+          ? { verified_at: new Date().toISOString(), verified_by: context.userId }
+          : { verified_at: null, verified_by: null };
+    const { error } = await supabaseAdmin
+      .from("imams")
+      .update({ ...patch, ...verificationPatch })
+      .eq("id", id);
     if (error) throw new Error(error.message);
+    if (patch.verification_status && patch.verification_status !== "verified") {
+      await supabaseAdmin.from("imam_accounts").update({ active: false }).eq("imam_id", id);
+    }
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "imam.updated",
+      targetType: "imam",
+      targetId: id,
+      details: { changed_fields: Object.keys(patch) },
+    });
     return { ok: true };
   });
 
 export const deleteImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("imams").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "imam.deleted",
+      targetType: "imam",
+      targetId: data.id,
+    });
     return { ok: true };
+  });
+
+export const listAllImamsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    assertAdminMfa(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("imams")
+      .select("*")
+      .order("city", { ascending: true })
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
   });
 
 // Idempotent: only inserts imams whose (name, city) pair is missing.
@@ -610,6 +840,8 @@ export const seedExampleImams = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
+    assertExampleDataAllowed();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: existing } = await supabaseAdmin.from("imams").select("name, city");
     const have = new Set((existing ?? []).map((r) => `${r.name}::${r.city}`));
@@ -628,11 +860,19 @@ export const seedExampleImams = createServerFn({ method: "POST" })
         website: e.website ?? null,
         languages: e.languages,
         notes: e.notes ?? null,
+        verification_status: "pending",
       };
     });
     if (toInsert.length === 0) return { inserted: 0, skipped: EXAMPLE_IMAMS.length };
     const { error } = await supabaseAdmin.from("imams").insert(toInsert);
     if (error) throw new Error(error.message);
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "imam_examples.seeded",
+      targetType: "imam_collection",
+      details: { inserted: toInsert.length },
+    });
     return { inserted: toInsert.length, skipped: EXAMPLE_IMAMS.length - toInsert.length };
   });
 
@@ -644,6 +884,12 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
+    assertExampleDataAllowed();
+    const fixturePassword = process.env.EXAMPLE_USER_PASSWORD?.trim();
+    if (!fixturePassword || fixturePassword.length < 12) {
+      throw new Error("Set a unique EXAMPLE_USER_PASSWORD of at least 12 characters first");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
@@ -660,7 +906,7 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
       if (!userId) {
         const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
           email: ex.email,
-          password: ex.password,
+          password: fixturePassword,
           email_confirm: true,
           user_metadata: { display_name: ex.display_name },
         });
@@ -701,6 +947,13 @@ export const seedExampleUsers = createServerFn({ method: "POST" })
         { onConflict: "user_id" },
       );
     }
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profile_examples.seeded",
+      targetType: "profile_collection",
+      details: { inserted, skipped },
+    });
     return { inserted, skipped, total: EXAMPLE_USERS.length };
   });
 
@@ -708,6 +961,7 @@ export const deleteExampleUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 500 });
     let deleted = 0;
@@ -717,6 +971,13 @@ export const deleteExampleUsers = createServerFn({ method: "POST" })
         if (!error) deleted += 1;
       }
     }
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: "profile_examples.deleted",
+      targetType: "profile_collection",
+      details: { deleted },
+    });
     return { deleted };
   });
 

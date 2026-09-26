@@ -3,13 +3,17 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { UK_CITY_NAMES, findUkCity } from "@/lib/uk-cities";
 
-// List all imams. Any signed-in user may read (RLS allows SELECT to authenticated).
+// Public directory: verified imams only, with private contact/notes omitted.
 export const listImams = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
       .from("imams")
-      .select("*")
+      .select(
+        "id,name,title,mosque,city,postcode,lat,lng,website,languages,verification_status,verified_at,created_at,updated_at",
+      )
+      .eq("verification_status", "verified")
       .order("city", { ascending: true })
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -36,7 +40,7 @@ const SaveLocationInput = z.object({
 
 export const saveMyLocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => SaveLocationInput.parse(input))
+  .validator((input: unknown) => SaveLocationInput.parse(input))
   .handler(async ({ data, context }) => {
     const city = data.uk_city?.trim() || null;
     const postcode = data.uk_postcode?.trim() || null;
@@ -48,7 +52,8 @@ export const saveMyLocation = createServerFn({ method: "POST" })
       location_lat: known?.lat ?? null,
       location_lng: known?.lng ?? null,
     };
-    const { error } = await context.supabase.from("profiles").upsert(patch, { onConflict: "id" });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("profiles").upsert(patch, { onConflict: "id" });
     if (error) throw new Error(error.message);
     return { ok: true, matched_city: known?.name ?? null };
   });

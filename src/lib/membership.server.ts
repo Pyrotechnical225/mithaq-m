@@ -2,17 +2,18 @@
 // edge/Worker runtime (no Node-only SDK).
 import { PLANS, type PlanId } from "./membership-plans";
 import { isMeetingPackageId, MEETING_PACKAGES, type MeetingPackageId } from "./meeting-packages";
+import { checkoutSessionIsPaid, meetingSessionHasExpectedShape } from "./payment-invariants";
+export { verifyStripeSignature } from "./stripe-signature";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
 /** Stripe statuses that mean the member should keep access. */
 export const ACCESS_STATUSES = ["active", "trialing", "complimentary"] as const;
 
-// Prefer the full secret key; fall back to a restricted key (rk_...) which
-// works for Checkout/Billing calls as long as it has write access to those
-// resources.
+// Prefer a least-privilege restricted key. A full secret remains a fallback
+// for deployments that have not completed the key migration yet.
 function stripeKey() {
-  return process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_API_KEY;
+  return process.env.STRIPE_RESTRICTED_API_KEY || process.env.STRIPE_SECRET_KEY;
 }
 
 export function stripeConfigured() {
@@ -23,12 +24,12 @@ export function stripeConfigured() {
 export function stripeKeyInfo() {
   const full = process.env.STRIPE_SECRET_KEY;
   const restricted = process.env.STRIPE_RESTRICTED_API_KEY;
-  const key = full || restricted;
+  const key = restricted || full;
   if (!key) return { configured: false as const };
   const prefix = key.slice(0, key.indexOf("_", 3) + 1 || 8);
   return {
     configured: true as const,
-    source: full ? ("STRIPE_SECRET_KEY" as const) : ("STRIPE_RESTRICTED_API_KEY" as const),
+    source: restricted ? ("STRIPE_RESTRICTED_API_KEY" as const) : ("STRIPE_SECRET_KEY" as const),
     kind: key.startsWith("rk_") ? ("restricted" as const) : ("secret" as const),
     mode: key.includes("_live_") ? ("live" as const) : ("test" as const),
     prefix,
@@ -69,6 +70,7 @@ async function stripeCall(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": "2026-07-29.dahlia",
   };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API}${path}`, {
@@ -104,9 +106,8 @@ async function stripeCall(
 /* ------------------------------------------------------------------ */
 
 /**
- * Returns the Stripe customer for this user, reusing the stored one when we
- * have it, then an existing Stripe customer with the same email, and only
- * creating a new customer as a last resort.
+ * Returns the Stripe customer recorded for this user, or creates a new one.
+ * Email alone is not an ownership proof and must never link two accounts.
  */
 export async function getOrCreateCustomer(opts: {
   userId: string;
@@ -126,21 +127,6 @@ export async function getOrCreateCustomer(opts: {
     }
   }
 
-  if (opts.email) {
-    try {
-      const list = (await stripeCall(
-        `/customers?limit=1&email=${encodeURIComponent(opts.email)}`,
-        undefined,
-        "GET",
-      )) as { data?: { id: string }[] };
-      const found = list.data?.[0]?.id;
-      if (found) return found;
-    } catch (e) {
-      // Missing read permission on customers must not block checkout.
-      if (!(e instanceof StripeError)) throw e;
-    }
-  }
-
   const created = await stripeCall(
     "/customers",
     form({
@@ -155,25 +141,30 @@ export async function getOrCreateCustomer(opts: {
 
 /** True when this Stripe customer already has a live (billable) subscription. */
 export async function customerHasLiveSubscription(customerId: string) {
-  try {
-    const list = (await stripeCall(
-      `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
-      undefined,
-      "GET",
-    )) as { data?: { id: string; status: string }[] };
-    return (list.data ?? []).some((s) =>
-      ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
-    );
-  } catch {
-    // If we can't check, don't block the member — Stripe Checkout and the
-    // billing portal still prevent genuine double-charging on the same plan.
-    return false;
-  }
+  const list = (await stripeCall(
+    `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=20`,
+    undefined,
+    "GET",
+  )) as { data?: { id: string; status: string }[] };
+  return (list.data ?? []).some((s) =>
+    ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status),
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Checkout / portal                                                   */
 /* ------------------------------------------------------------------ */
+
+async function integrationIdentifier(flow: "membership" | "meeting", seed: string) {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`mithaq:${flow}:${seed}`)),
+  );
+  const suffix = Array.from(digest.slice(0, 8), (value) => alphabet[value % alphabet.length]).join(
+    "",
+  );
+  return `mithaq_${flow}_${suffix}`;
+}
 
 export async function createCheckoutSession(opts: {
   plan: PlanId;
@@ -186,6 +177,10 @@ export async function createCheckoutSession(opts: {
   if (!plan) throw new StripeError(0, "Unknown plan", "invalid_plan", null);
   const body = form({
     mode: "subscription",
+    integration_identifier: await integrationIdentifier(
+      "membership",
+      `${opts.userId}:${opts.plan}`,
+    ),
     success_url: `${opts.origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/membership?checkout=cancelled`,
     client_reference_id: opts.userId,
@@ -201,11 +196,17 @@ export async function createCheckoutSession(opts: {
     "metadata[plan]": plan.id,
     allow_promotion_codes: true,
   });
-  const session = await stripeCall("/checkout/sessions", body);
+  const session = await stripeCall(
+    "/checkout/sessions",
+    body,
+    "POST",
+    `membership-checkout:${opts.userId}:${opts.plan}`,
+  );
   return { url: session.url as string };
 }
 
 export async function createMeetingPackageCheckout(opts: {
+  attemptId: string;
   pairingId: string;
   packageId: MeetingPackageId;
   userId: string;
@@ -215,6 +216,10 @@ export async function createMeetingPackageCheckout(opts: {
   const selected = MEETING_PACKAGES[opts.packageId];
   const body = form({
     mode: "payment",
+    integration_identifier: await integrationIdentifier(
+      "meeting",
+      `${opts.pairingId}:${opts.userId}:${opts.packageId}`,
+    ),
     success_url: `${opts.origin}/dashboard?meeting_payment=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/dashboard?meeting_payment=cancelled`,
     client_reference_id: opts.userId,
@@ -225,6 +230,7 @@ export async function createMeetingPackageCheckout(opts: {
     "line_items[0][price_data][product_data][name]": `Mithaq ${selected.label} package`,
     "line_items[0][price_data][product_data][description]": selected.description,
     "metadata[kind]": "meeting_package",
+    "metadata[attempt_id]": opts.attemptId,
     "metadata[user_id]": opts.userId,
     "metadata[pairing_id]": opts.pairingId,
     "metadata[package_id]": selected.id,
@@ -235,9 +241,9 @@ export async function createMeetingPackageCheckout(opts: {
     "/checkout/sessions",
     body,
     "POST",
-    `meeting-package:${opts.pairingId}:${opts.userId}:${opts.packageId}`,
+    `meeting-package:${opts.attemptId}`,
   );
-  return { url: session.url as string };
+  return { id: session.id as string, url: session.url as string };
 }
 
 export async function createBillingPortalSession(customerId: string, origin: string) {
@@ -363,7 +369,9 @@ export async function syncSubscriptionFromSession(sessionId: string, expectedUse
   if (expectedUserId && userId !== expectedUserId) {
     return { ok: false as const, reason: "mismatch" as const };
   }
-  if (session.payment_status !== "paid" && session.status !== "complete") {
+  // A completed Checkout Session can still be unpaid when an asynchronous
+  // payment method is pending. Access begins only after Stripe reports paid.
+  if (!checkoutSessionIsPaid(session)) {
     return { ok: false as const, reason: "not_paid" as const };
   }
 
@@ -409,8 +417,11 @@ export async function syncMeetingPackagePaymentFromSession(
   if (expectedUserId && metadata.user_id !== expectedUserId) {
     return { ok: false as const, reason: "wrong_user" as const };
   }
-  if (session.payment_status !== "paid") {
+  if (!checkoutSessionIsPaid(session)) {
     return { ok: false as const, reason: "not_paid" as const };
+  }
+  if (!meetingSessionHasExpectedShape(session)) {
+    return { ok: false as const, reason: "invalid_session_state" as const };
   }
 
   const packageId = metadata.package_id as MeetingPackageId;
@@ -423,14 +434,57 @@ export async function syncMeetingPackagePaymentFromSession(
   }
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  if (metadata.attempt_id) {
+    const { data: attempt, error: attemptError } = await supabaseAdmin
+      .from("meeting_checkout_attempts")
+      .select(
+        "id,pairing_id,user_id,package_id,meeting_count,amount_pence,currency,stripe_session_id,status",
+      )
+      .eq("id", metadata.attempt_id)
+      .maybeSingle();
+    if (attemptError) throw new Error(`Could not verify checkout attempt: ${attemptError.message}`);
+    if (
+      !attempt ||
+      attempt.pairing_id !== metadata.pairing_id ||
+      attempt.user_id !== metadata.user_id ||
+      attempt.package_id !== selected.id ||
+      attempt.meeting_count !== selected.meetings ||
+      attempt.amount_pence !== selected.amountPence ||
+      attempt.currency !== "gbp" ||
+      attempt.stripe_session_id !== sessionId ||
+      !["open", "paid"].includes(attempt.status)
+    ) {
+      return { ok: false as const, reason: "checkout_attempt_mismatch" as const };
+    }
+  }
   const { data: pairing } = await supabaseAdmin
     .from("pairings")
-    .select("id,user_a,user_b,imam_id,payment_a_status,payment_b_status")
+    .select(
+      "id,user_a,user_b,imam_id,status,member_a_response,member_b_response,payment_a_status,payment_b_status",
+    )
     .eq("id", metadata.pairing_id)
     .maybeSingle();
   if (!pairing || ![pairing.user_a, pairing.user_b].includes(metadata.user_id)) {
     return { ok: false as const, reason: "pairing_not_found" as const };
   }
+  if (
+    !["awaiting_payment", "payment_pending", "ready_to_schedule"].includes(pairing.status) ||
+    pairing.member_a_response !== "accepted" ||
+    pairing.member_b_response !== "accepted"
+  ) {
+    return { ok: false as const, reason: "pairing_not_payable" as const };
+  }
+
+  const { data: activeBlock, error: blockError } = await supabaseAdmin
+    .from("member_blocks")
+    .select("blocker_user_id")
+    .or(
+      `and(blocker_user_id.eq.${pairing.user_a},blocked_user_id.eq.${pairing.user_b}),and(blocker_user_id.eq.${pairing.user_b},blocked_user_id.eq.${pairing.user_a})`,
+    )
+    .limit(1)
+    .maybeSingle();
+  if (blockError) throw new Error(`Could not verify pairing safety: ${blockError.message}`);
+  if (activeBlock) return { ok: false as const, reason: "pairing_blocked" as const };
 
   const side = pairing.user_a === metadata.user_id ? "a" : "b";
   const otherPaid =
@@ -463,7 +517,49 @@ export async function syncMeetingPackagePaymentFromSession(
     .eq("id", pairing.id);
   if (pairingError) throw new Error(`Could not update payment status: ${pairingError.message}`);
 
+  if (metadata.attempt_id) {
+    const { error: attemptError } = await supabaseAdmin
+      .from("meeting_checkout_attempts")
+      .update({
+        status: "paid",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq("id", metadata.attempt_id)
+      .eq("stripe_session_id", sessionId);
+    if (attemptError)
+      throw new Error(`Could not complete checkout attempt: ${attemptError.message}`);
+  }
+
   return { ok: true as const, both_paid: otherPaid };
+}
+
+export async function closeMeetingCheckoutAttempt(
+  session: Record<string, unknown>,
+  status: "expired" | "failed",
+) {
+  const metadata = (session.metadata as Record<string, string> | undefined) ?? {};
+  if (metadata.kind !== "meeting_package" || !metadata.attempt_id) {
+    return { ok: true as const, changed: false };
+  }
+  const sessionId = typeof session.id === "string" ? session.id : null;
+  if (!sessionId) return { ok: false as const, reason: "invalid_session" as const };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("meeting_checkout_attempts")
+    .update({
+      status,
+      last_error: status === "failed" ? "Stripe reported that payment failed" : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", metadata.attempt_id)
+    .eq("stripe_session_id", sessionId)
+    .eq("status", "open")
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(`Could not close checkout attempt: ${error.message}`);
+  return { ok: true as const, changed: !!data };
 }
 
 /** invoice.payment_succeeded / invoice.payment_failed handling. */
@@ -491,24 +587,69 @@ export async function syncFromInvoice(invoice: Record<string, unknown>, failed: 
   return { ok: false as const, reason: "no_subscription" as const };
 }
 
-/** Idempotency ledger: returns true when this event has not been seen before. */
+/** Idempotency ledger: returns true for a new event or a failed event retry. */
 export async function claimStripeEvent(id: string, type: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("stripe_events").insert({ id, type });
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("stripe_events").insert({
+    id,
+    type,
+    status: "processing",
+    attempts: 1,
+    last_attempt_at: now,
+    processed_at: null,
+  });
   if (error) {
-    // Unique violation = already processed.
-    if (error.code === "23505") return false;
+    if (error.code === "23505") {
+      const { data: existing, error: existingError } = await supabaseAdmin
+        .from("stripe_events")
+        .select("attempts,status")
+        .eq("id", id)
+        .maybeSingle();
+      if (existingError) throw new Error("Could not inspect Stripe event state");
+      if (existing?.status !== "failed") return false;
+      const { data: reclaimed, error: reclaimError } = await supabaseAdmin
+        .from("stripe_events")
+        .update({
+          status: "processing",
+          attempts: existing.attempts + 1,
+          last_attempt_at: now,
+          last_error: null,
+        })
+        .eq("id", id)
+        .eq("status", "failed")
+        .select("id")
+        .maybeSingle();
+      if (reclaimError) throw new Error("Could not retry Stripe event");
+      return !!reclaimed;
+    }
     console.error("stripe_events insert failed:", error.message);
-    return true; // fail open so a ledger problem doesn't drop real events
+    throw new Error("Could not claim Stripe event for idempotent processing");
   }
   return true;
 }
 
-/** Allow Stripe to retry an event whose handler failed after it was claimed. */
-export async function releaseStripeEvent(id: string) {
+export async function completeStripeEvent(id: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("stripe_events").delete().eq("id", id);
-  if (error) console.error("stripe_events release failed:", error.message);
+  const { error } = await supabaseAdmin
+    .from("stripe_events")
+    .update({ status: "processed", processed_at: new Date().toISOString(), last_error: null })
+    .eq("id", id)
+    .eq("status", "processing");
+  if (error) throw new Error("Could not complete Stripe event ledger entry");
+}
+
+/** Retain a safe error summary so payment operations can see failed delivery. */
+export async function failStripeEvent(id: string, error: unknown) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const message = (error instanceof Error ? error.message : "Unknown handler error").slice(0, 500);
+  const { error: updateError } = await supabaseAdmin
+    .from("stripe_events")
+    .update({ status: "failed", last_error: message })
+    .eq("id", id)
+    .eq("status", "processing");
+  if (updateError)
+    console.error("stripe event failure could not be recorded:", updateError.message);
 }
 
 /**
@@ -548,47 +689,4 @@ export async function diagnoseStripeKey() {
   );
 
   return { key: info, checks };
-}
-
-// Verifies the Stripe-Signature header against the raw request body.
-export async function verifyStripeSignature(
-  payload: string,
-  header: string | null,
-  secret: string,
-  toleranceSeconds = 300,
-) {
-  if (!header) return false;
-  let timestamp: string | null = null;
-  const signatures: string[] = [];
-  for (const part of header.split(",")) {
-    const [name, ...rest] = part.split("=");
-    const value = rest.join("=");
-    if (name.trim() === "t") timestamp = value;
-    if (name.trim() === "v1") signatures.push(value);
-  }
-  if (!timestamp || signatures.length === 0) return false;
-
-  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
-  if (!Number.isFinite(age) || age > toleranceSeconds) return false;
-
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const mac = await crypto.subtle.sign("HMAC", key, enc.encode(`${timestamp}.${payload}`));
-  const expected = Array.from(new Uint8Array(mac))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return signatures.some((signature) => {
-    if (expected.length !== signature.length) return false;
-    let diff = 0;
-    for (let i = 0; i < expected.length; i++) {
-      diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
-    }
-    return diff === 0;
-  });
 }

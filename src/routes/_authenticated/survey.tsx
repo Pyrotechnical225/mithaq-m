@@ -3,7 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Bookmark, ListChecks } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Question } from "@/lib/survey-questions";
-import { questions } from "@/lib/survey-questions";
+import {
+  getOtherAnswerKey,
+  getOtherAnswerQuestionId,
+  questionAllowsOtherDetail,
+  questions,
+} from "@/lib/survey-questions";
 import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
 
 export const Route = createFileRoute("/_authenticated/survey")({
@@ -22,6 +27,7 @@ function SurveyPage() {
   const questionRefs = useRef(new Map<number, HTMLElement>());
   const reviewRef = useRef<HTMLElement>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [otherDetails, setOtherDetails] = useState<Record<number, string>>({});
   const [skipped, setSkipped] = useState<Set<number>>(() => new Set());
   const [revealedCount, setRevealedCount] = useState(1);
   const [showReview, setShowReview] = useState(false);
@@ -38,8 +44,17 @@ function SurveyPage() {
       .then((res) => {
         const raw = (res?.answers ?? {}) as Record<string, string>;
         const initial: Record<number, string> = {};
+        const initialOtherDetails: Record<number, string> = {};
 
-        for (const key of Object.keys(raw)) initial[Number(key)] = raw[key];
+        for (const [key, value] of Object.entries(raw)) {
+          if (/^\d+$/.test(key)) {
+            initial[Number(key)] = value;
+            continue;
+          }
+
+          const otherQuestionId = getOtherAnswerQuestionId(key);
+          if (otherQuestionId !== null) initialOtherDetails[otherQuestionId] = value;
+        }
 
         const highestAnsweredIndex = questions.reduce(
           (highest, question, index) => (hasValue(initial[question.id]) ? index : highest),
@@ -49,6 +64,7 @@ function SurveyPage() {
           Boolean(res?.completed) || highestAnsweredIndex === questions.length - 1;
 
         setAnswers(initial);
+        setOtherDetails(initialOtherDetails);
         setRevealedCount(
           shouldReview
             ? questions.length
@@ -106,6 +122,14 @@ function SurveyPage() {
 
   const setAnswer = (id: number, value: string) => {
     setAnswers((previous) => ({ ...previous, [id]: value }));
+    if (value !== "Other") {
+      setOtherDetails((previous) => {
+        if (!(id in previous)) return previous;
+        const next = { ...previous };
+        delete next[id];
+        return next;
+      });
+    }
     if (hasValue(value)) {
       setSkipped((previous) => {
         if (!previous.has(id)) return previous;
@@ -147,6 +171,12 @@ function SurveyPage() {
     try {
       const stringified: Record<string, string> = {};
       for (const key of Object.keys(answers)) stringified[key] = answers[Number(key)];
+      for (const [key, value] of Object.entries(otherDetails)) {
+        const questionId = Number(key);
+        if (answers[questionId] === "Other" && hasValue(value)) {
+          stringified[getOtherAnswerKey(questionId)] = value;
+        }
+      }
       await save({ data: { answers: stringified, completed } });
       const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       setSavedTick(savedAt);
@@ -187,7 +217,10 @@ function SurveyPage() {
 
   if (loadError) {
     return (
-      <main className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16">
+      <main
+        id="main-content"
+        className="mx-auto flex min-h-[70vh] max-w-xl items-center px-5 py-10 sm:px-6 sm:py-16"
+      >
         <div className="w-full rounded-lg border border-destructive/40 bg-card p-6">
           <h1 className="text-2xl">Your survey could not be opened</h1>
           <p className="mt-3 text-sm text-muted-foreground">{loadError}</p>
@@ -263,7 +296,7 @@ function SurveyPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-3xl px-5 pt-9 sm:px-6 sm:pt-12">
+      <main id="main-content" className="mx-auto max-w-3xl px-4 pt-6 sm:px-6 sm:pt-12">
         <p className="font-arabic text-2xl text-primary" dir="rtl" lang="ar">
           ميثاق
         </p>
@@ -309,6 +342,7 @@ function SurveyPage() {
                 <QuestionCard
                   question={question}
                   answer={answers[question.id] ?? ""}
+                  otherDetail={otherDetails[question.id] ?? ""}
                   isCurrent={isCurrent}
                   isSkipped={skippedToReview.includes(question.id)}
                   missing={missing}
@@ -317,6 +351,9 @@ function SurveyPage() {
                     else questionRefs.current.delete(question.id);
                   }}
                   onAnswer={(value) => setAnswer(question.id, value)}
+                  onOtherDetail={(value) =>
+                    setOtherDetails((previous) => ({ ...previous, [question.id]: value }))
+                  }
                   onContinue={() => advance(false)}
                   onSkip={() => advance(true)}
                 />
@@ -388,11 +425,13 @@ function SurveyPage() {
 interface QuestionCardProps {
   question: Question;
   answer: string;
+  otherDetail: string;
   isCurrent: boolean;
   isSkipped: boolean;
   missing: boolean;
   registerRef: (node: HTMLElement | null) => void;
   onAnswer: (value: string) => void;
+  onOtherDetail: (value: string) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -400,11 +439,13 @@ interface QuestionCardProps {
 function QuestionCard({
   question,
   answer,
+  otherDetail,
   isCurrent,
   isSkipped,
   missing,
   registerRef,
   onAnswer,
+  onOtherDetail,
   onContinue,
   onSkip,
 }: QuestionCardProps) {
@@ -417,7 +458,7 @@ function QuestionCard({
       id={`q-${question.id}`}
       tabIndex={-1}
       aria-labelledby={`q-${question.id}-title`}
-      className={`scroll-mt-32 rounded-lg border bg-card p-5 transition-colors sm:p-6 ${
+      className={`scroll-mt-48 rounded-lg border bg-card p-4 transition-colors sm:scroll-mt-32 sm:p-6 ${
         missing
           ? "border-destructive bg-destructive/5"
           : isCurrent
@@ -480,6 +521,17 @@ function QuestionCard({
               );
             })}
           </div>
+          {answer === "Other" && questionAllowsOtherDetail(question) && (
+            <input
+              type="text"
+              aria-label={`Optional details for ${question.question}`}
+              value={otherDetail}
+              onChange={(event) => onOtherDetail(event.target.value)}
+              maxLength={500}
+              placeholder="(optional)"
+              className="mt-3 min-h-11 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-primary focus:ring-2 focus:ring-ring/30"
+            />
+          )}
         </fieldset>
       ) : question.type === "number" ? (
         <input

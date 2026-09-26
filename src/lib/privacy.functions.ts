@@ -33,7 +33,7 @@ const UpdateInput = z.object({
 
 export const updateMyPrivacy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => UpdateInput.parse(input))
+  .validator((input: unknown) => UpdateInput.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("privacy_settings").upsert({
       user_id: context.userId,
@@ -47,8 +47,19 @@ export const updateMyPrivacy = createServerFn({ method: "POST" })
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const issuedAt = Number((context.claims as { iat?: unknown } | undefined)?.iat);
+    if (!Number.isFinite(issuedAt) || Date.now() / 1000 - issuedAt > 10 * 60) {
+      throw new Error("For security, sign out and sign in again before deleting your account");
+    }
     const userId = context.userId;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Revoke refresh tokens first. Access JWTs can remain valid until expiry,
+    // so auth middleware also verifies that the account still exists.
+    const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(
+      context.accessToken,
+      "global",
+    );
+    if (signOutError) throw new Error("Account sessions could not be revoked. Please try again.");
     // Cascades take care of profile/answers/etc.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (error) throw new Error(error.message);

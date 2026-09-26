@@ -8,6 +8,36 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string;
+          actor_user_id: string | null;
+          created_at: string;
+          details: Json;
+          id: string;
+          target_id: string | null;
+          target_type: string;
+        };
+        Insert: {
+          action: string;
+          actor_user_id?: string | null;
+          created_at?: string;
+          details?: Json;
+          id?: string;
+          target_id?: string | null;
+          target_type: string;
+        };
+        Update: {
+          action?: string;
+          actor_user_id?: string | null;
+          created_at?: string;
+          details?: Json;
+          id?: string;
+          target_id?: string | null;
+          target_type?: string;
+        };
+        Relationships: [];
+      };
       imam_accounts: {
         Row: {
           active: boolean;
@@ -111,6 +141,65 @@ export type Database = {
           },
         ];
       };
+      imam_referrals: {
+        Row: {
+          admin_notes: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          invitation_expires_at: string | null;
+          invitation_token_hash: string | null;
+          referred_email: string;
+          referred_name: string;
+          referrer_imam_id: string;
+          referrer_user_id: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          admin_notes?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invitation_expires_at?: string | null;
+          invitation_token_hash?: string | null;
+          referred_email: string;
+          referred_name: string;
+          referrer_imam_id: string;
+          referrer_user_id: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          admin_notes?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invitation_expires_at?: string | null;
+          invitation_token_hash?: string | null;
+          referred_email?: string;
+          referred_name?: string;
+          referrer_imam_id?: string;
+          referrer_user_id?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "imam_referrals_referrer_imam_id_fkey";
+            columns: ["referrer_imam_id"];
+            isOneToOne: false;
+            referencedRelation: "imams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       imams: {
         Row: {
           city: string;
@@ -127,6 +216,9 @@ export type Database = {
           postcode: string | null;
           title: string | null;
           updated_at: string;
+          verification_status: string;
+          verified_at: string | null;
+          verified_by: string | null;
           website: string | null;
         };
         Insert: {
@@ -144,6 +236,9 @@ export type Database = {
           postcode?: string | null;
           title?: string | null;
           updated_at?: string;
+          verification_status?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
           website?: string | null;
         };
         Update: {
@@ -161,6 +256,9 @@ export type Database = {
           postcode?: string | null;
           title?: string | null;
           updated_at?: string;
+          verification_status?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
           website?: string | null;
         };
         Relationships: [];
@@ -199,7 +297,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          results: Json;
+          results?: Json;
           user_id: string;
         };
         Update: {
@@ -209,6 +307,115 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      meeting_package_purchases: {
+        Row: {
+          amount_pence: number;
+          created_at: string;
+          currency: string;
+          id: string;
+          meeting_count: number;
+          package_id: string;
+          paid_at: string;
+          pairing_id: string;
+          payment_status: string;
+          stripe_payment_intent_id: string | null;
+          stripe_session_id: string;
+          user_id: string;
+        };
+        Insert: {
+          amount_pence: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          meeting_count: number;
+          package_id: string;
+          paid_at?: string;
+          pairing_id: string;
+          payment_status?: string;
+          stripe_payment_intent_id?: string | null;
+          stripe_session_id: string;
+          user_id: string;
+        };
+        Update: {
+          amount_pence?: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          meeting_count?: number;
+          package_id?: string;
+          paid_at?: string;
+          pairing_id?: string;
+          payment_status?: string;
+          stripe_payment_intent_id?: string | null;
+          stripe_session_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meeting_package_purchases_pairing_id_fkey";
+            columns: ["pairing_id"];
+            isOneToOne: false;
+            referencedRelation: "pairings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meeting_checkout_attempts: {
+        Row: {
+          amount_pence: number;
+          completed_at: string | null;
+          created_at: string;
+          currency: string;
+          id: string;
+          last_error: string | null;
+          meeting_count: number;
+          package_id: string;
+          pairing_id: string;
+          status: string;
+          stripe_session_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          amount_pence: number;
+          completed_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          last_error?: string | null;
+          meeting_count: number;
+          package_id: string;
+          pairing_id: string;
+          status?: string;
+          stripe_session_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          amount_pence?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          last_error?: string | null;
+          meeting_count?: number;
+          package_id?: string;
+          pairing_id?: string;
+          status?: string;
+          stripe_session_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meeting_checkout_attempts_pairing_id_fkey";
+            columns: ["pairing_id"];
+            isOneToOne: false;
+            referencedRelation: "pairings";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       meetups: {
         Row: {
@@ -273,6 +480,154 @@ export type Database = {
           },
         ];
       };
+      member_blocks: {
+        Row: {
+          block_id: string;
+          blocked_user_id: string;
+          blocker_user_id: string;
+          created_at: string;
+          reason: string | null;
+        };
+        Insert: {
+          block_id?: string;
+          blocked_user_id: string;
+          blocker_user_id: string;
+          created_at?: string;
+          reason?: string | null;
+        };
+        Update: {
+          block_id?: string;
+          blocked_user_id?: string;
+          blocker_user_id?: string;
+          created_at?: string;
+          reason?: string | null;
+        };
+        Relationships: [];
+      };
+      member_consents: {
+        Row: {
+          adult_confirmed_at: string | null;
+          compatibility_processing_consent_at: string | null;
+          compatibility_processing_withdrawn_at: string | null;
+          created_at: string;
+          privacy_notice_accepted_at: string | null;
+          privacy_notice_version: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          adult_confirmed_at?: string | null;
+          compatibility_processing_consent_at?: string | null;
+          compatibility_processing_withdrawn_at?: string | null;
+          created_at?: string;
+          privacy_notice_accepted_at?: string | null;
+          privacy_notice_version?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          adult_confirmed_at?: string | null;
+          compatibility_processing_consent_at?: string | null;
+          compatibility_processing_withdrawn_at?: string | null;
+          created_at?: string;
+          privacy_notice_accepted_at?: string | null;
+          privacy_notice_version?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      member_reports: {
+        Row: {
+          category: string;
+          created_at: string;
+          details: string;
+          id: string;
+          pairing_id: string | null;
+          reported_user_id: string;
+          reporter_user_id: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          category: string;
+          created_at?: string;
+          details: string;
+          id?: string;
+          pairing_id?: string | null;
+          reported_user_id: string;
+          reporter_user_id: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string;
+          created_at?: string;
+          details?: string;
+          id?: string;
+          pairing_id?: string | null;
+          reported_user_id?: string;
+          reporter_user_id?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "member_reports_pairing_id_fkey";
+            columns: ["pairing_id"];
+            isOneToOne: false;
+            referencedRelation: "pairings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notifications: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          kind: string;
+          pairing_id: string | null;
+          read_at: string | null;
+          title: string;
+          user_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          kind: string;
+          pairing_id?: string | null;
+          read_at?: string | null;
+          title: string;
+          user_id: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          pairing_id?: string | null;
+          read_at?: string | null;
+          title?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_pairing_id_fkey";
+            columns: ["pairing_id"];
+            isOneToOne: false;
+            referencedRelation: "pairings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       pairing_messages: {
         Row: {
           body: string;
@@ -310,11 +665,17 @@ export type Database = {
       };
       pairings: {
         Row: {
+          compatibility_score: number | null;
+          compatibility_summary: Json;
           created_at: string;
           decided_at: string | null;
           decision_note: string | null;
           id: string;
           imam_id: string | null;
+          meeting_preference_a: string | null;
+          meeting_preference_b: string | null;
+          member_a_response: string;
+          member_b_response: string;
           payment_a_status: string;
           payment_b_status: string;
           payment_session_a: string | null;
@@ -325,11 +686,17 @@ export type Database = {
           user_b: string;
         };
         Insert: {
+          compatibility_score?: number | null;
+          compatibility_summary?: Json;
           created_at?: string;
           decided_at?: string | null;
           decision_note?: string | null;
           id?: string;
           imam_id?: string | null;
+          meeting_preference_a?: string | null;
+          meeting_preference_b?: string | null;
+          member_a_response?: string;
+          member_b_response?: string;
           payment_a_status?: string;
           payment_b_status?: string;
           payment_session_a?: string | null;
@@ -340,11 +707,17 @@ export type Database = {
           user_b: string;
         };
         Update: {
+          compatibility_score?: number | null;
+          compatibility_summary?: Json;
           created_at?: string;
           decided_at?: string | null;
           decision_note?: string | null;
           id?: string;
           imam_id?: string | null;
+          meeting_preference_a?: string | null;
+          meeting_preference_b?: string | null;
+          member_a_response?: string;
+          member_b_response?: string;
           payment_a_status?: string;
           payment_b_status?: string;
           payment_session_a?: string | null;
@@ -360,59 +733,6 @@ export type Database = {
             columns: ["imam_id"];
             isOneToOne: false;
             referencedRelation: "imams";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      meeting_package_purchases: {
-        Row: {
-          amount_pence: number;
-          created_at: string;
-          currency: string;
-          id: string;
-          meeting_count: number;
-          package_id: string;
-          paid_at: string;
-          pairing_id: string;
-          payment_status: string;
-          stripe_payment_intent_id: string | null;
-          stripe_session_id: string;
-          user_id: string;
-        };
-        Insert: {
-          amount_pence: number;
-          created_at?: string;
-          currency?: string;
-          id?: string;
-          meeting_count: number;
-          package_id: string;
-          paid_at?: string;
-          pairing_id: string;
-          payment_status?: string;
-          stripe_payment_intent_id?: string | null;
-          stripe_session_id: string;
-          user_id: string;
-        };
-        Update: {
-          amount_pence?: number;
-          created_at?: string;
-          currency?: string;
-          id?: string;
-          meeting_count?: number;
-          package_id?: string;
-          paid_at?: string;
-          pairing_id?: string;
-          payment_status?: string;
-          stripe_payment_intent_id?: string | null;
-          stripe_session_id?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "meeting_package_purchases_pairing_id_fkey";
-            columns: ["pairing_id"];
-            isOneToOne: false;
-            referencedRelation: "pairings";
             referencedColumns: ["id"];
           },
         ];
@@ -485,18 +805,30 @@ export type Database = {
       };
       stripe_events: {
         Row: {
+          attempts: number;
           id: string;
-          processed_at: string;
+          last_attempt_at: string;
+          last_error: string | null;
+          processed_at: string | null;
+          status: string;
           type: string;
         };
         Insert: {
+          attempts?: number;
           id: string;
-          processed_at?: string;
+          last_attempt_at?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          status?: string;
           type: string;
         };
         Update: {
+          attempts?: number;
           id?: string;
-          processed_at?: string;
+          last_attempt_at?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          status?: string;
           type?: string;
         };
         Relationships: [];
@@ -596,10 +928,6 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      can_see_pairing: {
-        Args: { _pairing_id: string; _user_id: string };
-        Returns: boolean;
-      };
       has_active_membership: { Args: { _user_id: string }; Returns: boolean };
       has_role: {
         Args: {
@@ -609,7 +937,12 @@ export type Database = {
         Returns: boolean;
       };
       is_imam: { Args: { _user_id: string }; Returns: boolean };
+      mithaq_survey_is_complete: { Args: { candidate: Json }; Returns: boolean };
       my_imam_id: { Args: { _user_id: string }; Returns: string };
+      respond_to_introduction: {
+        Args: { _accept: boolean; _pairing_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: "admin" | "user";

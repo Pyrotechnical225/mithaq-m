@@ -12,19 +12,28 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
+      GET: async () =>
+        new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } }),
       POST: async ({ request }) => {
         const secret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
+        const declaredLength = Number(request.headers.get("content-length") ?? "0");
+        if (Number.isFinite(declaredLength) && declaredLength > 1_000_000) {
+          return new Response("Payload too large", { status: 413 });
+        }
         const payload = await request.text();
+        if (payload.length > 1_000_000) return new Response("Payload too large", { status: 413 });
         const {
           verifyStripeSignature,
           syncSubscriptionFromSession,
           syncMeetingPackagePaymentFromSession,
+          closeMeetingCheckoutAttempt,
           syncSubscriptionObject,
           syncFromInvoice,
           claimStripeEvent,
-          releaseStripeEvent,
+          completeStripeEvent,
+          failStripeEvent,
         } = await import("@/lib/membership.server");
 
         const ok = await verifyStripeSignature(
@@ -63,7 +72,15 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             case "checkout.session.async_payment_succeeded":
               if (((obj.metadata ?? {}) as Record<string, string>).kind === "meeting_package") {
                 ensureSynced(await syncMeetingPackagePaymentFromSession(obj.id as string));
+              } else {
+                ensureSynced(await syncSubscriptionFromSession(obj.id as string));
               }
+              break;
+            case "checkout.session.async_payment_failed":
+              ensureSynced(await closeMeetingCheckoutAttempt(obj, "failed"));
+              break;
+            case "checkout.session.expired":
+              ensureSynced(await closeMeetingCheckoutAttempt(obj, "expired"));
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
@@ -82,9 +99,10 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             default:
               break;
           }
+          await completeStripeEvent(event.id);
         } catch (err) {
           console.error(`stripe webhook ${event.type} failed:`, err);
-          await releaseStripeEvent(event.id);
+          await failStripeEvent(event.id, err);
           return new Response("Handler error", { status: 500 });
         }
 

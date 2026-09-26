@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { VercelObservability } from "../components/VercelObservability";
 
 function NotFoundComponent() {
   return (
@@ -84,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Meet haq in marriage with Mithaq. Find marriage-minded Muslims through shared deen, family values, life goals, wali involvement, and imam-supported introductions.",
       },
       { name: "author", content: "Mithaq" },
+      {
+        name: "google-site-verification",
+        content: "KEHDyHTeZNrFcNwxKeI5-ZV4OE2RtAr4wq54Fz1CzsU",
+      },
       { property: "og:title", content: "Mithaq — Building homes, the halal way" },
       {
         property: "og:description",
@@ -146,6 +151,7 @@ function RootShell({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
         {children}
+        <VercelObservability />
         <Scripts />
       </body>
     </html>

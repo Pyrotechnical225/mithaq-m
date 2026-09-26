@@ -1,6 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthCallbackError } from "@/lib/auth-callback";
+import { safeRelativePath } from "@/lib/safe-navigation";
 
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({
@@ -12,40 +15,17 @@ export const Route = createFileRoute("/auth/callback")({
 
 type Status = "working" | "success" | "already" | "expired" | "invalid" | "error";
 
-function friendly(
-  code: string | null,
-  message: string | null,
-): { status: Status; title: string; body: string } {
-  const c = (code ?? "").toLowerCase();
-  const m = (message ?? "").toLowerCase();
-  if (c.includes("otp_expired") || m.includes("expired")) {
-    return {
-      status: "expired",
-      title: "This verification link has expired",
-      body: "Verification links are valid for a limited time. Sign in again and we'll send a fresh one.",
-    };
-  }
-  if (c.includes("access_denied") || m.includes("access_denied")) {
-    return {
-      status: "invalid",
-      title: "This link can't be used",
-      body: "It may have already been used or was denied. Try signing in and resending the verification email.",
-    };
-  }
-  return {
-    status: "error",
-    title: "We couldn't verify your email",
-    body: message ?? "Please try signing in and resending the verification email.",
-  };
-}
-
 function AuthCallback() {
-  const navigate = useNavigate();
+  const started = useRef(false);
   const [status, setStatus] = useState<Status>("working");
   const [title, setTitle] = useState("Verifying your email…");
   const [body, setBody] = useState("Just a moment.");
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
+    let redirectTimeout: number | undefined;
     const run = async () => {
       try {
         const url = new URL(window.location.href);
@@ -54,7 +34,7 @@ function AuthCallback() {
         const errDesc =
           url.searchParams.get("error_description") ?? hashParams.get("error_description");
         if (errCode || errDesc) {
-          const f = friendly(errCode, errDesc);
+          const f = getAuthCallbackError(errCode, errDesc);
           setStatus(f.status);
           setTitle(f.title);
           setBody(f.body);
@@ -64,13 +44,21 @@ function AuthCallback() {
         const code = url.searchParams.get("code");
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+          if (error) {
+            // A session may already exist if a callback is resumed after the
+            // one-time code was consumed. Never replace a valid login with a
+            // misleading PKCE error screen.
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) throw error;
+          }
         } else {
           const token_hash = url.searchParams.get("token_hash");
           const type = url.searchParams.get("type");
           if (token_hash && type) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error } = await supabase.auth.verifyOtp({ token_hash, type: type as any });
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash,
+              type: type as EmailOtpType,
+            });
             if (error) throw error;
           } else {
             const access_token = hashParams.get("access_token");
@@ -82,31 +70,55 @@ function AuthCallback() {
           }
         }
 
-        const nextRaw = url.searchParams.get("next") ?? "";
-        const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+        const next = safeRelativePath(url.searchParams.get("next"));
         const { data } = await supabase.auth.getUser();
-        if (data.user?.email_confirmed_at) {
+        if (!data.user) {
+          throw new Error("No verified sign-in session was returned. Please request a new link.");
+        }
+        if (data.user.email_confirmed_at) {
           setStatus("success");
-          setTitle("Email verified");
-          setBody("Redirecting…");
-          setTimeout(() => {
+          const isGoogle = data.user.app_metadata?.provider === "google";
+          const isPasswordRecovery = next === "/reset-password";
+          if (isPasswordRecovery) {
+            sessionStorage.setItem("mithaq:password-recovery", "1");
+          }
+          setTitle(
+            isPasswordRecovery
+              ? "Secure reset link verified"
+              : isGoogle
+                ? "Google sign-in successful"
+                : "Email verified successfully",
+          );
+          setBody(
+            isPasswordRecovery
+              ? "Taking you to choose a new password…"
+              : "Your account is ready. Taking you to your private dashboard…",
+          );
+          sessionStorage.removeItem("mithaq:pending-verification-email");
+          redirectTimeout = window.setTimeout(() => {
             if (next) window.location.href = next;
-            else navigate({ to: "/dashboard", replace: true });
-          }, 1200);
+            else window.location.replace("/verify-email?verified=1");
+          }, 1600);
         } else {
           setStatus("already");
           setTitle("You're signed in");
           setBody("Please continue to verify your email.");
         }
       } catch (e) {
-        const f = friendly(null, e instanceof Error ? e.message : "Verification failed");
+        const f = getAuthCallbackError(
+          null,
+          e instanceof Error ? e.message : "Verification failed",
+        );
         setStatus(f.status);
         setTitle(f.title);
         setBody(f.body);
       }
     };
     run();
-  }, [navigate]);
+    return () => {
+      if (redirectTimeout) window.clearTimeout(redirectTimeout);
+    };
+  }, []);
 
   const icon =
     status === "success" ? "✓" : status === "working" ? "…" : status === "already" ? "→" : "!";

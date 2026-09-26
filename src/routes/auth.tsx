@@ -1,18 +1,22 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrandName } from "@/components/BrandName";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
+import { getAuthErrorMessage } from "@/lib/auth-error";
+import { getAuthCallbackUrl } from "@/lib/auth-redirect";
+import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
+import { safeRelativePath } from "@/lib/safe-navigation";
 
 const ADMIN_EMAIL = "admin@mithaq.com";
+// Google is live by default now that the production Supabase provider is configured.
+// A deployment can still disable the button explicitly during an incident.
+const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH !== "false";
+const PUBLIC_SITE_URL = import.meta.env.VITE_PUBLIC_SITE_URL;
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => {
-    const next =
-      typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
-        ? s.next
-        : undefined;
+    const next = safeRelativePath(s.next);
     return next ? { next } : {};
   },
   head: () => ({
@@ -22,8 +26,13 @@ export const Route = createFileRoute("/auth")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: AuthPage,
+  component: AuthRoute,
 });
+
+function AuthRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return pathname === "/auth" ? <AuthPage /> : <Outlet />;
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -34,6 +43,8 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const goNext = () => {
     if (next) window.location.href = next;
@@ -41,15 +52,13 @@ function AuthPage() {
   };
 
   useEffect(() => {
+    let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) goNext();
+      if (active && data.session) goNext();
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
-        goNext();
-      }
-    });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [next]);
 
@@ -69,21 +78,44 @@ function AuthPage() {
       }
 
       if (mode === "signup") {
-        const emailRedirectTo = next
-          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-          : `${window.location.origin}/auth/callback`;
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
+        if (!adultConfirmed || !privacyAccepted) {
+          throw new Error("Confirm that you are 18+ and accept the privacy notice to continue");
+        }
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: normalized,
           password,
-          options: { emailRedirectTo },
+          options: {
+            emailRedirectTo: getAuthCallbackUrl({ configuredSiteUrl: PUBLIC_SITE_URL, next }),
+            data: {
+              signup_adult_confirmation: true,
+              signup_privacy_notice_version: PRIVACY_NOTICE_VERSION,
+            },
+          },
         });
         if (signUpError) throw signUpError;
+        if (data.session) {
+          goNext();
+          return;
+        }
+
+        sessionStorage.setItem("mithaq:pending-verification-email", normalized);
+        setPassword("");
+        navigate({ to: "/verify-email" });
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: normalized,
+          password,
+        });
+        if (signInError?.code === "email_not_confirmed") {
+          sessionStorage.setItem("mithaq:pending-verification-email", normalized);
+          navigate({ to: "/verify-email" });
+          return;
+        }
         if (signInError) throw signInError;
+        if (data.session) goNext();
       }
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Something went wrong");
+      setError(getAuthErrorMessage(caughtError, mode));
     } finally {
       setLoading(false);
     }
@@ -91,11 +123,17 @@ function AuthPage() {
 
   const google = async () => {
     setError(null);
-    const redirect_uri = next
-      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      : window.location.origin;
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
-    if (result.error) setError(result.error.message);
+    setLoading(true);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: getAuthCallbackUrl({ configuredSiteUrl: PUBLIC_SITE_URL, next }),
+      },
+    });
+    if (oauthError) {
+      setError(getAuthErrorMessage(oauthError, "oauth"));
+      setLoading(false);
+    }
   };
 
   return (
@@ -130,7 +168,7 @@ function AuthPage() {
         </p>
       </section>
 
-      <section className="flex min-h-screen items-center px-5 py-10 sm:px-8 lg:px-14 xl:px-20">
+      <section className="flex min-h-dvh items-start px-5 py-6 sm:items-center sm:px-8 sm:py-10 lg:px-14 xl:px-20">
         <div className="mx-auto w-full max-w-md">
           <div className="flex items-center justify-between lg:hidden">
             <Link to="/" className="flex items-center gap-3">
@@ -139,12 +177,15 @@ function AuthPage() {
                 ميثاق
               </span>
             </Link>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              to="/"
+              className="flex min-h-11 items-center px-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               Home
             </Link>
           </div>
 
-          <div className="mt-12 lg:mt-0">
+          <div className="mt-7 sm:mt-12 lg:mt-0">
             <p className="text-sm font-medium text-primary">
               {mode === "signup" ? "Create your Mithaq account" : "Welcome back"}
             </p>
@@ -195,18 +236,28 @@ function AuthPage() {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={google}
-            className="mt-6 w-full rounded-md border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-accent"
-          >
-            Continue with Google
-          </button>
+          {GOOGLE_AUTH_ENABLED ? (
+            <>
+              <button
+                type="button"
+                onClick={google}
+                disabled={loading}
+                className="mt-6 flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-accent disabled:opacity-60"
+              >
+                <span aria-hidden="true" className="text-base font-bold text-primary">
+                  G
+                </span>
+                {loading ? "Opening Google…" : "Continue with Google"}
+              </button>
 
-          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or use email
-            <div className="h-px flex-1 bg-border" />
-          </div>
+              <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="h-px flex-1 bg-border" /> or use email
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          ) : (
+            <div className="h-6" aria-hidden="true" />
+          )}
 
           <form onSubmit={submit} className="space-y-5">
             <div>
@@ -225,10 +276,49 @@ function AuthPage() {
               />
             </div>
 
+            {mode === "signup" ? (
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={adultConfirmed}
+                    onChange={(event) => setAdultConfirmed(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-input"
+                  />
+                  <span>I confirm that I am at least 18 years old.</span>
+                </label>
+                <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={privacyAccepted}
+                    onChange={(event) => setPrivacyAccepted(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-input"
+                  />
+                  <span>
+                    I have read and accept the{" "}
+                    <Link to="/privacy" className="font-medium text-primary underline">
+                      privacy notice
+                    </Link>
+                    .
+                  </span>
+                </label>
+              </div>
+            ) : null}
+
             <div>
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
-              </label>
+              <div className="flex items-center justify-between gap-4">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </label>
+                {mode === "signin" ? (
+                  <Link
+                    to="/forgot-password"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                ) : null}
+              </div>
               <div className="relative mt-2">
                 <input
                   id="password"
@@ -263,7 +353,7 @@ function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (mode === "signup" && (!adultConfirmed || !privacyAccepted))}
               className="w-full rounded-md bg-primary px-4 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
               {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
@@ -271,8 +361,7 @@ function AuthPage() {
           </form>
 
           <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
-            By continuing, you agree to use Mithaq respectfully and only for the purpose of seeking
-            marriage.
+            Use Mithaq respectfully and only for the purpose of seeking marriage.
           </p>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertAdmin, assertAdminMfa } from "@/lib/admin-authorization";
 
 // Current user's membership state.
 export const getMyMembership = createServerFn({ method: "GET" })
@@ -37,12 +38,11 @@ export const getMyMembership = createServerFn({ method: "GET" })
 const CheckoutInput = z.object({
   // Allowlisted plan ids only — no client-supplied price or amount.
   plan: z.enum(["monthly", "yearly"]),
-  origin: z.string().url(),
 });
 
 export const startCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CheckoutInput.parse(input))
+  .validator((input: unknown) => CheckoutInput.parse(input))
   .handler(async ({ data, context }) => {
     const {
       createCheckoutSession,
@@ -110,7 +110,7 @@ export const startCheckout = createServerFn({ method: "POST" })
         plan: data.plan,
         userId: context.userId,
         customerId,
-        origin: data.origin,
+        origin: (await import("./request-origin.server")).getRequestOrigin(),
       });
     } catch (e) {
       // Full detail stays in the server logs; members see a plain message.
@@ -137,7 +137,7 @@ const ConfirmInput = z.object({ session_id: z.string().min(10).max(200) });
 
 export const confirmCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ConfirmInput.parse(input))
+  .validator((input: unknown) => ConfirmInput.parse(input))
   .handler(async ({ data, context }) => {
     const { syncSubscriptionFromSession } = await import("./membership.server");
     try {
@@ -152,21 +152,15 @@ export const confirmCheckout = createServerFn({ method: "POST" })
 export const diagnoseStripe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden: admin only");
+    await assertAdmin(context);
+    assertAdminMfa(context);
     const { diagnoseStripeKey } = await import("./membership.server");
     return diagnoseStripeKey();
   });
 
-const PortalInput = z.object({ origin: z.string().url() });
-
 export const openBillingPortal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => PortalInput.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ context }) => {
     // The customer id always comes from this user's own DB row.
     const { data: sub } = await context.supabase
       .from("subscriptions")
@@ -176,7 +170,10 @@ export const openBillingPortal = createServerFn({ method: "POST" })
     if (!sub?.provider_customer_id) throw new Error("No billing account yet");
     const { createBillingPortalSession } = await import("./membership.server");
     try {
-      return await createBillingPortalSession(sub.provider_customer_id, data.origin);
+      return await createBillingPortalSession(
+        sub.provider_customer_id,
+        (await import("./request-origin.server")).getRequestOrigin(),
+      );
     } catch (e) {
       console.error("billing portal failed:", e);
       throw new Error("We couldn’t open the billing portal just now. Please try again shortly.");
@@ -191,13 +188,10 @@ const GrantInput = z.object({
 
 export const setComplimentaryMembership = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => GrantInput.parse(input))
+  .validator((input: unknown) => GrantInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden: admin only");
+    await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("subscriptions").upsert(
       {
@@ -211,6 +205,13 @@ export const setComplimentaryMembership = createServerFn({ method: "POST" })
       { onConflict: "user_id" },
     );
     if (error) throw new Error(error.message);
+    const { writeAdminAudit } = await import("@/lib/admin-audit.server");
+    await writeAdminAudit(supabaseAdmin, {
+      actorUserId: context.userId,
+      action: data.grant ? "membership.complimentary_granted" : "membership.complimentary_revoked",
+      targetType: "membership",
+      targetId: data.user_id,
+    });
     return { ok: true };
   });
 
@@ -218,14 +219,99 @@ export const setComplimentaryMembership = createServerFn({ method: "POST" })
 export const listMemberships = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden: admin only");
+    await assertAdmin(context);
+    assertAdminMfa(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("subscriptions")
       .select("user_id, plan, status, current_period_end, cancel_at_period_end");
+    if (error) throw new Error(error.message);
     return data ?? [];
+  });
+
+// Admin: read-only operational view across Checkout attempts, settled package
+// purchases and the webhook idempotency ledger. No Stripe object is mutated.
+export const listPaymentOperations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    assertAdminMfa(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [attemptsResult, purchasesResult, eventsResult, pairingsResult, profilesResult] =
+      await Promise.all([
+        supabaseAdmin
+          .from("meeting_checkout_attempts")
+          .select(
+            "id,pairing_id,user_id,package_id,meeting_count,amount_pence,currency,stripe_session_id,status,last_error,created_at,updated_at,completed_at",
+          )
+          .order("created_at", { ascending: false })
+          .limit(250),
+        supabaseAdmin
+          .from("meeting_package_purchases")
+          .select(
+            "id,pairing_id,user_id,package_id,meeting_count,amount_pence,currency,payment_status,stripe_session_id,paid_at",
+          )
+          .order("paid_at", { ascending: false })
+          .limit(250),
+        supabaseAdmin
+          .from("stripe_events")
+          .select("id,type,status,attempts,last_attempt_at,processed_at,last_error")
+          .order("last_attempt_at", { ascending: false })
+          .limit(250),
+        supabaseAdmin
+          .from("pairings")
+          .select("id,status,payment_a_status,payment_b_status")
+          .order("created_at", { ascending: false }),
+        supabaseAdmin.from("profiles").select("id,display_name,contact_email"),
+      ]);
+
+    for (const result of [
+      attemptsResult,
+      purchasesResult,
+      eventsResult,
+      pairingsResult,
+      profilesResult,
+    ]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+
+    const profileById = new Map(
+      (profilesResult.data ?? []).map((profile) => [profile.id, profile]),
+    );
+    const member = (userId: string) => {
+      const profile = profileById.get(userId);
+      return profile?.display_name || profile?.contact_email || "Member";
+    };
+    const attempts = (attemptsResult.data ?? []).map(({ user_id: userId, ...attempt }) => ({
+      ...attempt,
+      member: member(userId),
+    }));
+    const purchases = (purchasesResult.data ?? []).map(({ user_id: userId, ...purchase }) => ({
+      ...purchase,
+      member: member(userId),
+    }));
+    const pairings = pairingsResult.data ?? [];
+    const events = eventsResult.data ?? [];
+    const { stripeKeyInfo } = await import("./membership.server");
+
+    return {
+      stripe: stripeKeyInfo(),
+      summary: {
+        collected_pence: purchases
+          .filter((purchase) => purchase.payment_status === "paid")
+          .reduce((sum, purchase) => sum + purchase.amount_pence, 0),
+        paid_packages: purchases.filter((purchase) => purchase.payment_status === "paid").length,
+        payments_outstanding: pairings.filter(
+          (pairing) =>
+            ["awaiting_payment", "payment_pending"].includes(pairing.status) &&
+            [pairing.payment_a_status, pairing.payment_b_status].includes("due"),
+        ).length,
+        open_checkouts: attempts.filter((attempt) => ["creating", "open"].includes(attempt.status))
+          .length,
+        failed_webhooks: events.filter((event) => event.status === "failed").length,
+      },
+      attempts,
+      purchases,
+      events,
+    };
   });

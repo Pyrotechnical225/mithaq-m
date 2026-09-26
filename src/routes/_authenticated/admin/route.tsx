@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Menu, X } from "lucide-react";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { useEffect, useState } from "react";
 import { BrandName } from "@/components/BrandName";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
 function AdminLayout() {
   const navigate = useNavigate();
   const checkAdmin = useServerFn(amIAdmin);
-  const [access, setAccess] = useState<"checking" | "granted" | "denied" | "error">("checking");
+  const [access, setAccess] = useState<"checking" | "granted" | "mfa" | "denied" | "error">(
+    "checking",
+  );
   const [accessError, setAccessError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
 
@@ -22,7 +24,9 @@ function AdminLayout() {
     setAccess("checking");
     setAccessError(null);
     checkAdmin()
-      .then(({ isAdmin }) => setAccess(isAdmin ? "granted" : "denied"))
+      .then(({ isAdmin, mfaRequired }) =>
+        setAccess(!isAdmin ? "denied" : mfaRequired ? "mfa" : "granted"),
+      )
       .catch((error) => {
         setAccess("error");
         setAccessError(
@@ -49,7 +53,10 @@ function AdminLayout() {
       <AdminLink to="/admin" label="Overview" exact onNavigate={() => setMenu(false)} />
       <AdminLink to="/admin/profiles" label="Member profiles" onNavigate={() => setMenu(false)} />
       <AdminLink to="/admin/new-profile" label="Add a profile" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/memberships" label="Memberships" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/payments" label="Payments" onNavigate={() => setMenu(false)} />
       <AdminLink to="/admin/imams" label="Imams" onNavigate={() => setMenu(false)} />
+      <AdminLink to="/admin/referrals" label="Imam referrals" onNavigate={() => setMenu(false)} />
       <AdminLink
         to="/admin/imam-applications"
         label="Imam applications"
@@ -60,12 +67,32 @@ function AdminLayout() {
         label="Compatibility audit"
         onNavigate={() => setMenu(false)}
       />
+      <AdminLink to="/admin/reports" label="Safety reports" onNavigate={() => setMenu(false)} />
+      <AdminLink
+        to="/admin/check-ins"
+        label="Private check-ins"
+        onNavigate={() => setMenu(false)}
+      />
+      <AdminLink
+        to="/admin/pilot-readiness"
+        label="Pilot readiness"
+        onNavigate={() => setMenu(false)}
+      />
     </>
   );
 
   const systemLinks = (
     <>
+      <AdminLink to="/admin/audit" label="Audit history" onNavigate={() => setMenu(false)} />
       <AdminLink to="/admin/seed" label="Example data" onNavigate={() => setMenu(false)} />
+      <Link
+        to="/security"
+        search={{ next: "/admin" }}
+        onClick={() => setMenu(false)}
+        className="block border-l-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground"
+      >
+        Security
+      </Link>
       <Link
         to="/dashboard"
         onClick={() => setMenu(false)}
@@ -101,10 +128,10 @@ function AdminLayout() {
   return (
     <div className="min-h-screen bg-secondary/25">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-[4.5rem] max-w-[90rem] items-center justify-between px-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-[90rem] items-center justify-between px-4 sm:h-[4.5rem] sm:px-6 lg:px-8">
           <Link to="/admin" className="flex items-center gap-3">
             <BrandName className="text-xl" />
-            <span className="border-l border-border pl-3 text-sm font-medium text-muted-foreground">
+            <span className="hidden border-l border-border pl-3 text-sm font-medium text-muted-foreground sm:inline">
               Admin workspace
             </span>
           </Link>
@@ -115,25 +142,11 @@ function AdminLayout() {
             >
               Member view
             </Link>
-            <button
-              type="button"
-              aria-label={menu ? "Close admin navigation" : "Open admin navigation"}
-              aria-expanded={menu}
-              onClick={() => setMenu((open) => !open)}
-              className="rounded-md border border-border p-2 lg:hidden"
-            >
-              {menu ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <MobileNavigation open={menu} onOpenChange={setMenu} label="Admin navigation">
+              {navigation}
+            </MobileNavigation>
           </div>
         </div>
-        {menu ? (
-          <nav
-            className="border-t border-border bg-card px-5 py-5 lg:hidden"
-            aria-label="Admin navigation"
-          >
-            {navigation}
-          </nav>
-        ) : null}
       </header>
 
       <div className="mx-auto grid max-w-[90rem] lg:grid-cols-[15rem_minmax(0,1fr)]">
@@ -143,7 +156,10 @@ function AdminLayout() {
           </nav>
         </aside>
 
-        <main id="main-content" className="min-w-0 px-5 py-8 sm:px-6 lg:px-10 lg:py-10">
+        <main
+          id="main-content"
+          className="admin-content min-w-0 px-4 py-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10"
+        >
           {access === "checking" ? (
             <AccessPanel title="Checking admin access…">
               <p>Please wait while Mithaq verifies your signed-in account.</p>
@@ -159,6 +175,21 @@ function AdminLayout() {
               >
                 Switch account
               </button>
+            </AccessPanel>
+          ) : null}
+          {access === "mfa" ? (
+            <AccessPanel title="Multi-factor authentication required">
+              <p>
+                Verify a 6-digit authenticator code before opening member data or using admin
+                controls.
+              </p>
+              <Link
+                to="/security"
+                search={{ next: "/admin" }}
+                className="mt-5 inline-flex rounded-md bg-primary px-5 py-2.5 font-medium text-primary-foreground"
+              >
+                Open account security
+              </Link>
             </AccessPanel>
           ) : null}
           {access === "error" ? (
@@ -184,9 +215,16 @@ type AdminPath =
   | "/admin"
   | "/admin/profiles"
   | "/admin/new-profile"
+  | "/admin/memberships"
+  | "/admin/payments"
   | "/admin/imams"
+  | "/admin/referrals"
   | "/admin/imam-applications"
   | "/admin/compatibility"
+  | "/admin/reports"
+  | "/admin/check-ins"
+  | "/admin/pilot-readiness"
+  | "/admin/audit"
   | "/admin/seed";
 
 function AdminLink({

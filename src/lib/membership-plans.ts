@@ -33,11 +33,11 @@ export const PLANS: Record<
 };
 
 export const MEMBERSHIP_BENEFITS = [
-  "AI-matched profiles ranked on deen, intentions and life goals",
-  "Express interest and reveal contact details on a mutual match",
-  "Imam finder with distance in km and a map of the UK",
-  "Request an imam-arranged, wali-attended meeting",
-  "Privacy controls over every field you share",
+  "Private compatibility assessment based on deen, intentions and life goals",
+  "Verified-imam review before an anonymous introduction is shown",
+  "Independent accept or decline decisions without exposing contact details",
+  "Imam-arranged, wali-welcomed meetings after mutual acceptance",
+  "Privacy and safeguarding controls throughout the journey",
 ] as const;
 
 export const formatPrice = (pence: number) => `£${(pence / 100).toFixed(2).replace(/\.00$/, "")}`;

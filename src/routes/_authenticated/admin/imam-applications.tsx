@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+  assignPairingImam,
   listAllPairings,
+  listAssignableImams,
   listImamApplications,
   reviewImamApplication,
   setImamAccountActive,
@@ -20,11 +22,17 @@ function AdminImamApplications() {
   const review = useServerFn(reviewImamApplication);
   const toggle = useServerFn(setImamAccountActive);
   const listPairings = useServerFn(listAllPairings);
+  const listReviewImams = useServerFn(listAssignableImams);
+  const assignImam = useServerFn(assignPairingImam);
 
   const [apps, setApps] = useState<Awaited<ReturnType<typeof listImamApplications>> | null>(null);
   const [pairings, setPairings] = useState<Awaited<ReturnType<typeof listAllPairings>> | null>(
     null,
   );
+  const [reviewImams, setReviewImams] = useState<Awaited<ReturnType<typeof listAssignableImams>>>(
+    [],
+  );
+  const [assignment, setAssignment] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [radius, setRadius] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -36,12 +44,29 @@ function AdminImamApplications() {
     listPairings()
       .then(setPairings)
       .catch(() => undefined);
+    listReviewImams()
+      .then(setReviewImams)
+      .catch(() => undefined);
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const operationalPairings = pairings ?? [];
+  const imamReviewQueue = operationalPairings.filter((pairing) =>
+    ["pending", "imam_review"].includes(pairing.status),
+  ).length;
+  const memberReviewQueue = operationalPairings.filter(
+    (pairing) => pairing.status === "member_review",
+  ).length;
+  const paymentQueue = operationalPairings.filter((pairing) =>
+    ["awaiting_payment", "payment_pending"].includes(pairing.status),
+  ).length;
+  const schedulingQueue = operationalPairings.filter(
+    (pairing) => pairing.status === "ready_to_schedule",
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -162,6 +187,12 @@ function AdminImamApplications() {
 
       <section>
         <h2 className="text-xl text-foreground">All pairings</h2>
+        <div className="mt-3 grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
+          <QueueMetric label="Imam review" value={imamReviewQueue} />
+          <QueueMetric label="Member review" value={memberReviewQueue} />
+          <QueueMetric label="Payment" value={paymentQueue} />
+          <QueueMetric label="Ready to schedule" value={schedulingQueue} />
+        </div>
         <div className="mt-3 overflow-x-auto rounded-2xl border border-border bg-card">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-widest text-muted-foreground">
@@ -169,6 +200,9 @@ function AdminImamApplications() {
                 <th className="px-4 py-2">Members</th>
                 <th className="px-4 py-2">Imam</th>
                 <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Score</th>
+                <th className="px-4 py-2">Responses</th>
+                <th className="px-4 py-2">Payments</th>
                 <th className="px-4 py-2">Meetings</th>
               </tr>
             </thead>
@@ -179,15 +213,72 @@ function AdminImamApplications() {
                     {(p.a?.display_name ?? "Member") + " ↔ " + (p.b?.display_name ?? "Member")}
                   </td>
                   <td className="px-4 py-2 text-muted-foreground">
-                    {p.imam ? `${p.imam.name} · ${p.imam.city}` : "Unassigned"}
+                    {["pending", "imam_review"].includes(p.status) ? (
+                      <div className="flex min-w-64 items-center gap-2">
+                        <select
+                          aria-label={`Assign an imam to pairing ${p.id.slice(0, 8)}`}
+                          value={assignment[p.id] ?? p.imam_id ?? ""}
+                          onChange={(event) =>
+                            setAssignment((current) => ({
+                              ...current,
+                              [p.id]: event.target.value,
+                            }))
+                          }
+                          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs"
+                        >
+                          <option value="">Choose verified imam</option>
+                          {reviewImams.map((imam) => (
+                            <option key={imam.id} value={imam.id}>
+                              {imam.name} · {imam.city} · {imam.active_pairings} active /{" "}
+                              {imam.awaiting_review} review
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={!(assignment[p.id] ?? p.imam_id)}
+                          onClick={async () => {
+                            const imamId = assignment[p.id] ?? p.imam_id;
+                            if (!imamId) return;
+                            setError(null);
+                            try {
+                              await assignImam({
+                                data: { pairing_id: p.id, imam_id: imamId },
+                              });
+                              load();
+                            } catch (caught) {
+                              setError(
+                                caught instanceof Error ? caught.message : "Assignment failed",
+                              );
+                            }
+                          }}
+                          className="rounded-md border border-border px-2 py-1 text-xs disabled:opacity-40"
+                        >
+                          Assign
+                        </button>
+                      </div>
+                    ) : p.imam ? (
+                      `${p.imam.name} · ${p.imam.city}`
+                    ) : (
+                      "Unassigned"
+                    )}
                   </td>
                   <td className="px-4 py-2 capitalize">{p.status}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {p.compatibility_score == null ? "—" : `${p.compatibility_score}%`}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                    A: {p.member_a_response} · B: {p.member_b_response}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                    A: {p.payment_a_status} · B: {p.payment_b_status}
+                  </td>
                   <td className="px-4 py-2 text-muted-foreground">{p.meetups.length}</td>
                 </tr>
               ))}
               {pairings?.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
                     No pairings yet.
                   </td>
                 </tr>
@@ -196,6 +287,15 @@ function AdminImamApplications() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function QueueMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border-b border-border p-4 last:border-b-0 lg:border-b-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }

@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Menu, X } from "lucide-react";
+import { Check } from "lucide-react";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { useEffect, useState } from "react";
 import { BrandName } from "@/components/BrandName";
 import { PairingsSection } from "@/components/PairingsSection";
+import { MeetingCheckIns } from "@/components/MeetingCheckIns";
 import { supabase } from "@/integrations/supabase/client";
 import { amIAdmin } from "@/lib/admin.functions";
 import { amIImam } from "@/lib/imam.functions";
 import { generateMatches, getLatestMatches } from "@/lib/matches.functions";
 import { getMyPrivacy } from "@/lib/privacy.functions";
 import { getMyAnswers } from "@/lib/survey.functions";
+import { getMyTrustSettings } from "@/lib/trust.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -30,27 +33,43 @@ function Dashboard() {
   const scoreProfiles = useServerFn(generateMatches);
   const checkAdmin = useServerFn(amIAdmin);
   const checkImam = useServerFn(amIImam);
+  const fetchTrust = useServerFn(getMyTrustSettings);
 
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
   const [discoverable, setDiscoverable] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [introductionProgress, setIntroductionProgress] =
+    useState<Awaited<ReturnType<typeof getLatestMatches>>>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isImam, setIsImam] = useState(false);
   const [adminStep, setAdminStep] = useState<JourneyStep | null>(null);
   const [openAIConsent, setOpenAIConsent] = useState(false);
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchAnswers(), fetchPrivacy(), fetchLatestMatches(), checkAdmin(), checkImam()])
-      .then(([answers, privacy, latestMatches, admin, imam]) => {
+    Promise.all([
+      fetchAnswers(),
+      fetchPrivacy(),
+      fetchLatestMatches(),
+      checkAdmin(),
+      checkImam(),
+      fetchTrust(),
+    ])
+      .then(([answers, privacy, latestMatches, admin, imam, trust]) => {
         setCompleted(!!answers?.completed);
         setDiscoverable(privacy?.visibility === "discoverable");
         setSubmitted(!!latestMatches);
+        setIntroductionProgress(latestMatches);
         setIsAdmin(!!admin.isAdmin);
         setIsImam(!!imam.isImam);
+        setAdultConfirmed(!!trust.adult_confirmed_at);
+        setPrivacyNoticeAccepted(!!trust.privacy_notice_accepted_at);
+        setOpenAIConsent(!!trust.active_compatibility_consent);
       })
       .catch(async (error) => {
         const detail = error instanceof Error ? error.message : String(error);
@@ -80,8 +99,15 @@ function Dashboard() {
     setRunning(true);
     setMessage(null);
     try {
-      await scoreProfiles({ data: { openaiConsent: true } });
+      await scoreProfiles({
+        data: {
+          openaiConsent: true,
+          adultConfirmed: true,
+          privacyNoticeAccepted: true,
+        },
+      });
       setSubmitted(true);
+      setIntroductionProgress(await fetchLatestMatches());
       setAdminStep(null);
       setMessage(
         "Your profile has been submitted. Suitable compatibility scores of 70% or higher can now move to imam review.",
@@ -120,7 +146,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-between px-5 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:h-[4.5rem] sm:px-6">
           <Link to="/" className="flex items-center gap-3">
             <BrandName className="text-xl" />
             <span className="border-l border-border pl-3 font-arabic text-lg text-primary">
@@ -130,24 +156,16 @@ function Dashboard() {
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             {links}
           </nav>
-          <button
-            type="button"
-            aria-label={menu ? "Close navigation" : "Open navigation"}
-            aria-expanded={menu}
-            onClick={() => setMenu((open) => !open)}
-            className="rounded-md border border-border p-2 md:hidden"
-          >
-            {menu ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <MobileNavigation open={menu} onOpenChange={setMenu} breakpoint="md" label="Your account">
+            <div className="grid gap-2 text-sm">{links}</div>
+          </MobileNavigation>
         </div>
-        {menu && (
-          <nav className="grid gap-4 border-t border-border px-5 py-5 text-sm md:hidden">
-            {links}
-          </nav>
-        )}
       </header>
 
-      <main id="main-content" className="mx-auto max-w-6xl space-y-7 px-5 py-10 sm:px-6 sm:py-12">
+      <main
+        id="main-content"
+        className="mx-auto max-w-6xl space-y-6 px-4 py-7 sm:space-y-7 sm:px-6 sm:py-12"
+      >
         <section className="grid gap-5 border-b border-border pb-9 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -168,15 +186,19 @@ function Dashboard() {
           aria-label="Journey progress"
           className="rounded-lg border border-border bg-card p-5 sm:p-6"
         >
-          <div className="grid grid-cols-4 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-4 sm:gap-4">
             {journeyLabels.map((label, index) => {
               const step = (index + 1) as JourneyStep;
               const done = earnedStep > step;
               const current = activeStep === step;
               return (
-                <div key={label} className="min-w-0 text-center">
+                <div
+                  key={label}
+                  aria-current={current ? "step" : undefined}
+                  className="flex min-w-0 items-center gap-2 text-left sm:block sm:text-center"
+                >
                   <span
-                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md text-sm font-semibold ${
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-semibold sm:mx-auto ${
                       done
                         ? "bg-primary text-primary-foreground"
                         : current
@@ -186,9 +208,7 @@ function Dashboard() {
                   >
                     {done ? <Check size={17} aria-label="Complete" /> : step}
                   </span>
-                  <p className="mt-2 truncate text-[11px] text-muted-foreground sm:text-sm">
-                    {label}
-                  </p>
+                  <p className="text-xs text-muted-foreground sm:mt-2 sm:text-sm">{label}</p>
                 </div>
               );
             })}
@@ -278,6 +298,32 @@ function Dashboard() {
                   The fixed Mithaq rubric provides the primary score. OpenAI supplies a limited
                   secondary review using anonymised multiple-choice answers only.
                 </p>
+                <div className="mt-5 grid gap-3">
+                  <label className="flex items-start gap-3 rounded-md border border-border p-4 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={adultConfirmed}
+                      onChange={(event) => setAdultConfirmed(event.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-input"
+                    />
+                    <span>I confirm that I am at least 18 years old.</span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-md border border-border p-4 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={privacyNoticeAccepted}
+                      onChange={(event) => setPrivacyNoticeAccepted(event.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-input"
+                    />
+                    <span>
+                      I have read and accept the current{" "}
+                      <Link to="/privacy" className="font-medium text-primary underline">
+                        privacy notice
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                </div>
                 <label className="mt-5 flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm">
                   <input
                     type="checkbox"
@@ -286,15 +332,22 @@ function Dashboard() {
                     className="mt-1 h-4 w-4 rounded border-input"
                   />
                   <span>
-                    I consent to Mithaq sending anonymised multiple-choice survey answers to OpenAI
-                    for a 20% compatibility review. Names, contact details, account IDs, and
-                    free-text answers are excluded. The fixed rubric is used if OpenAI is
-                    unavailable.
+                    I consent to private compatibility processing and to Mithaq sending anonymised
+                    multiple-choice survey answers to OpenAI for a limited 20% secondary review.
+                    Names, contact details, account IDs, and free-text answers are excluded. The
+                    fixed rubric is used if OpenAI is unavailable.
                   </span>
                 </label>
                 <button
                   type="button"
-                  disabled={!completed || !discoverable || !openAIConsent || running}
+                  disabled={
+                    !completed ||
+                    !discoverable ||
+                    !adultConfirmed ||
+                    !privacyNoticeAccepted ||
+                    !openAIConsent ||
+                    running
+                  }
                   onClick={beginMatching}
                   className="mt-5 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"
                 >
@@ -314,6 +367,28 @@ function Dashboard() {
                   Matching and profile review remain free. Payment is requested only after both
                   members accept and the imam approves the pairing.
                 </div>
+                {introductionProgress && (
+                  <dl className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-md border border-border p-3">
+                      <dt className="text-xs text-muted-foreground">With an imam</dt>
+                      <dd className="mt-1 text-xl font-semibold text-foreground">
+                        {introductionProgress.awaiting_imam_review}
+                      </dd>
+                    </div>
+                    <div className="rounded-md border border-border p-3">
+                      <dt className="text-xs text-muted-foreground">Ready for your response</dt>
+                      <dd className="mt-1 text-xl font-semibold text-foreground">
+                        {introductionProgress.ready_for_member_review}
+                      </dd>
+                    </div>
+                    <div className="rounded-md border border-border p-3">
+                      <dt className="text-xs text-muted-foreground">Active introductions</dt>
+                      <dd className="mt-1 text-xl font-semibold text-foreground">
+                        {introductionProgress.active_introductions}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
               </>
             )}
           </JourneyCard>
@@ -329,6 +404,7 @@ function Dashboard() {
         )}
 
         {!loading && activeStep === 4 && <PairingsSection />}
+        {!loading && <MeetingCheckIns />}
 
         <section className="border-t border-border pt-8">
           <h2 className="text-xl font-semibold text-foreground">

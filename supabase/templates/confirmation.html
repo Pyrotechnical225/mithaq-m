@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Verify your Mithaq email</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      background: #fbf9f3;
+      color: #132018;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">
+      Confirm your email to finish creating your private Mithaq account.
+    </div>
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      style="background: #fbf9f3"
+    >
+      <tr>
+        <td align="center" style="padding: 24px 12px">
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            style="
+              max-width: 560px;
+              background: #fffefc;
+              border: 1px solid #d7d4cc;
+              border-top: 4px solid #113f28;
+            "
+          >
+            <tr>
+              <td style="padding: 28px 28px 12px; text-align: center">
+                <div
+                  style="font-size: 24px; font-weight: 700; letter-spacing: -0.4px; color: #113f28"
+                >
+                  Mithaq <span style="color: #9f8151">·</span>
+                  <span lang="ar" dir="rtl">ميثاق</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 28px 32px">
+                <h1
+                  style="
+                    margin: 0;
+                    font-size: 28px;
+                    line-height: 1.2;
+                    text-align: center;
+                    color: #132018;
+                  "
+                >
+                  Verify your email
+                </h1>
+                <p
+                  style="
+                    margin: 16px 0 0;
+                    font-size: 15px;
+                    line-height: 1.65;
+                    text-align: center;
+                    color: #535e56;
+                  "
+                >
+                  Confirm your email address to finish creating your private Mithaq account.
+                </p>
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  style="margin-top: 24px"
+                >
+                  <tr>
+                    <td align="center">
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          display: inline-block;
+                          background: #113f28;
+                          color: #fcfaf4;
+                          text-decoration: none;
+                          font-size: 15px;
+                          font-weight: 700;
+                          padding: 14px 24px;
+                          border-radius: 6px;
+                        "
+                        >Verify email address</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 24px 0 0; font-size: 13px; line-height: 1.6; color: #535e56">
+                  This link can only be used once. If you did not create a Mithaq account, you can
+                  safely ignore this email.
+                </p>
+                <p style="margin: 18px 0 0; font-size: 12px; line-height: 1.6; color: #535e56">
+                  If the button does not work, copy and paste this address into your browser:
+                </p>
+                <p
+                  style="margin: 6px 0 0; font-size: 12px; line-height: 1.6; word-break: break-all"
+                >
+                  <a href="{{ .ConfirmationURL }}" style="color: #113f28">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  border-top: 1px solid #d7d4cc;
+                  padding: 18px 28px;
+                  text-align: center;
+                  font-size: 12px;
+                  line-height: 1.5;
+                  color: #535e56;
+                "
+              >
+                Mithaq keeps profiles private during compatibility assessment.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

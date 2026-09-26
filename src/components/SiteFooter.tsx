@@ -17,9 +17,9 @@ const learningLinks = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-card">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8 lg:py-16">
-        <div>
-          <Link to="/" className="inline-flex items-center gap-3" aria-label="Mithaq home">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-8 px-5 py-10 sm:gap-10 sm:py-14 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8 lg:py-16">
+        <div className="col-span-2 sm:col-span-1">
+          <Link to="/" className="inline-flex min-h-11 items-center gap-3" aria-label="Mithaq home">
             <BrandName className="text-[1.4rem]" />
             <span className="border-l border-border pl-3 font-arabic text-lg text-primary">
               ميثاق
@@ -33,9 +33,13 @@ export function SiteFooter() {
 
         <nav aria-label="About Mithaq">
           <p className="text-sm font-semibold text-foreground">About</p>
-          <div className="mt-3 grid gap-2.5 text-sm text-muted-foreground">
+          <div className="mt-2 grid text-sm text-muted-foreground sm:mt-3 sm:gap-2.5">
             {footerLinks.map((link) => (
-              <a key={link.href} href={link.href} className="w-fit hover:text-foreground">
+              <a
+                key={link.href}
+                href={link.href}
+                className="flex min-h-11 w-fit items-center hover:text-foreground sm:min-h-0"
+              >
                 {link.label}
               </a>
             ))}
@@ -44,9 +48,13 @@ export function SiteFooter() {
 
         <nav aria-label="Marriage guidance">
           <p className="text-sm font-semibold text-foreground">Learn</p>
-          <div className="mt-3 grid gap-2.5 text-sm text-muted-foreground">
+          <div className="mt-2 grid text-sm text-muted-foreground sm:mt-3 sm:gap-2.5">
             {learningLinks.map((link) => (
-              <Link key={link.to} to={link.to} className="w-fit hover:text-foreground">
+              <Link
+                key={link.to}
+                to={link.to}
+                className="flex min-h-11 w-fit items-center hover:text-foreground sm:min-h-0"
+              >
                 {link.label}
               </Link>
             ))}
@@ -57,7 +65,12 @@ export function SiteFooter() {
       <div className="border-t border-border px-5 py-5 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:px-3">
           <p>© {new Date().getFullYear()} Mithaq.</p>
-          <p>Private matchmaking. Imam-supported introductions.</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link to="/privacy" className="inline-flex min-h-11 items-center hover:text-foreground">
+              Privacy
+            </Link>
+            <p>Private matchmaking. Imam-supported introductions.</p>
+          </div>
         </div>
       </div>
     </footer>

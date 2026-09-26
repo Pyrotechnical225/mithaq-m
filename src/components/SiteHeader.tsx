@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandName } from "@/components/BrandName";
 
@@ -66,7 +67,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-5 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:h-[4.5rem] lg:px-8">
         <Link to="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
           <BrandName className="text-[1.4rem]" />
           <span className="border-l border-border pl-3 font-arabic text-lg leading-none text-primary">
@@ -150,24 +151,7 @@ export function SiteHeader() {
           ) : null}
         </div>
 
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground lg:hidden"
-          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-navigation"
-          onClick={() => setMobileOpen((current) => !current)}
-        >
-          {mobileOpen ? <X size={19} /> : <Menu size={19} />}
-        </button>
-      </div>
-
-      {mobileOpen ? (
-        <nav
-          id="mobile-navigation"
-          className="border-t border-border bg-card px-5 py-4 shadow-[var(--shadow-soft)] lg:hidden"
-          aria-label="Mobile navigation"
-        >
+        <MobileNavigation open={mobileOpen} onOpenChange={setMobileOpen}>
           <div className="mx-auto grid max-w-7xl gap-1">
             {homeLinks.map((link) => (
               <a
@@ -215,8 +199,8 @@ export function SiteHeader() {
               {signedIn ? "Go to dashboard" : "Sign in or get started"}
             </Link>
           </div>
-        </nav>
-      ) : null}
+        </MobileNavigation>
+      </div>
     </header>
   );
 }
