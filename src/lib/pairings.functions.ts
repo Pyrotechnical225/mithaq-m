@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { meetingPairingIsPayable } from "./payment-invariants";
+import { isPairingVisibleToMembers } from "./pairing-visibility";
 
 // Legacy compatibility endpoint. New pairings are created directly by the
 // private scoring process before any member sees the anonymous introduction.
@@ -69,20 +70,7 @@ export const listMyPairings = createServerFn({ method: "GET" })
     );
     const visiblePairings = pairings.filter((pairing) => {
       const otherId = pairing.user_a === uid ? pairing.user_b : pairing.user_a;
-      const introduced = [
-        "member_review",
-        "awaiting_payment",
-        "payment_pending",
-        "ready_to_schedule",
-        "scheduled",
-        "completed",
-        "approved",
-        "closed",
-      ].includes(pairing.status);
-      const memberDeclined =
-        pairing.status === "declined" &&
-        (pairing.member_a_response !== "pending" || pairing.member_b_response !== "pending");
-      return !blockedUsers.has(otherId) && (introduced || memberDeclined);
+      return !blockedUsers.has(otherId) && isPairingVisibleToMembers(pairing);
     });
     if (visiblePairings.length === 0) return [];
 
@@ -284,6 +272,20 @@ export const startMeetingPackageCheckout = createServerFn({ method: "POST" })
         if (session.status === "open" && typeof session.url === "string") {
           return { id: existing.stripe_session_id, url: session.url };
         }
+        if (session.status === "complete") {
+          // The member already paid this session (e.g. closed the tab before
+          // returning). Record that payment instead of opening a second bill.
+          const { syncMeetingPackagePaymentFromSession } = await import("./membership.server");
+          const synced = await syncMeetingPackagePaymentFromSession(
+            existing.stripe_session_id,
+            context.userId,
+          );
+          throw new Error(
+            synced.ok
+              ? "Your payment has already been received. Please refresh the page."
+              : "Your earlier payment is still being confirmed. Please refresh in a minute before paying again.",
+          );
+        }
         await supabaseAdmin
           .from("meeting_checkout_attempts")
           .update({ status: "expired", updated_at: new Date().toISOString() })
@@ -343,7 +345,13 @@ export const startMeetingPackageCheckout = createServerFn({ method: "POST" })
     }
   });
 
-const ConfirmMeetingPaymentInput = z.object({ session_id: z.string().min(10).max(200) });
+const ConfirmMeetingPaymentInput = z.object({
+  session_id: z
+    .string()
+    .max(200)
+    // Stripe Checkout Session ids only; this value is placed in a Stripe API path.
+    .regex(/^cs_(?:test|live)_[A-Za-z0-9]+$/, "Invalid checkout session"),
+});
 
 export const confirmMeetingPackagePayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -372,12 +380,24 @@ export const respondToMeetup = createServerFn({ method: "POST" })
 
     const { data: pairing } = await supabaseAdmin
       .from("pairings")
-      .select("user_a, user_b")
+      .select("user_a, user_b, status")
       .eq("id", meetup.pairing_id)
       .maybeSingle();
     if (!pairing) throw new Error("Pairing not found");
     if (pairing.user_a !== context.userId && pairing.user_b !== context.userId) {
       throw new Error("Forbidden: only a participant can respond to this meeting");
+    }
+    // Members answer a proposed meeting once. Without this a member could
+    // revive a cancelled meeting or flip their answer repeatedly, which also
+    // re-sent notification emails every time.
+    const mySide = pairing.user_a === context.userId ? "a" : "b";
+    const myResponse = mySide === "a" ? meetup.response_a : meetup.response_b;
+    if (
+      meetup.status !== "proposed" ||
+      myResponse !== "pending" ||
+      !["ready_to_schedule", "scheduled"].includes(pairing.status)
+    ) {
+      throw new Error("This meeting is no longer awaiting your response");
     }
 
     const otherUserId = pairing.user_a === context.userId ? pairing.user_b : pairing.user_a;
@@ -392,7 +412,7 @@ export const respondToMeetup = createServerFn({ method: "POST" })
     if (blockError) throw new Error(blockError.message);
     if (activeBlock) throw new Error("Meeting responses are unavailable for a blocked pairing");
 
-    const side = pairing.user_a === context.userId ? "a" : "b";
+    const side = mySide;
     const value = data.accept ? "accepted" : "declined";
     const responseA = side === "a" ? value : meetup.response_a;
     const responseB = side === "b" ? value : meetup.response_b;
@@ -407,10 +427,12 @@ export const respondToMeetup = createServerFn({ method: "POST" })
       .from("meetups")
       .update({ response_a: responseA, response_b: responseB, status })
       .eq("id", data.meetup_id)
+      .eq("status", "proposed")
+      .eq(side === "a" ? "response_a" : "response_b", "pending")
       .select("id")
       .maybeSingle();
     if (updErr) throw new Error(updErr.message);
-    if (!updated) throw new Error("Meeting could not be updated");
+    if (!updated) throw new Error("This meeting is no longer awaiting your response");
     return { ok: true, status };
   });
 

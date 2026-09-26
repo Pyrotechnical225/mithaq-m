@@ -382,7 +382,9 @@ function toCsv(rows: Record<string, unknown>[]): string {
   const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
   const esc = (v: unknown) => {
     if (v === null || v === undefined) return "";
-    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    const raw = typeof v === "object" ? JSON.stringify(v) : String(v);
+    // Stop spreadsheet apps treating member-entered text as a formula.
+    const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
     return `"${s.replace(/"/g, '""')}"`;
   };
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");

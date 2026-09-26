@@ -369,6 +369,11 @@ export async function syncSubscriptionFromSession(sessionId: string, expectedUse
   if (expectedUserId && userId !== expectedUserId) {
     return { ok: false as const, reason: "mismatch" as const };
   }
+  // Only membership checkouts grant membership. A meeting-package payment
+  // must never be replayed here to create an open-ended "active" membership.
+  if (session.mode !== "subscription" || meta.kind === "meeting_package") {
+    return { ok: false as const, reason: "invalid_session" as const };
+  }
   // A completed Checkout Session can still be unpaid when an asynchronous
   // payment method is pending. Access begins only after Stripe reports paid.
   if (!checkoutSessionIsPaid(session)) {
@@ -452,7 +457,9 @@ export async function syncMeetingPackagePaymentFromSession(
       attempt.amount_pence !== selected.amountPence ||
       attempt.currency !== "gbp" ||
       attempt.stripe_session_id !== sessionId ||
-      !["open", "paid"].includes(attempt.status)
+      // A session Stripe reports as paid is authoritative even if the local
+      // attempt was already marked expired.
+      !["open", "paid", "expired"].includes(attempt.status)
     ) {
       return { ok: false as const, reason: "checkout_attempt_mismatch" as const };
     }
@@ -514,7 +521,11 @@ export async function syncMeetingPackagePaymentFromSession(
   const { error: pairingError } = await supabaseAdmin
     .from("pairings")
     .update({ ...paymentPatch, status: otherPaid ? "ready_to_schedule" : "payment_pending" })
-    .eq("id", pairing.id);
+    .eq("id", pairing.id)
+    // Never reopen a pairing that was closed after the checks above. When both
+    // members pay concurrently the database trigger
+    // pairings_ready_when_both_paid still moves it to ready_to_schedule.
+    .in("status", ["awaiting_payment", "payment_pending", "ready_to_schedule"]);
   if (pairingError) throw new Error(`Could not update payment status: ${pairingError.message}`);
 
   if (metadata.attempt_id) {
@@ -603,11 +614,16 @@ export async function claimStripeEvent(id: string, type: string) {
     if (error.code === "23505") {
       const { data: existing, error: existingError } = await supabaseAdmin
         .from("stripe_events")
-        .select("attempts,status")
+        .select("attempts,status,last_attempt_at")
         .eq("id", id)
         .maybeSingle();
       if (existingError) throw new Error("Could not inspect Stripe event state");
-      if (existing?.status !== "failed") return false;
+      // A delivery that crashed mid-processing leaves the row "processing";
+      // let a later retry take it over instead of acknowledging it forever.
+      const staleProcessing =
+        existing?.status === "processing" &&
+        Date.now() - new Date(existing.last_attempt_at ?? 0).getTime() > 5 * 60 * 1000;
+      if (existing?.status !== "failed" && !staleProcessing) return false;
       const { data: reclaimed, error: reclaimError } = await supabaseAdmin
         .from("stripe_events")
         .update({
@@ -617,7 +633,7 @@ export async function claimStripeEvent(id: string, type: string) {
           last_error: null,
         })
         .eq("id", id)
-        .eq("status", "failed")
+        .eq("status", existing.status)
         .select("id")
         .maybeSingle();
       if (reclaimError) throw new Error("Could not retry Stripe event");
@@ -629,11 +645,15 @@ export async function claimStripeEvent(id: string, type: string) {
   return true;
 }
 
-export async function completeStripeEvent(id: string) {
+export async function completeStripeEvent(id: string, note?: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin
     .from("stripe_events")
-    .update({ status: "processed", processed_at: new Date().toISOString(), last_error: null })
+    .update({
+      status: "processed",
+      processed_at: new Date().toISOString(),
+      last_error: note ?? null,
+    })
     .eq("id", id)
     .eq("status", "processing");
   if (error) throw new Error("Could not complete Stripe event ledger entry");

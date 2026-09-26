@@ -232,3 +232,50 @@ test("the Resend send-email hook links to the callback with token hashes and is 
     /grant execute on function public\.send_auth_email_via_resend\(jsonb\) to supabase_auth_admin/,
   );
 });
+
+test("members only see pairings after the imam introduces them", () => {
+  const { isPairingVisibleToMembers } = loadAuthModule("pairing-visibility");
+  const base = { member_a_response: "pending", member_b_response: "pending" };
+  assert.equal(isPairingVisibleToMembers({ ...base, status: "imam_review" }), false);
+  assert.equal(isPairingVisibleToMembers({ ...base, status: "declined" }), false);
+  assert.equal(
+    isPairingVisibleToMembers({ ...base, status: "declined", member_a_response: "declined" }),
+    true,
+  );
+  for (const status of ["member_review", "awaiting_payment", "ready_to_schedule", "closed"]) {
+    assert.equal(isPairingVisibleToMembers({ ...base, status }), true, status);
+  }
+});
+
+test("security fixes stay in place", () => {
+  const read = (file) => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const pairings = read("src/lib/pairings.functions.ts");
+  const trust = read("src/lib/trust.functions.ts");
+  const imam = read("src/lib/imam.functions.ts");
+  const membership = read("src/lib/membership.server.ts");
+  const webhook = read("src/routes/api/public/stripe-webhook.ts");
+  const auth = read("src/routes/auth.tsx");
+
+  // Meeting responses: only a pending answer on a proposed meeting.
+  assert.match(pairings, /meetup\.status !== "proposed" \|\|\s*myResponse !== "pending"/);
+  // Paying again after a completed checkout records it instead of billing twice.
+  assert.match(pairings, /session\.status === "complete"/);
+  // Checkout session ids are validated before being used in a Stripe URL.
+  assert.match(pairings, /cs_\(\?:test\|live\)_/);
+  // Exports and safety actions follow the same visibility rule as the app.
+  assert.match(trust, /isPairingVisibleToMembers\(row\)/);
+  assert.match(trust, /!isPairingVisibleToMembers\(data\)/);
+  assert.doesNotMatch(trust, /results: removeOtherMemberIds/);
+  // Imams only get contact details once a meeting can be arranged.
+  assert.match(imam, /shareContact \? \(p\?\.contact_email \?\? null\) : null/);
+  // Meeting-package sessions cannot grant membership.
+  assert.match(
+    membership,
+    /session\.mode !== "subscription" \|\| meta\.kind === "meeting_package"/,
+  );
+  // Permanent webhook outcomes are acknowledged, not retried for days.
+  assert.match(webhook, /PERMANENT_REASONS\.has\(reason\)/);
+  // Admin login leaves the sign-in page after success.
+  assert.match(auth, /const ADMIN_EMAIL = "admin@mithaq\.uk"/);
+  assert.match(auth, /window\.location\.href = next \?\? "\/admin"/);
+});

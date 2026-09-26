@@ -165,8 +165,13 @@ export const listImamPairings = createServerFn({ method: "GET" })
       (surveys ?? []).map((s) => [s.user_id, (s.answers ?? {}) as Record<string, unknown>]),
     );
 
-    const summarise = (id: string) => {
+    // Contact details are only needed to arrange a paid meeting. Before both
+    // members have accepted and paid (or after the introduction ends) the
+    // imam sees the anonymised profile only.
+    const CONTACT_STATUSES = new Set(["ready_to_schedule", "scheduled", "completed"]);
+    const summarise = (id: string, status: string) => {
       const p = profMap.get(id);
+      const shareContact = CONTACT_STATUSES.has(status);
       const a = answerMap.get(id) ?? {};
       const km =
         imam?.lat && imam?.lng && p?.location_lat && p?.location_lng
@@ -174,9 +179,9 @@ export const listImamPairings = createServerFn({ method: "GET" })
           : null;
       return {
         display_name: p?.display_name ?? "Member",
-        contact_email: p?.contact_email ?? null,
+        contact_email: shareContact ? (p?.contact_email ?? null) : null,
         uk_city: p?.uk_city ?? null,
-        uk_postcode: p?.uk_postcode ?? null,
+        uk_postcode: shareContact ? (p?.uk_postcode ?? null) : null,
         distance_km: km,
         age: a["1"] ?? null,
         gender: a["2"] ?? null,
@@ -202,8 +207,8 @@ export const listImamPairings = createServerFn({ method: "GET" })
         packageA && packageB ? Math.min(packageA.meeting_count, packageB.meeting_count) : 0;
       return {
         ...pairing,
-        member_a: { side: "a" as const, ...summarise(userA) },
-        member_b: { side: "b" as const, ...summarise(userB) },
+        member_a: { side: "a" as const, ...summarise(userA, p.status) },
+        member_b: { side: "b" as const, ...summarise(userB, p.status) },
         meeting_package_a: packageA,
         meeting_package_b: packageB,
         shared_meeting_allowance: sharedAllowance,

@@ -9,6 +9,21 @@ import { createFileRoute } from "@tanstack/react-router";
  * customer.subscription.created/updated/deleted,
  * invoice.payment_succeeded, invoice.payment_failed.
  */
+const PERMANENT_REASONS = new Set([
+  "invalid_session",
+  "invalid_session_state",
+  "invalid_amount",
+  "wrong_user",
+  "mismatch",
+  "no_user",
+  "no_subscription",
+  "not_paid",
+  "checkout_attempt_mismatch",
+  "pairing_not_found",
+  "pairing_not_payable",
+  "pairing_blocked",
+]);
+
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
@@ -56,10 +71,19 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
 
         const obj = event.data?.object ?? {};
 
+        // Outcomes that retrying can never change. Stripe retries a 5xx for
+        // days, so these are acknowledged and recorded for an admin instead.
+        let reviewNote: string | null = null;
         try {
           const ensureSynced = (result: { ok: boolean; reason?: string }) => {
-            if (!result.ok)
-              throw new Error(`Subscription sync failed: ${result.reason ?? "unknown"}`);
+            if (result.ok) return;
+            const reason = result.reason ?? "unknown";
+            if (PERMANENT_REASONS.has(reason)) {
+              reviewNote = `needs_review: ${event.type} ${reason}`;
+              console.error(`stripe webhook ${event.id} needs admin review: ${reviewNote}`);
+              return;
+            }
+            throw new Error(`Stripe sync failed: ${reason}`);
           };
           switch (event.type) {
             case "checkout.session.completed":
@@ -99,7 +123,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             default:
               break;
           }
-          await completeStripeEvent(event.id);
+          await completeStripeEvent(event.id, reviewNote ?? undefined);
         } catch (err) {
           console.error(`stripe webhook ${event.type} failed:`, err);
           await failStripeEvent(event.id, err);

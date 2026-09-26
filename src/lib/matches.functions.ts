@@ -140,11 +140,33 @@ For every candidate, return a 0-100 compatibility score plus concise strengths a
   }
 }
 
+const MIN_MINUTES_BETWEEN_RUNS = 10;
+
 export const generateMatches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => GenerateMatchesInput.parse(input))
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Each run calls the paid AI review and can create imam work, so one
+    // member cannot trigger it back-to-back.
+    const { data: lastRun, error: lastRunError } = await supabaseAdmin
+      .from("matches")
+      .select("created_at")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastRunError) throw new Error("Compatibility scoring could not start. Please try again.");
+    if (
+      lastRun &&
+      Date.now() - new Date(lastRun.created_at).getTime() < MIN_MINUTES_BETWEEN_RUNS * 60_000
+    ) {
+      throw new Error(
+        `Your profile was scored recently. Please wait ${MIN_MINUTES_BETWEEN_RUNS} minutes before submitting again.`,
+      );
+    }
+
     const now = new Date().toISOString();
     const { error: consentError } = await supabaseAdmin.from("member_consents").upsert(
       {

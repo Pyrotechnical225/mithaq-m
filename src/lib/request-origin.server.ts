@@ -1,4 +1,4 @@
-const DEFAULT_ORIGIN = "https://meet-haq.vercel.app";
+const DEFAULT_ORIGIN = "https://www.mithaq.uk";
 
 function configuredOrigin() {
   const value = process.env.PUBLIC_SITE_URL?.trim();

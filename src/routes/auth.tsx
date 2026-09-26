@@ -8,7 +8,7 @@ import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import { safeRelativePath } from "@/lib/safe-navigation";
 
-const ADMIN_EMAIL = "admin@mithaq.com";
+const ADMIN_EMAIL = "admin@mithaq.uk";
 // Google is live by default now that the production Supabase provider is configured.
 // A deployment can still disable the button explicitly during an incident.
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH !== "false";
@@ -69,11 +69,14 @@ function AuthPage() {
     try {
       const normalized = email.trim().toLowerCase();
       if (mode === "signin" && (normalized === "admin" || normalized === ADMIN_EMAIL)) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email: ADMIN_EMAIL,
           password,
         });
         if (signInError) throw signInError;
+        // Without this the page stayed on the sign-in form after a successful
+        // admin login, so every retry signed in again.
+        if (data.session) window.location.href = next ?? "/admin";
         return;
       }
 

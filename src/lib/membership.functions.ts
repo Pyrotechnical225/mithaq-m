@@ -133,7 +133,13 @@ export const startCheckout = createServerFn({ method: "POST" })
 // Called when the member returns from Stripe with ?checkout=success&session_id=…
 // so membership activates even if the webhook is delayed or misconfigured.
 // The session is only applied when it belongs to the signed-in user.
-const ConfirmInput = z.object({ session_id: z.string().min(10).max(200) });
+const ConfirmInput = z.object({
+  session_id: z
+    .string()
+    .max(200)
+    // Stripe Checkout Session ids only; this value is placed in a Stripe API path.
+    .regex(/^cs_(?:test|live)_[A-Za-z0-9]+$/, "Invalid checkout session"),
+});
 
 export const confirmCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

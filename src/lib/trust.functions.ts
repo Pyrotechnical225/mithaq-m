@@ -5,6 +5,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NotificationDatabase } from "@/lib/notification-database.types";
+import { isPairingVisibleToMembers } from "@/lib/pairing-visibility";
 
 export { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 
@@ -116,11 +117,16 @@ async function assertPairingRelationship(pairingId: string, currentUserId: strin
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("pairings")
-    .select("id,user_a,user_b")
+    .select("id,user_a,user_b,status,member_a_response,member_b_response")
     .eq("id", pairingId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data || ![data.user_a, data.user_b].includes(currentUserId)) {
+  // A pairing still with the imam must not be confirmable by members at all.
+  if (
+    !data ||
+    ![data.user_a, data.user_b].includes(currentUserId) ||
+    !isPairingVisibleToMembers(data)
+  ) {
     throw new Error("This safety action is not available for that member");
   }
   const otherUserId = data.user_a === currentUserId ? data.user_b : data.user_a;
@@ -242,16 +248,22 @@ export const unblockMember = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-function removeOtherMemberIds(value: Json): Json {
-  if (Array.isArray(value)) return value.map(removeOtherMemberIds);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => key !== "match_user_id" && key !== "candidate_id")
-        .map(([key, item]) => [key, removeOtherMemberIds(item ?? null)]),
-    );
-  }
-  return value;
+// A compatibility run lists other members' anonymised survey details, which
+// belong to them, not to the person exporting. Export only what was done with
+// this member's own answers.
+function summariseCompatibilityRun(row: { id: string; results: Json; created_at: string }) {
+  const results =
+    row.results && typeof row.results === "object" && !Array.isArray(row.results)
+      ? row.results
+      : {};
+  const matches = Array.isArray(results.matches) ? results.matches : [];
+  const method = typeof results.scoring_method === "string" ? results.scoring_method : null;
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    scoring_method: method?.replace(/-with-openai-review$/, "-with-ai-review") ?? null,
+    suitable_results: matches.length,
+  };
 }
 
 export const exportMyData = createServerFn({ method: "POST" })
@@ -327,10 +339,14 @@ export const exportMyData = createServerFn({ method: "POST" })
       if (result.error) throw new Error(result.error.message);
     }
 
-    const pairingRows = (pairings.data ?? []).map(({ user_a, user_b, ...row }) => ({
-      ...row,
-      my_side: user_a === uid ? "a" : "b",
-    }));
+    // Only introductions the member has actually been shown. Pairings still
+    // with the imam (or declined by the imam) stay private, as in the app.
+    const pairingRows = (pairings.data ?? [])
+      .filter((row) => isPairingVisibleToMembers(row))
+      .map(({ user_a, user_b, imam_id: _imamId, ...row }) => ({
+        ...row,
+        my_side: user_a === uid ? "a" : "b",
+      }));
     const pairingIds = pairingRows.map((row) => row.id);
     const [meetups, purchases] = pairingIds.length
       ? await Promise.all([
@@ -377,10 +393,7 @@ export const exportMyData = createServerFn({ method: "POST" })
       survey: survey.data,
       privacy: privacy.data,
       consents: consent.data,
-      compatibility_runs: (matches.data ?? []).map((row) => ({
-        ...row,
-        results: removeOtherMemberIds(row.results),
-      })),
+      compatibility_runs: (matches.data ?? []).map((row) => summariseCompatibilityRun(row)),
       interests: (interests.data ?? []).map(({ from_user, to_user, ...row }) => ({
         ...row,
         direction: from_user === uid ? "sent" : "received",
