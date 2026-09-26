@@ -283,7 +283,7 @@ function AuthPage() {
                     type="checkbox"
                     checked={adultConfirmed}
                     onChange={(event) => setAdultConfirmed(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-input"
+                    className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-input accent-primary"
                   />
                   <span>I confirm that I am at least 18 years old.</span>
                 </label>
@@ -292,7 +292,7 @@ function AuthPage() {
                     type="checkbox"
                     checked={privacyAccepted}
                     onChange={(event) => setPrivacyAccepted(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-input"
+                    className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-input accent-primary"
                   />
                   <span>
                     I have read and accept the{" "}

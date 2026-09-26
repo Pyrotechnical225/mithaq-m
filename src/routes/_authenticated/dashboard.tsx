@@ -49,6 +49,7 @@ function Dashboard() {
   const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showScoringHint, setShowScoringHint] = useState(false);
   const [menu, setMenu] = useState(false);
 
   useEffect(() => {
@@ -95,7 +96,21 @@ function Dashboard() {
     navigate({ to: "/" });
   };
 
+  const missingBeforeScoring = [
+    !completed && "complete your survey",
+    !discoverable && "turn on private compatibility scoring in Privacy & settings",
+    !adultConfirmed && "confirm you are 18 or older",
+    !privacyNoticeAccepted && "accept the privacy notice",
+    !openAIConsent && "give consent for compatibility processing",
+  ].filter((item): item is string => Boolean(item));
+
   const beginMatching = async () => {
+    if (running) return;
+    if (missingBeforeScoring.length > 0) {
+      setShowScoringHint(true);
+      return;
+    }
+    setShowScoringHint(false);
     setRunning(true);
     setMessage(null);
     try {
@@ -295,25 +310,25 @@ function Dashboard() {
             {activeStep === 3 && (
               <>
                 <p className="text-muted-foreground">
-                  The fixed Mithaq rubric provides the primary score. OpenAI supplies a limited
-                  secondary review using anonymised multiple-choice answers only.
+                  The fixed Mithaq rubric provides the primary score. An AI review adds a limited
+                  secondary check using anonymised multiple-choice answers only.
                 </p>
                 <div className="mt-5 grid gap-3">
-                  <label className="flex items-start gap-3 rounded-md border border-border p-4 text-sm">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-4 text-sm">
                     <input
                       type="checkbox"
                       checked={adultConfirmed}
                       onChange={(event) => setAdultConfirmed(event.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-input"
+                      className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-input accent-primary"
                     />
                     <span>I confirm that I am at least 18 years old.</span>
                   </label>
-                  <label className="flex items-start gap-3 rounded-md border border-border p-4 text-sm">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-4 text-sm">
                     <input
                       type="checkbox"
                       checked={privacyNoticeAccepted}
                       onChange={(event) => setPrivacyNoticeAccepted(event.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-input"
+                      className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-input accent-primary"
                     />
                     <span>
                       I have read and accept the current{" "}
@@ -324,35 +339,38 @@ function Dashboard() {
                     </span>
                   </label>
                 </div>
-                <label className="mt-5 flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm">
+                <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm">
                   <input
                     type="checkbox"
                     checked={openAIConsent}
                     onChange={(event) => setOpenAIConsent(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-input"
+                    className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-input accent-primary"
                   />
                   <span>
-                    I consent to private compatibility processing and to Mithaq sending anonymised
-                    multiple-choice survey answers to OpenAI for a limited 20% secondary review.
+                    I consent to private compatibility processing, including an AI review of my
+                    anonymised multiple-choice survey answers for a limited 20% secondary score.
                     Names, contact details, account IDs, and free-text answers are excluded. The
-                    fixed rubric is used if OpenAI is unavailable.
+                    fixed rubric is used if the AI review is unavailable.
                   </span>
                 </label>
                 <button
                   type="button"
-                  disabled={
-                    !completed ||
-                    !discoverable ||
-                    !adultConfirmed ||
-                    !privacyNoticeAccepted ||
-                    !openAIConsent ||
-                    running
-                  }
+                  disabled={running}
+                  aria-describedby={showScoringHint ? "scoring-hint" : undefined}
                   onClick={beginMatching}
-                  className="mt-5 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"
+                  className="mt-5 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                 >
                   {running ? "Scoring compatibility…" : "Submit for compatibility scoring"}
                 </button>
+                {showScoringHint && missingBeforeScoring.length > 0 && (
+                  <p
+                    id="scoring-hint"
+                    role="alert"
+                    className="mt-3 border-l-2 border-destructive bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                  >
+                    Before submitting, please {joinWithAnd(missingBeforeScoring)}.
+                  </p>
+                )}
               </>
             )}
 
@@ -451,4 +469,9 @@ function JourneyCard({ step, children }: { step: JourneyStep; children: React.Re
       <div className="mt-4 max-w-3xl leading-7">{children}</div>
     </section>
   );
+}
+
+function joinWithAnd(items: string[]) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

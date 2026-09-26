@@ -45,14 +45,14 @@ function CompatibilityComparisonPage() {
       <div>
         <h1 className="text-3xl text-foreground">Compatibility comparison</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Audit how Mithaq combines the fixed rubric (80%) with the anonymised OpenAI review (20%).
-          A missing OpenAI score means the safe fixed-rubric fallback was used.
+          Audit how Mithaq combines the fixed rubric (80%) with the anonymised AI review (20%). A
+          missing AI score means the safe fixed-rubric fallback was used.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Metric label="Stored results" value={String(summary.total)} />
-        <Metric label="OpenAI reviewed" value={String(summary.reviewed)} />
+        <Metric label="AI reviewed" value={String(summary.reviewed)} />
         <Metric
           label="Average AI / rubric gap"
           value={`${summary.averageDifference.toFixed(1)} pts`}
@@ -66,7 +66,7 @@ function CompatibilityComparisonPage() {
               <th className="px-4 py-3">Generated</th>
               <th className="px-4 py-3">Member → candidate</th>
               <th className="px-4 py-3 text-center">Fixed 80%</th>
-              <th className="px-4 py-3 text-center">OpenAI 20%</th>
+              <th className="px-4 py-3 text-center">AI review 20%</th>
               <th className="px-4 py-3 text-center">Final</th>
               <th className="px-4 py-3">Audit</th>
             </tr>
@@ -91,7 +91,9 @@ function CompatibilityComparisonPage() {
                   </span>
                 </td>
                 <td className="max-w-sm px-4 py-4 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">{row.scoring_method}</p>
+                  <p className="font-medium text-foreground">
+                    {formatScoringMethod(row.scoring_method)}
+                  </p>
                   {row.strengths ? <p className="mt-1">{row.strengths}</p> : null}
                   {row.considerations ? <p className="mt-1">{row.considerations}</p> : null}
                 </td>
@@ -118,4 +120,10 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
     </div>
   );
+}
+
+function formatScoringMethod(method: string | null | undefined) {
+  if (!method) return "Unknown";
+  // Stored method IDs predate the provider-neutral wording; never show a vendor name.
+  return method.replace(/-with-openai-review$/, " + AI review");
 }

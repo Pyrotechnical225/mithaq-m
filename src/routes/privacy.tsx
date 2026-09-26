@@ -83,13 +83,14 @@ function PrivacyNotice() {
             </p>
           </NoticeSection>
 
-          <NoticeSection title="Compatibility processing and OpenAI">
+          <NoticeSection title="Compatibility processing and AI review">
             <p>
               Compatibility scoring begins only after an adult member accepts this notice and gives
               explicit compatibility consent. The fixed Mithaq rubric remains the main score. When
-              separately consented, anonymised multiple-choice answers may be sent to OpenAI for a
-              limited secondary review. Names, contact details, account IDs, and free-text answers
-              are excluded, and the request asks the provider not to store model input.
+              separately consented, anonymised multiple-choice answers may be sent to an AI service
+              provider for a limited secondary review. Names, contact details, account IDs, and
+              free-text answers are excluded, and the request asks the provider not to store model
+              input.
             </p>
             <p>
               Consent can be withdrawn in Privacy & settings. Withdrawal stops future processing; it
@@ -104,7 +105,8 @@ function PrivacyNotice() {
                 Vercel hosts the web application, functions, analytics, and performance metrics.
               </li>
               <li>
-                OpenAI is used only for the consented, bounded compatibility review described above.
+                An AI service provider is used only for the consented, bounded compatibility review
+                described above.
               </li>
               <li>Stripe processes payments after the relevant member and imam approvals.</li>
             </ul>

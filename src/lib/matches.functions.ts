@@ -245,8 +245,8 @@ export const generateMatches = createServerFn({ method: "POST" })
           considerations:
             review?.considerations ??
             (openAIConfigured
-              ? "OpenAI was temporarily unavailable, so this result uses the fixed rubric only."
-              : "This result uses the fixed rubric; OpenAI review is not configured."),
+              ? "The AI review was temporarily unavailable, so this result uses the fixed rubric only."
+              : "This result uses the fixed rubric; the AI review is not configured."),
           age: candidate.answers["1"] ?? null,
           location:
             privacyByUser.get(candidate.real_id)?.show_location === false
