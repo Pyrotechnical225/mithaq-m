@@ -1,5 +1,19 @@
 # Mithaq auth, Google and SES setup
 
+> **Update, September 2026:** Supabase Auth email now goes through Resend (connected with
+> Resend's Supabase integration, sending from the verified `mithaq.uk` domain), not SES. The SES
+> SMTP section below is kept for history only.
+>
+> The email templates now link with a token hash instead of `{{ .ConfirmationURL }}`, so a link
+> opened on a different device or browser still works. In Supabase → Authentication → Email
+> Templates, paste:
+>
+> - **Confirm sign up**: subject `Verify your email — Mithaq`, body `supabase/templates/confirmation.html`
+> - **Reset password**: subject `Reset your password — Mithaq`, body `supabase/templates/recovery.html`
+>
+> Links are hard-coded to `https://www.mithaq.uk/auth/callback` so they never depend on the Site URL
+> setting.
+
 ## What is implemented in the app
 
 - Email sign-up now uses the canonical callback `https://www.mithaq.uk/auth/callback`.

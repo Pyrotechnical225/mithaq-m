@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthErrorMessage } from "@/lib/auth-error";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/verify-email")({
@@ -72,7 +73,7 @@ function VerifyEmail() {
     }
     const { error } = await supabase.auth.resend({
       type: "signup",
-      email,
+      email: email.trim().toLowerCase(),
       options: {
         emailRedirectTo: getAuthCallbackUrl({
           configuredSiteUrl: import.meta.env.VITE_PUBLIC_SITE_URL,
@@ -80,7 +81,7 @@ function VerifyEmail() {
       },
     });
     if (error) {
-      setError(error.message);
+      setError(getAuthErrorMessage(error, "resend"));
       setStatus("error");
     } else {
       setStatus("sent");
@@ -151,7 +152,8 @@ function VerifyEmail() {
               className="mt-4 w-full rounded-md border border-input bg-background px-4 py-3 text-center text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
             />
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Open the link in the same browser if possible. Check spam if it is not in your inbox.
+              You can open the link on this device or another one. If it isn&rsquo;t in your inbox
+              within a couple of minutes, check your spam folder.
             </p>
           </>
         )}

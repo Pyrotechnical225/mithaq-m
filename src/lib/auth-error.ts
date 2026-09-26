@@ -1,7 +1,9 @@
-export type AuthAction = "signin" | "signup" | "oauth" | "password_reset";
+export type AuthAction = "signin" | "signup" | "oauth" | "password_reset" | "resend";
 
 const SIGNUP_EMAIL_DELIVERY_MESSAGE =
-  "We couldn’t send your verification email. Email sign-up is temporarily unavailable while delivery is being activated. Continue with Google or try again later.";
+  "We couldn’t send your verification email just now. Please try again in a few minutes, or continue with Google.";
+const EMAIL_RATE_LIMIT_MESSAGE =
+  "We’ve sent several emails recently. Please wait a few minutes before asking for another one, and check your spam folder in the meantime.";
 
 const INVALID_CREDENTIALS_MESSAGE = "The email or password is wrong. Please try again.";
 const SIGNUP_REQUIREMENTS_MESSAGE =
@@ -12,6 +14,7 @@ const FALLBACK_CODES: Record<AuthAction, string> = {
   signup: "signup_unknown",
   oauth: "google_signin_unknown",
   password_reset: "password_reset_unknown",
+  resend: "resend_unknown",
 };
 
 function stringProperty(value: unknown, property: string) {
@@ -50,8 +53,17 @@ export function getAuthErrorMessage(error: unknown, action: AuthAction) {
 
   if (action === "signup" && message === SIGNUP_REQUIREMENTS_MESSAGE) return message;
 
+  const sendsEmail = action === "signup" || action === "resend" || action === "password_reset";
+  const isEmailRateLimited =
+    sendsEmail &&
+    (code === "over_email_send_rate_limit" ||
+      code === "http_429" ||
+      /rate limit|security purposes.*after \d+ seconds/i.test(message));
+
+  if (isEmailRateLimited) return EMAIL_RATE_LIMIT_MESSAGE;
+
   const isEmailDeliveryFailure =
-    action === "signup" &&
+    (action === "signup" || action === "resend") &&
     (code === "unexpected_failure" ||
       isOpaqueMessage(message) ||
       /(?:confirmation|verification).*email|smtp|could not send email/i.test(message));

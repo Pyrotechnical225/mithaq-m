@@ -46,16 +46,36 @@ test("auth callbacks use the canonical production site and keep redirects local"
   );
 });
 
-test("verification email is responsive, branded, and never points to localhost", () => {
-  const html = fs.readFileSync(
-    path.join(__dirname, "../supabase/templates/confirmation.html"),
-    "utf8",
+test("auth emails are responsive, branded, and never point to localhost", () => {
+  for (const template of ["confirmation.html", "recovery.html"]) {
+    const html = fs.readFileSync(path.join(__dirname, "../supabase/templates", template), "utf8");
+    assert.match(html, /name="viewport"/);
+    assert.match(html, /Mithaq/);
+    assert.doesNotMatch(html, /localhost|127\.0\.0\.1|<script\b|<form\b/i);
+    assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
+  }
+});
+
+test("auth email links use token hashes so they work on any device", () => {
+  const read = (name) =>
+    fs.readFileSync(path.join(__dirname, "../supabase/templates", name), "utf8");
+  const confirmation = read("confirmation.html");
+  const recovery = read("recovery.html");
+
+  // A ConfirmationURL link carries a PKCE code that only the original browser can redeem.
+  assert.doesNotMatch(confirmation + recovery, /\.ConfirmationURL/);
+  assert.match(
+    confirmation,
+    /href="https:\/\/www\.mithaq\.uk\/auth\/callback\?token_hash={{ \.TokenHash }}&amp;type=email"/,
   );
-  assert.match(html, /name="viewport"/);
-  assert.match(html, /Mithaq/);
-  assert.match(html, /{{ \.ConfirmationURL }}/);
-  assert.doesNotMatch(html, /localhost|127\.0\.0\.1|<script\b|<form\b/i);
-  assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
+  assert.match(
+    recovery,
+    /href="https:\/\/www\.mithaq\.uk\/auth\/callback\?token_hash={{ \.TokenHash }}&amp;type=recovery&amp;next=%2Freset-password"/,
+  );
+
+  const callback = fs.readFileSync(path.join(__dirname, "../src/routes/auth.callback.tsx"), "utf8");
+  assert.match(callback, /verifyOtp\(/);
+  assert.match(callback, /searchParams\.get\("type"\) === "recovery"/);
 });
 
 test("the auth layout renders callback child routes instead of masking them", () => {
@@ -68,11 +88,11 @@ test("signup replaces opaque email delivery failures with useful guidance", () =
   const { getAuthErrorMessage } = loadAuthModule("auth-error");
   assert.equal(
     getAuthErrorMessage(new Error("{}"), "signup"),
-    "We couldn’t send your verification email. Email sign-up is temporarily unavailable while delivery is being activated. Continue with Google or try again later.",
+    "We couldn’t send your verification email just now. Please try again in a few minutes, or continue with Google.",
   );
   assert.equal(
     getAuthErrorMessage({ message: "Unexpected error", code: "unexpected_failure" }, "signup"),
-    "We couldn’t send your verification email. Email sign-up is temporarily unavailable while delivery is being activated. Continue with Google or try again later.",
+    "We couldn’t send your verification email just now. Please try again in a few minutes, or continue with Google.",
   );
 });
 
@@ -129,11 +149,46 @@ test("auth callback owns the PKCE exchange and never leaks verifier internals", 
   assert.match(callback, /started\.current/);
   assert.match(callback, /auth\.getSession\(\)/);
   const result = getAuthCallbackError(null, "PKCE code verifier not found in storage");
-  assert.equal(result.status, "invalid");
-  assert.equal(result.title, "Please start sign-in again");
+  assert.equal(result.status, "verified-signin");
+  assert.equal(result.title, "Please sign in to continue");
+  assert.doesNotMatch(result.body, /pkce|verifier/i);
+
+  const reset = getAuthCallbackError(null, "PKCE code verifier not found in storage", {
+    isPasswordRecovery: true,
+  });
+  assert.equal(reset.status, "reset-elsewhere");
+  assert.doesNotMatch(reset.body, /pkce|verifier/i);
+
+  const expiredReset = getAuthCallbackError("otp_expired", null, { isPasswordRecovery: true });
+  assert.equal(expiredReset.status, "expired");
+  assert.equal(expiredReset.title, "This reset link has expired");
+});
+
+test("email rate limits get a clear wait-and-retry message", () => {
+  const { getAuthErrorMessage } = loadAuthModule("auth-error");
+  const expected =
+    "We’ve sent several emails recently. Please wait a few minutes before asking for another one, and check your spam folder in the meantime.";
   assert.equal(
-    result.body,
-    "This sign-in attempt could not be completed in this browser. Return to sign in and try again.",
+    getAuthErrorMessage(
+      { message: "email rate limit exceeded", code: "over_email_send_rate_limit", status: 429 },
+      "signup",
+    ),
+    expected,
+  );
+  assert.equal(
+    getAuthErrorMessage(
+      new Error("For security purposes, you can only request this after 42 seconds."),
+      "resend",
+    ),
+    expected,
+  );
+  assert.equal(
+    getAuthErrorMessage({ message: "Too many requests", status: 429 }, "password_reset"),
+    expected,
+  );
+  assert.equal(
+    getAuthErrorMessage({ message: "email rate limit exceeded", status: 429 }, "signin"),
+    "Something went wrong. Error code: http_429",
   );
 });
 

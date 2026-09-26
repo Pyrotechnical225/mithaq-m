@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>Verify your Mithaq email</title>
+    <title>Reset your Mithaq password</title>
   </head>
   <body
     style="
@@ -15,7 +15,7 @@
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">
-      Confirm your email to finish creating your private Mithaq account.
+      Use this link to choose a new password for your Mithaq account.
     </div>
     <table
       role="presentation"
@@ -59,7 +59,7 @@
                     color: #132018;
                   "
                 >
-                  Verify your email
+                  Reset your password
                 </h1>
                 <p
                   style="
@@ -70,7 +70,8 @@
                     color: #535e56;
                   "
                 >
-                  Confirm your email address to finish creating your private Mithaq account.
+                  Someone asked to reset the password for your Mithaq account. Use the button below
+                  to choose a new one.
                 </p>
                 <table
                   role="presentation"
@@ -82,7 +83,7 @@
                   <tr>
                     <td align="center">
                       <a
-                        href="https://www.mithaq.uk/auth/callback?token_hash={{ .TokenHash }}&amp;type=email"
+                        href="https://www.mithaq.uk/auth/callback?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=%2Freset-password"
                         style="
                           display: inline-block;
                           background: #113f28;
@@ -93,14 +94,14 @@
                           padding: 14px 24px;
                           border-radius: 6px;
                         "
-                        >Verify email address</a
+                        >Choose a new password</a
                       >
                     </td>
                   </tr>
                 </table>
                 <p style="margin: 24px 0 0; font-size: 13px; line-height: 1.6; color: #535e56">
-                  This link works once, on any device. If you did not create a Mithaq account, you
-                  can safely ignore this email.
+                  This link works once and expires soon. If you did not ask to reset your password,
+                  you can safely ignore this email — your password will not change.
                 </p>
                 <p style="margin: 18px 0 0; font-size: 12px; line-height: 1.6; color: #535e56">
                   If the button does not work, copy and paste this address into your browser:
@@ -109,10 +110,10 @@
                   style="margin: 6px 0 0; font-size: 12px; line-height: 1.6; word-break: break-all"
                 >
                   <a
-                    href="https://www.mithaq.uk/auth/callback?token_hash={{ .TokenHash }}&amp;type=email"
+                    href="https://www.mithaq.uk/auth/callback?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=%2Freset-password"
                     style="color: #113f28"
                     >https://www.mithaq.uk/auth/callback?token_hash={{ .TokenHash
-                    }}&amp;type=email</a
+                    }}&amp;type=recovery&amp;next=%2Freset-password</a
                   >
                 </p>
               </td>
