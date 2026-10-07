@@ -87,6 +87,8 @@ function withSecurityHeaders(request: Request, response: Response): Response {
   headers.set("Referrer-Policy", "no-referrer");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
   if (request.headers.has("authorization")) headers.set("Cache-Control", "no-store");
   return new Response(response.body, {
     status: response.status,

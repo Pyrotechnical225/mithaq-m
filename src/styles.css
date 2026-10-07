@@ -270,3 +270,169 @@
     white-space: normal;
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Motion
+ * Press feedback on everything pressable, hover only where a real pointer
+ * exists, slow decorative idle motion, and scroll reveals. Everything uses
+ * transform/opacity only. The prefers-reduced-motion rule above shortens all
+ * of it to a single instant frame.
+ * ---------------------------------------------------------------------- */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Unlayered on purpose: it must win over Tailwind's transition-colors so the
+ * press scale animates on every button and button-styled link. */
+:where(button, a[class*="rounded"], [role="button"], summary) {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
+    transform, translate, scale;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-out);
+}
+
+:where(button, a[class*="rounded"], [role="button"], summary):not(:disabled):active {
+  scale: 0.97;
+  transition-duration: 100ms;
+}
+
+/* Arrow icons inside links and buttons nudge forward on hover. */
+:where(a, button) svg.lucide-arrow-right {
+  transition: translate 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(a, button):hover svg.lucide-arrow-right {
+    translate: 3px 0;
+  }
+
+  /* Solid call-to-action buttons lift slightly. */
+  :where(a, button)[class~="bg-primary"]:not(:disabled):hover {
+    box-shadow: 0 6px 18px -8px color-mix(in oklch, var(--color-primary) 70%, transparent);
+    translate: 0 -1px;
+  }
+
+  .hover-lift {
+    transition:
+      translate 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out),
+      background-color 200ms ease;
+  }
+  .hover-lift:hover {
+    translate: 0 -3px;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .hover-row {
+    transition: background-color 200ms ease;
+  }
+  .hover-row:hover {
+    background-color: color-mix(in oklch, var(--color-secondary) 60%, transparent);
+  }
+  .hover-row .hover-row-number {
+    transition: translate 220ms var(--ease-out);
+  }
+  .hover-row:hover .hover-row-number {
+    translate: 4px 0;
+  }
+}
+
+/* Idle motion: slow, small and decorative. */
+@keyframes mithaq-float {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes mithaq-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, -6%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-3%, 4%, 0) scale(0.96);
+  }
+}
+
+@keyframes mithaq-breathe {
+  from {
+    opacity: 0.75;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes mithaq-pulse-ring {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@utility idle-float {
+  animation: mithaq-float 6s var(--ease-in-out) infinite alternate;
+}
+
+@utility idle-breathe {
+  animation: mithaq-breathe 4s ease-in-out infinite alternate;
+}
+
+.idle-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: mithaq-drift 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.idle-pulse {
+  position: relative;
+}
+.idle-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  animation: mithaq-pulse-ring 2.8s var(--ease-out) infinite;
+}
+
+/* Scroll reveal. Only hidden once JavaScript has marked the page ready, so
+ * content is always visible if scripts fail or have not loaded yet. */
+html.reveal-ready [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(14px);
+}
+html.reveal-ready [data-reveal] {
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 600ms var(--ease-out);
+  transition-delay: calc(var(--reveal-index, 0) * 70ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-orb {
+    animation: none;
+  }
+  html.reveal-ready [data-reveal]:not([data-revealed]) {
+    opacity: 1;
+    transform: none;
+  }
+}

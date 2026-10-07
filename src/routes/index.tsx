@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +91,8 @@ const trustPoints = [
   },
 ] as const;
 
+const revealIndex = (index: number) => ({ "--reveal-index": index }) as CSSProperties;
+
 function TrustPreview() {
   return (
     <aside className="overflow-hidden rounded-lg border border-border bg-card sm:shadow-[var(--shadow-elevated)]">
@@ -107,9 +109,9 @@ function TrustPreview() {
         {trustPoints.map((point) => (
           <li
             key={point.number}
-            className="grid grid-cols-[2rem_1fr] gap-4 border-b border-border py-5 last:border-0"
+            className="hover-row -mx-6 grid grid-cols-[2rem_1fr] gap-4 border-b border-border px-6 py-5 last:border-0 sm:-mx-8 sm:px-8"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-primary">
+            <span className="hover-row-number flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-primary">
               {point.number}
             </span>
             <div>
@@ -121,7 +123,9 @@ function TrustPreview() {
       </ol>
 
       <div className="flex items-start gap-3 border-t border-border bg-secondary/55 px-6 py-4 text-sm text-secondary-foreground sm:px-8">
-        <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+        <span className="idle-pulse mt-0.5 inline-flex shrink-0 rounded-full text-primary">
+          <ShieldCheck size={18} aria-hidden="true" />
+        </span>
         <p>Private by default, with wali and family involvement welcomed.</p>
       </div>
     </aside>
@@ -147,8 +151,15 @@ function Index() {
       <SiteHeader />
 
       <main id="main-content">
-        <section className="border-b border-border">
-          <div className="mx-auto grid max-w-7xl items-center gap-9 px-5 py-10 sm:gap-14 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+        <section className="relative overflow-hidden border-b border-border">
+          <div aria-hidden="true">
+            <span className="idle-orb -left-32 -top-24 h-[26rem] w-[26rem] bg-primary/15" />
+            <span
+              className="idle-orb -right-24 top-1/3 h-[22rem] w-[22rem] bg-gold/25"
+              style={{ animationDelay: "-11s" }}
+            />
+          </div>
+          <div className="relative mx-auto grid max-w-7xl items-center gap-9 px-5 py-10 sm:gap-14 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
             <div>
               <p className="text-sm font-semibold text-primary">Meet haq in marriage</p>
               <h1 className="mt-4 max-w-3xl text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.045em] text-foreground sm:mt-5 sm:text-6xl sm:leading-[1.02] lg:text-[4.5rem]">
@@ -166,11 +177,7 @@ function Index() {
                   className="group inline-flex items-center justify-center gap-3 rounded-md bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition hover:bg-primary/90"
                 >
                   {ctaLabel}
-                  <ArrowRight
-                    size={18}
-                    className="transition-transform group-hover:translate-x-0.5"
-                    aria-hidden="true"
-                  />
+                  <ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <a
                   href="#how"
@@ -190,13 +197,15 @@ function Index() {
               </div>
             </div>
 
-            <TrustPreview />
+            <div className="lg:idle-float">
+              <TrustPreview />
+            </div>
           </div>
         </section>
 
         <section id="principles" className="scroll-mt-28 bg-card">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:gap-12 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-24">
-            <div className="max-w-xl">
+            <div className="max-w-xl" data-reveal>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                 Our principles
               </p>
@@ -210,12 +219,16 @@ function Index() {
             </div>
 
             <div>
-              {principles.map((principle) => (
+              {principles.map((principle, index) => (
                 <article
                   key={principle.title}
-                  className="grid gap-3 border-t border-border py-7 sm:grid-cols-[4rem_1fr] sm:gap-6"
+                  data-reveal
+                  style={revealIndex(index)}
+                  className="hover-row -mx-3 grid gap-3 rounded-md border-t border-border px-3 py-7 sm:grid-cols-[4rem_1fr] sm:gap-6"
                 >
-                  <span className="text-sm font-semibold text-primary">{principle.number}</span>
+                  <span className="hover-row-number text-sm font-semibold text-primary">
+                    {principle.number}
+                  </span>
                   <div>
                     <h3 className="text-xl font-semibold text-foreground">{principle.title}</h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -230,7 +243,10 @@ function Index() {
 
         <section id="how" className="scroll-mt-28 border-y border-border bg-secondary/45">
           <div className="mx-auto max-w-7xl px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div
+              data-reveal
+              className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+            >
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                   How it works
@@ -248,12 +264,16 @@ function Index() {
             </div>
 
             <ol className="mt-12 grid border-y border-border md:grid-cols-4 md:divide-x md:divide-border">
-              {steps.map((step) => (
+              {steps.map((step, index) => (
                 <li
                   key={step.number}
+                  data-reveal
+                  style={revealIndex(index)}
                   className="border-b border-border px-0 py-7 last:border-0 md:border-b-0 md:px-6 md:first:pl-0 md:last:pr-0"
                 >
-                  <span className="text-sm font-semibold text-primary">0{step.number}</span>
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-card text-sm font-semibold text-primary ring-1 ring-border">
+                    {step.number}
+                  </span>
                   <h3 className="mt-4 text-xl font-semibold text-foreground">{step.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">{step.body}</p>
                 </li>
@@ -265,7 +285,7 @@ function Index() {
         <section id="after-acceptance" className="scroll-mt-28 border-b border-border bg-card">
           <div className="mx-auto max-w-7xl px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
             <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="max-w-xl">
+              <div className="max-w-xl" data-reveal>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                   After mutual acceptance
                 </p>
@@ -284,9 +304,11 @@ function Index() {
               </div>
 
               <div className="grid self-start border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
-                {meetingPackages.map((meetingPackage) => (
+                {meetingPackages.map((meetingPackage, index) => (
                   <div
                     key={meetingPackage.label}
+                    data-reveal
+                    style={revealIndex(index)}
                     className="border-t border-border py-6 first:border-t-0 sm:border-t-0 sm:px-6 sm:first:pl-0 sm:last:pr-0"
                   >
                     <p className="text-sm text-muted-foreground">{meetingPackage.label}</p>
@@ -302,7 +324,7 @@ function Index() {
 
         <section id="safety" className="scroll-mt-28 px-5 py-12 sm:py-20 lg:px-8 lg:py-24">
           <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg bg-primary text-primary-foreground lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="p-5 sm:p-12 lg:p-14">
+            <div className="p-5 sm:p-12 lg:p-14" data-reveal>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">
                 Safety and dignity
               </p>
@@ -310,18 +332,13 @@ function Index() {
                 Privacy throughout your journey.
               </h2>
               <p className="mt-5 max-w-xl leading-7 text-primary-foreground/75">
-                Your profile is never placed in a public catalogue. You choose when it can enter
-                private matching and which details may appear anonymously. Compatibility is assessed
-                away from public view, while names and contact details remain protected as a
-                suitable introduction moves through the supervised process.
+                No public catalogue, no swiping and no open inboxes. You decide when your profile
+                enters private matching, and names and contact details stay protected until both
+                people have accepted an introduction.
               </p>
-              <h3 className="mt-8 text-lg font-semibold">How we do it better</h3>
-              <p className="mt-3 max-w-xl leading-7 text-primary-foreground/75">
-                Instead of swiping, open inboxes, and unrestricted profile browsing, Mithaq uses
-                controlled introductions. Only available members enter matching, both people review
-                an introduction independently, and no meeting moves forward without mutual
-                acceptance. Where an optional AI review is used with consent, it receives bounded,
-                anonymised answers—not names, contact details, account IDs, or free-text responses.
+              <p className="mt-4 max-w-xl leading-7 text-primary-foreground/75">
+                If you consent to the optional AI review, it only sees anonymised multiple-choice
+                answers — never your name, contact details or written responses.
               </p>
               <Link
                 to="/privacy"
@@ -331,9 +348,11 @@ function Index() {
               </Link>
             </div>
             <div className="grid content-center border-t border-white/15 px-5 py-4 sm:px-12 sm:py-5 lg:border-l lg:border-t-0 lg:px-14">
-              {safeguards.map((item) => (
+              {safeguards.map((item, index) => (
                 <div
                   key={item}
+                  data-reveal
+                  style={revealIndex(index)}
                   className="flex items-start gap-3 border-b border-white/15 py-4 last:border-0"
                 >
                   <Check
@@ -349,9 +368,16 @@ function Index() {
         </section>
 
         <section className="border-t border-border bg-card">
-          <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-16 sm:grid-cols-[1fr_auto] lg:px-8 lg:py-20">
+          <div
+            data-reveal
+            className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-16 sm:grid-cols-[1fr_auto] lg:px-8 lg:py-20"
+          >
             <div>
-              <p dir="rtl" lang="ar" className="font-arabic text-3xl text-primary">
+              <p
+                dir="rtl"
+                lang="ar"
+                className="idle-breathe w-fit font-arabic text-3xl text-primary"
+              >
                 ميثاق
               </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">

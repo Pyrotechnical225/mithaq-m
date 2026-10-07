@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertWithinRateLimit } from "./rate-limit.server";
 import { meetingPairingIsPayable } from "./payment-invariants";
 import { isPairingVisibleToMembers } from "./pairing-visibility";
 
@@ -556,6 +557,14 @@ export const postPairingMessage = createServerFn({ method: "POST" })
     if (isAssignedImam && context.claims?.aal !== "aal2") {
       throw new Error("Multi-factor authentication is required for imam messages");
     }
+    await assertWithinRateLimit(supabaseAdmin, {
+      table: "pairing_messages",
+      userColumn: "sender_id",
+      userId: context.userId,
+      windowMinutes: 10,
+      max: 20,
+      message: "You are sending messages very quickly. Please wait a few minutes.",
+    });
     if (
       ![
         "awaiting_payment",

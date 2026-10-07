@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /imam
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /survey
+Disallow: /membership
+Disallow: /security
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /auth/callback
+Disallow: /api/
+
+Sitemap: https://www.mithaq.uk/sitemap.xml

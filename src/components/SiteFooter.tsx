@@ -12,6 +12,7 @@ const learningLinks = [
   { to: "/mahr", label: "Mahr" },
   { to: "/wali", label: "Wali" },
   { to: "/halal-relationships", label: "Halal relationships" },
+  { to: "/community", label: "Community" },
 ] as const;
 
 export function SiteFooter() {

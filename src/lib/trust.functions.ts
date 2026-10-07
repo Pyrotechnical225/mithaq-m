@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { assertWithinRateLimit } from "@/lib/rate-limit.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
@@ -194,6 +195,15 @@ export const reportMember = createServerFn({ method: "POST" })
       data.pairing_id,
       context.userId,
     );
+    await assertWithinRateLimit(supabaseAdmin, {
+      table: "member_reports",
+      userColumn: "reporter_user_id",
+      userId: context.userId,
+      windowMinutes: 24 * 60,
+      max: 5,
+      message:
+        "You have submitted several reports today. Our team will review them; for urgent safety concerns contact the police.",
+    });
     const { data: report, error } = await supabaseAdmin
       .from("member_reports")
       .insert({

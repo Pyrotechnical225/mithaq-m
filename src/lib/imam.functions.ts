@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertWithinRateLimit } from "./rate-limit.server";
 
 type ImamAuthContext = { userId: string; claims?: Record<string, unknown> };
 
@@ -81,6 +82,14 @@ export const applyAsImam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => ApplyInput.parse(input))
   .handler(async ({ data, context }) => {
+    await assertWithinRateLimit(context.supabase, {
+      table: "imam_applications",
+      userColumn: "user_id",
+      userId: context.userId,
+      windowMinutes: 24 * 60,
+      max: 3,
+      message: "You have already applied recently. We will review your application soon.",
+    });
     const { error } = await context.supabase.from("imam_applications").insert({
       user_id: context.userId,
       name: data.name.trim(),
@@ -398,6 +407,14 @@ export const submitImamReferral = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabaseAdmin, account } = await requireVerifiedImamAccount(context);
+    await assertWithinRateLimit(supabaseAdmin, {
+      table: "imam_referrals",
+      userColumn: "referrer_user_id",
+      userId: context.userId,
+      windowMinutes: 24 * 60,
+      max: 10,
+      message: "You have sent the maximum number of referrals for today. Please try tomorrow.",
+    });
     const email = data.email.toLowerCase();
     const { data: existing, error: lookupError } = await supabaseAdmin
       .from("imam_referrals")

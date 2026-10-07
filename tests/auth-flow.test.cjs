@@ -293,3 +293,24 @@ test("refunds, chargebacks and account deletion checks stay in place", () => {
   assert.match(privacy, /context\.claims as \{ amr\?: unknown \}/);
   assert.doesNotMatch(privacy, /claims as \{ iat\?: unknown \}/);
 });
+
+test("abuse limits, 404 page and crawler files stay in place", () => {
+  const read = (file) => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  for (const [file, table] of [
+    ["src/lib/pairings.functions.ts", "pairing_messages"],
+    ["src/lib/trust.functions.ts", "member_reports"],
+    ["src/lib/imam.functions.ts", "imam_applications"],
+    ["src/lib/imam.functions.ts", "imam_referrals"],
+  ]) {
+    assert.match(read(file), new RegExp(`assertWithinRateLimit\\([^)]*\\{\\s*table: "${table}"`));
+  }
+  const root = read("src/routes/__root.tsx");
+  assert.match(root, /notFoundComponent: NotFoundComponent/);
+  assert.match(root, /Page not found — Mithaq/);
+  const robots = read("public/robots.txt");
+  assert.match(robots, /Disallow: \/admin/);
+  assert.match(robots, /Sitemap: https:\/\/www\.mithaq\.uk\/sitemap\.xml/);
+  assert.match(read("public/sitemap.xml"), /<loc>https:\/\/www\.mithaq\.uk\/<\/loc>/);
+  // Motion must respect people who ask for less of it.
+  assert.match(read("src/styles.css"), /prefers-reduced-motion: reduce[\s\S]*\.idle-orb/);
+});
