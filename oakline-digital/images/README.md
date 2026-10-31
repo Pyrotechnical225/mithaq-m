@@ -1,6 +1,7 @@
 # Photos for the mock-ups
 
-The floating website, social and ad mock-ups load photos from this folder. Any file that is
+The floating website, social and ad mock-ups load photos from this folder. All 18 are in place
+(credits in `CREDITS.md`). Any file that is
 missing is skipped and the drawn illustration shows instead, so the site never looks broken.
 
 Use photos you are licensed to use (for example from Unsplash or Pexels, both free for

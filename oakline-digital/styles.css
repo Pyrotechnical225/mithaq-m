@@ -2800,10 +2800,13 @@ em {
 .ph-grid i,
 .ad-art,
 .cx-post-img,
-.cx-story,
 .cx-ad-bolt,
 .cx-phone-grid i {
   position: relative;
+  overflow: hidden;
+}
+/* .cx-story is already absolutely positioned; it only needs clipping */
+.cx-story {
   overflow: hidden;
 }
 .photo {
@@ -2830,7 +2833,7 @@ em {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(8, 27, 21, 0.62), rgba(8, 27, 21, 0) 55%);
+  background: linear-gradient(180deg, rgba(8, 27, 21, 0.82), rgba(8, 27, 21, 0.1) 62%);
 }
 .cx-story.has-photo::before {
   background: linear-gradient(180deg, rgba(47, 22, 40, 0.15), rgba(47, 22, 40, 0.7));
@@ -2846,6 +2849,7 @@ em {
 .concept-salon .cx-site > .photo {
   left: auto;
   width: 46%;
+  filter: brightness(0.62) saturate(0.85);
   mask-image: linear-gradient(90deg, transparent, #000 35%);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 35%);
 }

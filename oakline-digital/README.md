@@ -43,8 +43,9 @@ Set the publish directory to `oakline-digital` and leave the build command empty
    JSON `POST` (for example a Formspree form). Until then the form checks what visitors type but
    sends nothing, and says so. It posts `name`, `email`, `business`, `phone`, `services` (array)
    and `message`.
-3. **Photos.** Add the photos listed in `images/README.md`. Missing photos fall back to the
-   drawn illustrations.
+3. **Photos.** The mock-ups use 18 free Unsplash photos, credited in `images/CREDITS.md`.
+   To swap one, replace the file with the same name (see `images/README.md`). A missing photo
+   falls back to the drawn illustration.
 4. **Privacy notice.** Fill in the [bracketed] details in `privacy.html` and delete the draft box.
 5. **Business details.** No address, company number or terms have been added.
 6. **Free online check-up.** The site offers it, so make sure you can deliver it (see the
