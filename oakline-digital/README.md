@@ -36,9 +36,9 @@ Set the publish directory to `oakline-digital` and leave the build command empty
 
 ## Before going live
 
-1. **Contact details.** In `site-config.js`, set your real email, phone and WhatsApp number.
-   The phone number there now (07700 900123) is an Ofcom drama number that never connects.
-   Set any value to `""` to hide it.
+1. **Contact details.** `site-config.js` holds the phone (07491 774468) and WhatsApp number.
+   The email is empty, so it is hidden everywhere; add it there once the mailbox exists. If the
+   number isn't on WhatsApp, set `whatsapp` to `""`.
 2. **Connect the enquiry form.** Set `formEndpoint` in `site-config.js` to a URL that accepts a
    JSON `POST` (for example a Formspree form). Until then the form checks what visitors type but
    sends nothing, and says so. It posts `name`, `email`, `business`, `phone`, `services` (array)

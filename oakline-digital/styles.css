@@ -3330,3 +3330,45 @@ em {
 .notfound-links a:hover {
   border-color: var(--gold);
 }
+
+/* "Also available" add-ons: a lighter list under the main grid */
+@media (min-width: 1000px) {
+  .addons-more {
+    grid-column: 2;
+  }
+}
+.addons-more ul {
+  display: grid;
+}
+.addons-more li {
+  display: grid;
+  gap: 0.25rem 1.5rem;
+  padding-block: 1rem;
+  border-top: 1px solid var(--line-light);
+}
+.addons-more li:last-child {
+  border-bottom: 1px solid var(--line-light);
+}
+@media (min-width: 720px) {
+  .addons-more li {
+    grid-template-columns: 15rem minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+}
+.addons-more h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+.addons-more p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+.addons-more .text-link {
+  justify-self: start;
+  min-height: 36px;
+}

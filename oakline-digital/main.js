@@ -342,7 +342,7 @@
       } else {
         // No matching option: note the interest in the message box if it is still empty
         var msg = document.getElementById("f-message");
-        if (msg && !msg.value.trim()) msg.value = "I’m interested in " + value.toLowerCase() + ". ";
+        if (msg && !msg.value.trim()) msg.value = "I’m interested in: " + value + ". ";
       }
     });
   });
@@ -520,7 +520,10 @@
       showResult(
         "<h3>Your enquiry has not been sent yet</h3>" +
           "<p>This form isn’t connected to an inbox yet, so nothing has left your browser. " +
-          "You can copy your message below and keep it for when enquiries open.</p>" +
+          "You can copy your message below" +
+          (CONFIG.phone
+            ? ", or call us on " + escapeHtml(CONFIG.phone) + " to talk it through.</p>"
+            : " and keep it for when enquiries open.</p>") +
           "<pre data-copy-text>" +
           escapeHtml(text) +
           "</pre>" +
