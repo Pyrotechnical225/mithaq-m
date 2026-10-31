@@ -9,10 +9,15 @@ This folder is separate from the Mithaq app in the rest of this repository and d
 
 | File          | What it is                                              |
 | ------------- | ------------------------------------------------------- |
-| `index.html`  | All page content and copy                               |
-| `styles.css`  | Design tokens (colours, fonts, spacing) and all styling |
-| `main.js`     | Menu, diagram, FAQ accordion and enquiry form           |
-| `favicon.svg` | Browser tab icon                                        |
+| `index.html`     | Home page                                               |
+| `faq.html`       | Full FAQ page with search and topics                    |
+| `privacy.html`   | Privacy notice (draft: fill in the bracketed details)   |
+| `404.html`       | "Page not found" page (most static hosts use it automatically) |
+| `site-config.js` | **Your email, phone, WhatsApp and form address: edit this one file** |
+| `styles.css`     | Design tokens (colours, fonts, spacing) and all styling |
+| `main.js`        | Menu, diagram, FAQs, search, contact links and form     |
+| `images/`        | Photos for the mock-ups (see `images/README.md`)        |
+| `favicon.svg`    | Browser tab icon                                        |
 
 ## Preview locally
 
@@ -31,16 +36,24 @@ Set the publish directory to `oakline-digital` and leave the build command empty
 
 ## Before going live
 
-1. **Connect the enquiry form.** At the top of `main.js`, set `FORM_ENDPOINT` to a URL that
-   accepts a JSON `POST` (for example a Formspree form, or your own serverless function).
-   Until you do, the form checks what visitors type but sends nothing, and it tells them so.
-   The form posts: `name`, `email`, `business`, `phone` (may be empty), `services` (array)
+1. **Contact details.** In `site-config.js`, set your real email, phone and WhatsApp number.
+   The phone number there now (07700 900123) is an Ofcom drama number that never connects.
+   Set any value to `""` to hide it.
+2. **Connect the enquiry form.** Set `formEndpoint` in `site-config.js` to a URL that accepts a
+   JSON `POST` (for example a Formspree form). Until then the form checks what visitors type but
+   sends nothing, and says so. It posts `name`, `email`, `business`, `phone`, `services` (array)
    and `message`.
-2. **Contact email.** `info@oaklinedigital.co.uk` has not been confirmed as a working mailbox,
-   so it is not shown. Once it works, set `CONTACT_EMAIL` in `main.js` and it appears in the
-   footer.
-3. **Business details.** No address, company number or legal pages have been added. Add a
-   privacy notice before collecting enquiries (the form collects personal data).
-4. **Concept projects.** Hearth & Crumb, Little Fig Café, Brightwire Electrical and Studio
-   Sable are fictional and labelled as concepts. Replace them with real client work (with
-   permission) when you have it.
+3. **Photos.** Add the photos listed in `images/README.md`. Missing photos fall back to the
+   drawn illustrations.
+4. **Privacy notice.** Fill in the [bracketed] details in `privacy.html` and delete the draft box.
+5. **Business details.** No address, company number or terms have been added.
+6. **Free online check-up.** The site offers it, so make sure you can deliver it (see the
+   business plan).
+7. **Concept projects.** Hearth & Crumb, Little Fig Café, Brightwire Electrical and Studio Sable
+   are fictional and labelled as concepts. Replace them with real client work (with permission)
+   when you have it.
+8. **404 page.** It uses root paths (`/styles.css`), so it works when the site is served from the
+   domain root, which is how Netlify, Vercel and Cloudflare Pages serve it.
+
+The business plan is in `../oakline-business/business-plan.md` (kept outside this folder so it is
+never published with the site).

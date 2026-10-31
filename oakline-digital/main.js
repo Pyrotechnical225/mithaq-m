@@ -2,30 +2,84 @@
 (function () {
   "use strict";
 
-  /* ------------------------------------------------------------------
-   * CONFIGURATION
-   * FORM_ENDPOINT: a URL that accepts a JSON POST (for example a Formspree
-   *   form endpoint, or your own serverless function). While this is empty,
-   *   the enquiry form validates normally but does NOT send anything, and it
-   *   tells the visitor so.
-   * CONTACT_EMAIL: shown in the footer once you have a confirmed, working
-   *   mailbox. Leave empty to hide it.
-   * ------------------------------------------------------------------ */
-  var FORM_ENDPOINT = "";
-  var CONTACT_EMAIL = "";
+  /* Settings live in site-config.js (loaded before this file). */
+  var CONFIG = window.OAKLINE_CONFIG || {};
+  var FORM_ENDPOINT = CONFIG.formEndpoint || "";
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- Year + optional email ---------- */
+  /* ---------- Year ---------- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = String(new Date().getFullYear());
   });
-  if (CONTACT_EMAIL) {
-    document.querySelectorAll("[data-contact-email]").forEach(function (el) {
-      el.textContent = CONTACT_EMAIL;
-      el.hidden = false;
+
+  /* ---------- Contact details (email, phone, WhatsApp) ---------- */
+  var contactLinks = {
+    email: CONFIG.email ? "mailto:" + CONFIG.email : "",
+    phone: CONFIG.phone ? "tel:" + CONFIG.phone.replace(/[^\d+]/g, "").replace(/^0/, "+44") : "",
+    whatsapp: CONFIG.whatsapp ? "https://wa.me/" + String(CONFIG.whatsapp).replace(/\D/g, "") : "",
+  };
+  var contactText = {
+    email: CONFIG.email,
+    phone: CONFIG.phone,
+    whatsapp: "Message us on WhatsApp",
+  };
+  document.querySelectorAll("[data-contact]").forEach(function (el) {
+    var kind = el.getAttribute("data-contact");
+    if (!contactLinks[kind]) return;
+    el.href = contactLinks[kind];
+    if (kind === "whatsapp") {
+      el.target = "_blank";
+      el.rel = "noopener";
+    }
+    if (!el.hasAttribute("data-keep-text")) el.textContent = contactText[kind];
+  });
+  document.querySelectorAll("[data-contact-row]").forEach(function (row) {
+    row.hidden = !contactLinks[row.getAttribute("data-contact-row")];
+  });
+  document.querySelectorAll("[data-copy-contact]").forEach(function (btn) {
+    var value = CONFIG[btn.getAttribute("data-copy-contact")];
+    if (!value) return;
+    btn.addEventListener("click", function () {
+      var label = btn.textContent;
+      var done = function (text) {
+        btn.textContent = text;
+        setTimeout(function () {
+          btn.textContent = label;
+        }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(
+          function () {
+            done("Copied");
+          },
+          function () {
+            done("Copy failed");
+          },
+        );
+      } else {
+        done("Copy failed");
+      }
     });
-  }
+  });
+
+  /* ---------- Photos: reveal when loaded, keep illustration if missing ---------- */
+  document.querySelectorAll("[data-photo]").forEach(function (img) {
+    var ok = function () {
+      img.classList.add("is-loaded");
+      img.parentElement.classList.add("has-photo");
+    };
+    var fail = function () {
+      img.remove();
+    };
+    if (img.complete) {
+      if (img.naturalWidth > 0) ok();
+      else fail();
+    } else {
+      img.addEventListener("load", ok);
+      img.addEventListener("error", fail);
+    }
+  });
 
   /* ---------- Header: scrolled state ---------- */
   var header = document.querySelector("[data-header]");
@@ -67,7 +121,11 @@
   }
 
   /* ---------- Active nav link ---------- */
-  var navLinks = Array.prototype.slice.call(document.querySelectorAll("[data-nav]"));
+  var navLinks = Array.prototype.slice
+    .call(document.querySelectorAll("[data-nav]"))
+    .filter(function (a) {
+      return a.getAttribute("href").charAt(0) === "#";
+    });
   if ("IntersectionObserver" in window && navLinks.length) {
     var sections = navLinks
       .map(function (a) {
@@ -245,12 +303,47 @@
     });
   });
 
+  /* ---------- FAQ page search ---------- */
+  var faqSearch = document.querySelector("[data-faq-search]");
+  if (faqSearch) {
+    var faqItems = Array.prototype.slice.call(document.querySelectorAll("[data-faq-item]"));
+    var faqGroups = Array.prototype.slice.call(document.querySelectorAll("[data-faq-group]"));
+    var faqCount = document.querySelector("[data-faq-count]");
+    var faqEmpty = document.querySelector("[data-faq-empty]");
+    var runSearch = function () {
+      var terms = faqSearch.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      var shown = 0;
+      faqItems.forEach(function (item) {
+        var text = item.textContent.toLowerCase();
+        var match = terms.every(function (t) {
+          return text.indexOf(t) !== -1;
+        });
+        item.hidden = !match;
+        if (match) shown++;
+      });
+      faqGroups.forEach(function (g) {
+        g.hidden = !g.querySelector("[data-faq-item]:not([hidden])");
+      });
+      faqEmpty.hidden = shown > 0;
+      faqCount.textContent = terms.length
+        ? shown + (shown === 1 ? " question matches" : " questions match")
+        : "Showing all " + faqItems.length + " questions";
+    };
+    faqSearch.addEventListener("input", runSearch);
+  }
+
   /* ---------- "Ask about this" links pre-select a service ---------- */
   document.querySelectorAll("[data-service]").forEach(function (link) {
     link.addEventListener("click", function () {
       var value = link.getAttribute("data-service");
       var box = document.querySelector('input[name="services"][value="' + value + '"]');
-      if (box) box.checked = true;
+      if (box) {
+        box.checked = true;
+      } else {
+        // No matching option: note the interest in the message box if it is still empty
+        var msg = document.getElementById("f-message");
+        if (msg && !msg.value.trim()) msg.value = "I’m interested in " + value.toLowerCase() + ". ";
+      }
     });
   });
 
