@@ -395,12 +395,22 @@ export const exportMyData = createServerFn({ method: "POST" })
       if (result.error && !["42P01", "PGRST205", "42703"].includes(result.error.code))
         throw new Error("Notification records could not be exported.");
     }
+    const contactDetails = await supabaseAdmin
+      .from("member_contacts")
+      .select(
+        "contact_method,phone,email,best_times,wali_name,wali_relationship,wali_phone,meeting_formats,confirmed_at,created_at,updated_at",
+      )
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (contactDetails.error && !["42P01", "PGRST205"].includes(contactDetails.error.code ?? ""))
+      throw new Error("Contact details could not be exported.");
     const document = {
       generated_at: new Date().toISOString(),
       privacy_notice_version: PRIVACY_NOTICE_VERSION,
       account: { id: uid, email: context.claims?.email ?? null },
       profile: profile.data,
       survey: survey.data,
+      contact_details_for_imam: contactDetails.error ? null : contactDetails.data,
       privacy: privacy.data,
       consents: consent.data,
       compatibility_runs: (matches.data ?? []).map((row) => summariseCompatibilityRun(row)),

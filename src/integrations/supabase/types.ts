@@ -878,6 +878,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      member_contacts: {
+        Row: {
+          best_times: string[];
+          confirmed_at: string | null;
+          contact_method: string;
+          created_at: string;
+          email: string | null;
+          meeting_formats: string[];
+          phone: string | null;
+          updated_at: string;
+          user_id: string;
+          wali_name: string | null;
+          wali_phone: string | null;
+          wali_relationship: string | null;
+        };
+        Insert: {
+          best_times?: string[];
+          confirmed_at?: string | null;
+          contact_method?: string;
+          created_at?: string;
+          email?: string | null;
+          meeting_formats?: string[];
+          phone?: string | null;
+          updated_at?: string;
+          user_id: string;
+          wali_name?: string | null;
+          wali_phone?: string | null;
+          wali_relationship?: string | null;
+        };
+        Update: {
+          best_times?: string[];
+          confirmed_at?: string | null;
+          contact_method?: string;
+          created_at?: string;
+          email?: string | null;
+          meeting_formats?: string[];
+          phone?: string | null;
+          updated_at?: string;
+          user_id?: string;
+          wali_name?: string | null;
+          wali_phone?: string | null;
+          wali_relationship?: string | null;
+        };
+        Relationships: [];
+      };
       survey_answers: {
         Row: {
           answers: Json;

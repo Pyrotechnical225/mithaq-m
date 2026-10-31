@@ -9,54 +9,34 @@ import {
 } from "./openai-compatibility.server";
 import { requiredSurveyAnswersAreValid } from "./survey-validation";
 import { PRIVACY_NOTICE_VERSION } from "./privacy-notice";
+import {
+  answerSimilarity,
+  isScoredQuestion,
+  normalizedAnswer,
+  questionWeight,
+} from "./compatibility-compare";
 
-const REQUIRED_IDS = new Set(questions.filter((question) => question.required).map((q) => q.id));
 const AI_SAFE_IDS = new Set(
   questions
     .filter((question) => question.type !== "text" && question.id !== 2)
     .map((question) => question.id),
 );
 
-const SECTION_WEIGHTS: Record<string, number> = {
-  "Religious Practice": 4,
-  "Marriage Intentions": 3,
-  "Family & Practical Matters": 2,
-  "Family & Children": 2,
-  "Values & Expectations": 2,
-  "Islamic & Community Life": 2,
-  "Basic Information": 1,
-  "Personality & Lifestyle": 1,
-  "Compatibility Extras": 1,
-};
-
 type Answers = Record<string, string>;
 
-function normalized(value: string | undefined) {
-  return value?.trim().toLocaleLowerCase() ?? "";
-}
-
-function isFlexible(value: string) {
-  return /open|depends|not sure|other|no preference|flexible|undecided/.test(value);
-}
-
-function answerSimilarity(left: string, right: string) {
-  if (left === right) return 1;
-  if (isFlexible(left) || isFlexible(right)) return 0.65;
-  return 0;
-}
+const normalized = (value: string | undefined) => normalizedAnswer(value);
 
 export function fixedCompatibilityScore(mine: Answers, theirs: Answers) {
   let earned = 0;
   let available = 0;
 
   for (const question of questions) {
-    if (question.id === 1 || question.id === 2 || question.type === "text") continue;
+    if (!isScoredQuestion(question)) continue;
     const mineValue = normalized(mine[question.id]);
     const theirValue = normalized(theirs[question.id]);
     if (!mineValue || !theirValue) continue;
 
-    const requiredMultiplier = REQUIRED_IDS.has(question.id) ? 1.25 : 1;
-    const weight = (SECTION_WEIGHTS[question.section] ?? 1) * requiredMultiplier;
+    const weight = questionWeight(question);
     available += weight;
     earned += weight * answerSimilarity(mineValue, theirValue);
   }

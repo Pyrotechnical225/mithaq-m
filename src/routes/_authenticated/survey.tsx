@@ -10,6 +10,7 @@ import {
   questions,
 } from "@/lib/survey-questions";
 import { getMyAnswers, saveMyAnswers } from "@/lib/survey.functions";
+import { ContactDetailsForm } from "@/components/ContactDetailsForm";
 
 export const Route = createFileRoute("/_authenticated/survey")({
   head: () => ({
@@ -360,6 +361,13 @@ function SurveyPage() {
               </Fragment>
             );
           })}
+
+          {showReview && (
+            <ContactDetailsForm
+              mode="survey"
+              waliRequired={answers[2]?.trim().toLowerCase() === "female"}
+            />
+          )}
 
           {showReview && (
             <section

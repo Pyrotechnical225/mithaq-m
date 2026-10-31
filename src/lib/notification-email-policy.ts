@@ -120,6 +120,12 @@ export const EMAIL_KINDS = {
     subject: "Your meeting package payment was received",
     body: "Your meeting package payment has been verified. Sign in to see your package and the next steps. This email is not a tax invoice.",
   },
+  member_ready_to_schedule: {
+    category: "meetings",
+    audience: "member",
+    subject: "Your imam will be in touch",
+    body: "You have both chosen a meeting package, so your imam can now arrange your first meeting. Sign in to confirm how your imam and your wali can be contacted, and when you are free.",
+  },
   meeting_package_reminder: {
     category: "payments",
     audience: "member",
@@ -291,6 +297,11 @@ const EMAIL_PRESENTATION: Record<EmailKind, { action: string; nextStep: string }
   meeting_payment_received: {
     action: "View meeting package",
     nextStep: "You can check your package and remaining meeting allowance in your dashboard.",
+  },
+  member_ready_to_schedule: {
+    action: "Confirm your details",
+    nextStep:
+      "Check your phone number, wali details and availability so your imam can arrange the meeting. Your match never sees these details.",
   },
   meeting_package_reminder: {
     action: "Review meeting packages",

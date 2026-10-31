@@ -13,6 +13,7 @@ import {
 } from "@/lib/pairings.functions";
 import { formatPence, MEETING_PACKAGES } from "@/lib/meeting-packages";
 import { blockMember, reportMember } from "@/lib/trust.functions";
+import { ContactDetailsForm } from "@/components/ContactDetailsForm";
 
 type Pairing = Awaited<ReturnType<typeof listMyPairings>>[number];
 type Message = Awaited<ReturnType<typeof listPairingMessages>>[number];
@@ -28,6 +29,9 @@ const INTRODUCTION_LABELS: Record<string, string> = {
   closed: "Introduction closed",
   declined: "Not taken forward",
 };
+
+// Once both have paid, the member confirms how their imam can reach them.
+const CONTACT_CONFIRM_STATUSES = new Set(["ready_to_schedule", "scheduled"]);
 
 const MESSAGING_STATUSES = new Set([
   "awaiting_payment",
@@ -195,6 +199,12 @@ export function PairingsSection() {
                 </button>
               </div>
             ))}
+        </div>
+      )}
+
+      {pairings?.some((pairing) => CONTACT_CONFIRM_STATUSES.has(pairing.status)) && (
+        <div className="mt-5">
+          <ContactDetailsForm mode="confirm" />
         </div>
       )}
 

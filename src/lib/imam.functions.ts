@@ -169,15 +169,34 @@ export const listImamPairings = createServerFn({ method: "GET" })
           .eq("payment_status", "paid"),
       ]);
     const { haversineKm } = await import("./geo");
-    const profMap = new Map((profs ?? []).map((p) => [p.id, p]));
-    const answerMap = new Map(
-      (surveys ?? []).map((s) => [s.user_id, (s.answers ?? {}) as Record<string, unknown>]),
-    );
+    const { compareAnswers } = await import("./compatibility-compare");
 
     // Contact details are only needed to arrange a paid meeting. Before both
     // members have accepted and paid (or after the introduction ends) the
     // imam sees the anonymised profile only.
     const CONTACT_STATUSES = new Set(["ready_to_schedule", "scheduled", "completed"]);
+    const contactIds = Array.from(
+      new Set(
+        pairings.filter((p) => CONTACT_STATUSES.has(p.status)).flatMap((p) => [p.user_a, p.user_b]),
+      ),
+    );
+    const contactRows = contactIds.length
+      ? await supabaseAdmin
+          .from("member_contacts")
+          .select(
+            "user_id,contact_method,phone,email,best_times,wali_name,wali_relationship,wali_phone,meeting_formats,confirmed_at",
+          )
+          .in("user_id", contactIds)
+      : { data: [], error: null };
+    // Tolerate the table not existing yet so the workspace keeps working.
+    if (contactRows.error && !["42P01", "PGRST205"].includes(contactRows.error.code ?? ""))
+      throw new Error("Contact details could not be loaded.");
+    const contactMap = new Map((contactRows.data ?? []).map((row) => [row.user_id, row]));
+    const profMap = new Map((profs ?? []).map((p) => [p.id, p]));
+    const answerMap = new Map(
+      (surveys ?? []).map((s) => [s.user_id, (s.answers ?? {}) as Record<string, unknown>]),
+    );
+
     const summarise = (id: string, status: string) => {
       const p = profMap.get(id);
       const shareContact = CONTACT_STATUSES.has(status);
@@ -196,6 +215,14 @@ export const listImamPairings = createServerFn({ method: "GET" })
         gender: a["2"] ?? null,
         residence: a["3"] ?? null,
         wali: a["20"] ?? null,
+        occupation: a["9"] ?? null,
+        contact_shared: shareContact,
+        contact: (() => {
+          const row = shareContact ? contactMap.get(id) : undefined;
+          if (!row) return null;
+          const { user_id: _userId, ...details } = row;
+          return details;
+        })(),
       };
     };
 
@@ -218,6 +245,7 @@ export const listImamPairings = createServerFn({ method: "GET" })
         ...pairing,
         member_a: { side: "a" as const, ...summarise(userA, p.status) },
         member_b: { side: "b" as const, ...summarise(userB, p.status) },
+        comparison: compareAnswers(answerMap.get(userA) ?? {}, answerMap.get(userB) ?? {}),
         meeting_package_a: packageA,
         meeting_package_b: packageB,
         shared_meeting_allowance: sharedAllowance,
@@ -479,5 +507,50 @@ export const cancelMeetup = createServerFn({ method: "POST" })
         .eq("status", "scheduled");
       if (pairingError) throw new Error(pairingError.message);
     }
+    return { ok: true };
+  });
+
+// -----------------------------------------------------------------------------
+// Close a match as completed once its meetings are done. Nothing else moves a
+// pairing to "completed"; a pending meeting must be completed or cancelled
+// first so no arrangement is left open.
+// -----------------------------------------------------------------------------
+const CompletePairingInput = z.object({ pairing_id: z.string().uuid() });
+
+export const completePairing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => CompletePairingInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin, account } = await requireVerifiedImamAccount(context);
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("id,status")
+      .eq("id", data.pairing_id)
+      .eq("imam_id", account.imam_id)
+      .maybeSingle();
+    if (!pairing) throw new Error("Forbidden: assigned imam only");
+    if (pairing.status === "completed") return { ok: true };
+
+    const { data: meetings, error: meetingsError } = await supabaseAdmin
+      .from("meetups")
+      .select("status")
+      .eq("pairing_id", data.pairing_id);
+    if (meetingsError) throw new Error(meetingsError.message);
+    const statuses = (meetings ?? []).map((meeting) => meeting.status);
+    if (!statuses.includes("completed"))
+      throw new Error("Mark at least one meeting as completed before closing the match.");
+    if (statuses.some((status) => status === "proposed" || status === "confirmed"))
+      throw new Error("Complete or cancel the upcoming meeting before closing the match.");
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("pairings")
+      .update({ status: "completed" })
+      .eq("id", data.pairing_id)
+      .eq("imam_id", account.imam_id)
+      .eq("status", "scheduled")
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("This match can no longer be closed. Refresh and try again.");
     return { ok: true };
   });

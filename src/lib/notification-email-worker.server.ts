@@ -24,6 +24,7 @@ const pairingKinds = new Set([
   "meeting_followup",
   "meeting_check_in_reminder",
   "meeting_payment_received",
+  "member_ready_to_schedule",
   "meeting_package_reminder",
 ]);
 const meetingKinds = new Set([
@@ -255,6 +256,8 @@ export async function runNotificationEmailJob() {
               pair.data.member_b_response !== "accepted")
           )
             return { skip: "consent_changed" };
+          if (kind === "member_ready_to_schedule" && pair.data.status !== "ready_to_schedule")
+            return { skip: "scheduling_no_longer_due" };
           if (
             kind === "meeting_payment_received" &&
             (pair.data.user_a === job.user_id
