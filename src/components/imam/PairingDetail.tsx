@@ -1,10 +1,15 @@
 import { useServerFn } from "@tanstack/react-start";
 import { Lock, MessageSquare } from "lucide-react";
 import { useState } from "react";
-import { cancelMeetup, completePairing, decidePairing, proposeMeetup } from "@/lib/imam.functions";
+import {
+  cancelMeetup,
+  completeMeeting as completeMeetingFn,
+  completePairing,
+  decidePairing,
+  proposeMeetup,
+} from "@/lib/imam.functions";
 import { listPairingMessages, postPairingMessage } from "@/lib/pairings.functions";
 import { formatPence } from "@/lib/meeting-packages";
-import { completeAssignedMeeting } from "@/lib/member-notifications.functions";
 import {
   BEST_TIMES,
   CONTACT_METHODS,
@@ -659,7 +664,7 @@ function ArrangePanel({
 }) {
   const schedule = useServerFn(proposeMeetup);
   const cancel = useServerFn(cancelMeetup);
-  const completeMeeting = useServerFn(completeAssignedMeeting);
+  const completeMeeting = useServerFn(completeMeetingFn);
   const closeMatch = useServerFn(completePairing);
   const [form, setForm] = useState({ when: "", venue: "", address: "", wali: true, note: "" });
 

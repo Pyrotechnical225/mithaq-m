@@ -554,3 +554,56 @@ export const completePairing = createServerFn({ method: "POST" })
     if (!updated) throw new Error("This match can no longer be closed. Refresh and try again.");
     return { ok: true };
   });
+
+// -----------------------------------------------------------------------------
+// Record that a confirmed meeting took place. Uses the database function when
+// it is installed (it also schedules member check-ins); otherwise applies the
+// same checks here so attendance can still be recorded.
+// -----------------------------------------------------------------------------
+const CompleteMeetingInput = z.object({ meetup_id: z.string().uuid() });
+const MISSING_FUNCTION_CODES = new Set(["PGRST202", "42883"]);
+
+export const completeMeeting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => CompleteMeetingInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin, account } = await requireVerifiedImamAccount(context);
+    const { error: rpcError } = await context.supabase.rpc(
+      "complete_assigned_meeting" as never,
+      { p_id: data.meetup_id } as never,
+    );
+    if (!rpcError) return { ok: true };
+    if (!MISSING_FUNCTION_CODES.has(rpcError.code ?? ""))
+      throw new Error(
+        "Attendance was not saved. Only a confirmed meeting that has already taken place can be marked completed.",
+      );
+
+    const { data: meetup } = await supabaseAdmin
+      .from("meetups")
+      .select("id,pairing_id,status,scheduled_at")
+      .eq("id", data.meetup_id)
+      .maybeSingle();
+    if (!meetup) throw new Error("Meeting not found");
+    const { data: pairing } = await supabaseAdmin
+      .from("pairings")
+      .select("id")
+      .eq("id", meetup.pairing_id)
+      .eq("imam_id", account.imam_id)
+      .maybeSingle();
+    if (!pairing) throw new Error("Forbidden: assigned imam only");
+    if (meetup.status !== "confirmed" || new Date(meetup.scheduled_at).getTime() > Date.now())
+      throw new Error(
+        "Only a confirmed meeting that has already taken place can be marked completed.",
+      );
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("meetups")
+      .update({ status: "completed" })
+      .eq("id", data.meetup_id)
+      .eq("status", "confirmed")
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("This meeting has already changed. Refresh and try again.");
+    return { ok: true };
+  });

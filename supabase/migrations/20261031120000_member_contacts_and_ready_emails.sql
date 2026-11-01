@@ -42,12 +42,29 @@ create policy "member_contacts_update_own" on public.member_contacts
 create policy "member_contacts_delete_own" on public.member_contacts
   for delete to authenticated using ((select auth.uid()) = user_id);
 
-create trigger member_contacts_updated_at
-  before update on public.member_contacts
-  for each row execute function public.update_updated_at_column();
+-- The production database uses private.touch_updated_at(); databases built
+-- from these migration files use public.update_updated_at_column().
+do $$
+begin
+  if to_regprocedure('private.touch_updated_at()') is not null then
+    execute 'create trigger member_contacts_touch before update on public.member_contacts
+      for each row execute function private.touch_updated_at()';
+  else
+    execute 'create trigger member_contacts_updated_at before update on public.member_contacts
+      for each row execute function public.update_updated_at_column()';
+  end if;
+end $$;
 
 -- When both members have paid, also tell each member that their imam will
--- be in touch, alongside the existing imam email.
+-- be in touch, alongside the existing imam email. Only where the email
+-- outbox is installed (it is not on the production database yet).
+do $outer$
+begin
+  if to_regclass('public.notification_email_jobs') is null
+     or to_regnamespace('mithaq_private') is null then
+    return;
+  end if;
+  execute $sql$
 create or replace function mithaq_private.pairing_payment_emails() returns trigger
 language plpgsql security invoker set search_path = '' as $$
 begin
@@ -77,4 +94,6 @@ begin
   end if;
   return new;
 end $$;
-revoke all on function mithaq_private.pairing_payment_emails() from public, anon, authenticated;
+  $sql$;
+  execute 'revoke all on function mithaq_private.pairing_payment_emails() from public, anon, authenticated';
+end $outer$;
