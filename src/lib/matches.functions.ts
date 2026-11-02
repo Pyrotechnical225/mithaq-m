@@ -147,286 +147,331 @@ export const generateMatches = createServerFn({ method: "POST" })
       );
     }
 
-    const now = new Date().toISOString();
-    const { error: consentError } = await supabaseAdmin.from("member_consents").upsert(
-      {
-        user_id: context.userId,
-        adult_confirmed_at: now,
-        privacy_notice_version: PRIVACY_NOTICE_VERSION,
-        privacy_notice_accepted_at: now,
-        compatibility_processing_consent_at: now,
-        compatibility_processing_withdrawn_at: null,
-      },
-      { onConflict: "user_id" },
-    );
-    if (consentError) throw new Error(consentError.message);
-
-    const { data: mine } = await context.supabase
-      .from("survey_answers")
-      .select("answers, completed")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (!mine?.completed) throw new Error("Complete your survey first");
-
-    const myAnswers = mine.answers as Answers;
-    const myGender = normalized(myAnswers["2"]);
-    if (!requiredSurveyAnswersAreValid(myAnswers) || !["male", "female"].includes(myGender)) {
-      throw new Error("Review your required survey answers before generating matches");
-    }
-    const { data: candidates, error: candidateError } = await supabaseAdmin
-      .from("survey_answers")
-      .select("user_id, answers, completed")
-      .eq("completed", true)
-      .neq("user_id", context.userId);
-    if (candidateError) throw new Error(candidateError.message);
-
-    const [privacyResult, consentResult, blockResult] = await Promise.all([
-      supabaseAdmin
-        .from("privacy_settings")
-        .select("user_id, visibility, show_location, show_occupation"),
-      supabaseAdmin
-        .from("member_consents")
-        .select("user_id,compatibility_processing_consent_at,compatibility_processing_withdrawn_at")
-        .not("compatibility_processing_consent_at", "is", null)
-        .is("compatibility_processing_withdrawn_at", null),
-      supabaseAdmin
-        .from("member_blocks")
-        .select("blocker_user_id,blocked_user_id")
-        .or(`blocker_user_id.eq.${context.userId},blocked_user_id.eq.${context.userId}`),
-    ]);
-    for (const result of [privacyResult, consentResult, blockResult]) {
-      if (result.error) throw new Error(result.error.message);
-    }
-    const privacyRows = privacyResult.data;
-    const consentRows = consentResult.data;
-    const blockRows = blockResult.data;
-    const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
-    const consentedUsers = new Set((consentRows ?? []).map((row) => row.user_id));
-    const blockedUsers = new Set(
-      (blockRows ?? []).map((row) =>
-        row.blocker_user_id === context.userId ? row.blocked_user_id : row.blocker_user_id,
-      ),
-    );
-    const pool = (candidates ?? []).filter((candidate) => {
-      if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
-      if (!consentedUsers.has(candidate.user_id) || blockedUsers.has(candidate.user_id))
-        return false;
-      const answers = candidate.answers as Answers;
-      const candidateGender = normalized(answers["2"]);
-      return (
-        requiredSurveyAnswersAreValid(answers) &&
-        ["male", "female"].includes(candidateGender) &&
-        myGender !== candidateGender
-      );
-    });
-
-    const scoredPool = pool.map((candidate, index) => ({
-      candidate_id: `candidate_${index + 1}`,
-      real_id: candidate.user_id,
-      answers: candidate.answers as Answers,
-      fixed_score: fixedCompatibilityScore(myAnswers, candidate.answers as Answers),
-    }));
-    const openAIReviews = await getOpenAIReviews(myAnswers, scoredPool);
-    const openAIConfigured = !!process.env.OPENAI_API_KEY?.trim();
-
-    const enriched = scoredPool
-      .map((candidate) => {
-        const review = openAIReviews.get(candidate.candidate_id);
-        const finalScore = review
-          ? Math.round(candidate.fixed_score * 0.8 + review.score * 0.2)
-          : candidate.fixed_score;
-
-        return {
-          match_user_id: candidate.real_id,
-          score: finalScore,
-          fixed_score: candidate.fixed_score,
-          openai_score: review?.score ?? null,
-          scoring_method: review ? "fixed-rubric-v1-with-openai-review" : "fixed-rubric-v1",
-          strengths:
-            review?.strengths ?? "Strong alignment across the fixed Mithaq compatibility rubric.",
-          considerations:
-            review?.considerations ??
-            (openAIConfigured
-              ? "The AI review was temporarily unavailable, so this result uses the fixed rubric only."
-              : "This result uses the fixed rubric; the AI review is not configured."),
-          age: candidate.answers["1"] ?? null,
-          location:
-            privacyByUser.get(candidate.real_id)?.show_location === false
-              ? null
-              : (candidate.answers["3"] ?? null),
-          occupation:
-            privacyByUser.get(candidate.real_id)?.show_occupation === false
-              ? null
-              : (candidate.answers["9"] ?? null),
-          practice_level: candidate.answers["11"] ?? null,
-          madhab: candidate.answers["10"] ?? null,
-          timeline: candidate.answers["19"] ?? null,
-        };
-      })
-      .filter((candidate) => candidate.score >= 70)
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 5);
-
-    const { data: saved, error: saveError } = await supabaseAdmin
+    // Reserve this run before any paid work. When requests arrive at the same
+    // moment, only the earliest reservation goes ahead.
+    const { data: claim, error: claimError } = await supabaseAdmin
       .from("matches")
-      .insert({
-        user_id: context.userId,
-        results: {
-          matches: enriched,
-          scoring_method: openAIReviews.size
-            ? "fixed-rubric-v1-with-openai-review"
-            : "fixed-rubric-v1",
-          openai_model: openAIReviews.size ? getOpenAIModelName() : null,
-        },
-      })
-      .select()
+      .insert({ user_id: context.userId, results: { matches: [], scoring_method: "pending" } })
+      .select("id")
       .single();
-    if (saveError) throw new Error(saveError.message);
-
-    // Suitable results become private imam-review work. No candidate id or
-    // raw compatibility payload is returned to the member's browser.
-    const matchUserIds = enriched.map((match) => match.match_user_id);
-    const [{ data: profiles }, { data: imamAccounts }, { data: verifiedImams }] = await Promise.all(
-      [
-        supabaseAdmin
-          .from("profiles")
-          .select("id,uk_city,location_lat,location_lng")
-          .in("id", [context.userId, ...matchUserIds]),
-        supabaseAdmin.from("imam_accounts").select("user_id,imam_id,radius_km").eq("active", true),
-        supabaseAdmin.from("imams").select("id,city,lat,lng").eq("verification_status", "verified"),
-      ],
-    );
-
-    const verifiedById = new Map((verifiedImams ?? []).map((imam) => [imam.id, imam]));
-    const availableImams = (imamAccounts ?? []).filter((account) =>
-      verifiedById.has(account.imam_id),
-    );
-    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-    const { data: currentReviews } = availableImams.length
-      ? await supabaseAdmin
-          .from("pairings")
-          .select("imam_id")
-          .eq("status", "imam_review")
-          .in(
-            "imam_id",
-            availableImams.map((account) => account.imam_id),
-          )
-      : { data: [] };
-    const reviewCount = new Map<string, number>();
-    for (const review of currentReviews ?? []) {
-      if (review.imam_id)
-        reviewCount.set(review.imam_id, (reviewCount.get(review.imam_id) ?? 0) + 1);
-    }
-
-    const { haversineKm } = await import("./geo");
-    const chooseImam = (candidateId: string) => {
-      if (availableImams.length === 0) return null;
-      const member = profileById.get(context.userId);
-      const candidate = profileById.get(candidateId);
-      const points = [member, candidate].filter(
-        (profile): profile is NonNullable<typeof profile> =>
-          !!profile && profile.location_lat != null && profile.location_lng != null,
-      );
-      const midpoint =
-        points.length > 0
-          ? {
-              lat:
-                points.reduce((sum, profile) => sum + (profile.location_lat as number), 0) /
-                points.length,
-              lng:
-                points.reduce((sum, profile) => sum + (profile.location_lng as number), 0) /
-                points.length,
-            }
-          : null;
-
-      return (
-        [...availableImams]
-          .map((account) => {
-            const imam = verifiedById.get(account.imam_id)!;
-            const distance =
-              midpoint && imam.lat != null && imam.lng != null
-                ? haversineKm(midpoint.lat, midpoint.lng, imam.lat, imam.lng)
-                : null;
-            const cityMatch = [member?.uk_city, candidate?.uk_city]
-              .filter(Boolean)
-              .some((city) => city?.toLocaleLowerCase() === imam.city.toLocaleLowerCase());
-            return {
-              account,
-              distance,
-              cityMatch,
-              workload: reviewCount.get(account.imam_id) ?? 0,
-            };
-          })
-          .sort((left, right) => {
-            const leftInRange =
-              left.distance != null && left.distance <= Math.max(left.account.radius_km, 5) * 2;
-            const rightInRange =
-              right.distance != null && right.distance <= Math.max(right.account.radius_km, 5) * 2;
-            if (leftInRange !== rightInRange) return leftInRange ? -1 : 1;
-            if (left.cityMatch !== right.cityMatch) return left.cityMatch ? -1 : 1;
-            if (left.workload !== right.workload) return left.workload - right.workload;
-            if (left.distance != null && right.distance != null)
-              return left.distance - right.distance;
-            if (left.distance != null) return -1;
-            if (right.distance != null) return 1;
-            return left.account.imam_id.localeCompare(right.account.imam_id);
-          })[0]?.account ?? null
-      );
+    if (claimError || !claim)
+      throw new Error("Compatibility scoring could not start. Please try again.");
+    const release = async () => {
+      await supabaseAdmin.from("matches").delete().eq("id", claim.id);
     };
+    const { data: firstInWindow, error: windowError } = await supabaseAdmin
+      .from("matches")
+      .select("id")
+      .eq("user_id", context.userId)
+      .gte("created_at", new Date(Date.now() - MIN_MINUTES_BETWEEN_RUNS * 60_000).toISOString())
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (windowError || firstInWindow?.id !== claim.id) {
+      await release();
+      throw new Error(
+        `Your profile is already being scored. Please wait ${MIN_MINUTES_BETWEEN_RUNS} minutes before submitting again.`,
+      );
+    }
+    let resultsSaved = false;
+    try {
+      const now = new Date().toISOString();
+      const { error: consentError } = await supabaseAdmin.from("member_consents").upsert(
+        {
+          user_id: context.userId,
+          adult_confirmed_at: now,
+          privacy_notice_version: PRIVACY_NOTICE_VERSION,
+          privacy_notice_accepted_at: now,
+          compatibility_processing_consent_at: now,
+          compatibility_processing_withdrawn_at: null,
+        },
+        { onConflict: "user_id" },
+      );
+      if (consentError) throw new Error(consentError.message);
 
-    const { data: existingPairings } = await supabaseAdmin
-      .from("pairings")
-      .select("user_a,user_b")
-      .or(`user_a.eq.${context.userId},user_b.eq.${context.userId}`);
-    const existingPairs = new Set(
-      (existingPairings ?? []).map((pairing) => [pairing.user_a, pairing.user_b].sort().join(":")),
-    );
-    let submittedForReview = 0;
-    for (const match of enriched) {
-      const [userA, userB] = [context.userId, match.match_user_id].sort();
-      const pairKey = `${userA}:${userB}`;
-      if (existingPairs.has(pairKey)) continue;
-      const imamAccount = chooseImam(match.match_user_id);
-      const { data: pairing, error: pairingError } = await supabaseAdmin
-        .from("pairings")
-        .insert({
-          user_a: userA,
-          user_b: userB,
-          imam_id: imamAccount?.imam_id ?? null,
-          status: "imam_review",
-          compatibility_score: match.score,
-          compatibility_summary: {
-            strengths: match.strengths,
-            considerations: match.considerations,
-            scoring_method: match.scoring_method,
+      const { data: mine } = await context.supabase
+        .from("survey_answers")
+        .select("answers, completed")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!mine?.completed) throw new Error("Complete your survey first");
+
+      const myAnswers = mine.answers as Answers;
+      const myGender = normalized(myAnswers["2"]);
+      if (!requiredSurveyAnswersAreValid(myAnswers) || !["male", "female"].includes(myGender)) {
+        throw new Error("Review your required survey answers before generating matches");
+      }
+      const { data: candidates, error: candidateError } = await supabaseAdmin
+        .from("survey_answers")
+        .select("user_id, answers, completed")
+        .eq("completed", true)
+        .neq("user_id", context.userId);
+      if (candidateError) throw new Error(candidateError.message);
+
+      const [privacyResult, consentResult, blockResult] = await Promise.all([
+        supabaseAdmin
+          .from("privacy_settings")
+          .select("user_id, visibility, show_location, show_occupation"),
+        supabaseAdmin
+          .from("member_consents")
+          .select(
+            "user_id,compatibility_processing_consent_at,compatibility_processing_withdrawn_at",
+          )
+          .not("compatibility_processing_consent_at", "is", null)
+          .is("compatibility_processing_withdrawn_at", null),
+        supabaseAdmin
+          .from("member_blocks")
+          .select("blocker_user_id,blocked_user_id")
+          .or(`blocker_user_id.eq.${context.userId},blocked_user_id.eq.${context.userId}`),
+      ]);
+      for (const result of [privacyResult, consentResult, blockResult]) {
+        if (result.error) throw new Error(result.error.message);
+      }
+      const privacyRows = privacyResult.data;
+      const consentRows = consentResult.data;
+      const blockRows = blockResult.data;
+      const privacyByUser = new Map((privacyRows ?? []).map((row) => [row.user_id, row]));
+      const consentedUsers = new Set((consentRows ?? []).map((row) => row.user_id));
+      const blockedUsers = new Set(
+        (blockRows ?? []).map((row) =>
+          row.blocker_user_id === context.userId ? row.blocked_user_id : row.blocker_user_id,
+        ),
+      );
+      const pool = (candidates ?? []).filter((candidate) => {
+        if (privacyByUser.get(candidate.user_id)?.visibility !== "discoverable") return false;
+        if (!consentedUsers.has(candidate.user_id) || blockedUsers.has(candidate.user_id))
+          return false;
+        const answers = candidate.answers as Answers;
+        const candidateGender = normalized(answers["2"]);
+        return (
+          requiredSurveyAnswersAreValid(answers) &&
+          ["male", "female"].includes(candidateGender) &&
+          myGender !== candidateGender
+        );
+      });
+
+      const scoredPool = pool.map((candidate, index) => ({
+        candidate_id: `candidate_${index + 1}`,
+        real_id: candidate.user_id,
+        answers: candidate.answers as Answers,
+        fixed_score: fixedCompatibilityScore(myAnswers, candidate.answers as Answers),
+      }));
+      const openAIReviews = await getOpenAIReviews(myAnswers, scoredPool);
+      const openAIConfigured = !!process.env.OPENAI_API_KEY?.trim();
+
+      const enriched = scoredPool
+        .map((candidate) => {
+          const review = openAIReviews.get(candidate.candidate_id);
+          const finalScore = review
+            ? Math.round(candidate.fixed_score * 0.8 + review.score * 0.2)
+            : candidate.fixed_score;
+
+          return {
+            match_user_id: candidate.real_id,
+            score: finalScore,
+            fixed_score: candidate.fixed_score,
+            openai_score: review?.score ?? null,
+            scoring_method: review ? "fixed-rubric-v1-with-openai-review" : "fixed-rubric-v1",
+            strengths:
+              review?.strengths ?? "Strong alignment across the fixed Mithaq compatibility rubric.",
+            considerations:
+              review?.considerations ??
+              (openAIConfigured
+                ? "The AI review was temporarily unavailable, so this result uses the fixed rubric only."
+                : "This result uses the fixed rubric; the AI review is not configured."),
+            age: candidate.answers["1"] ?? null,
+            location:
+              privacyByUser.get(candidate.real_id)?.show_location === false
+                ? null
+                : (candidate.answers["3"] ?? null),
+            occupation:
+              privacyByUser.get(candidate.real_id)?.show_occupation === false
+                ? null
+                : (candidate.answers["9"] ?? null),
+            practice_level: candidate.answers["11"] ?? null,
+            madhab: candidate.answers["10"] ?? null,
+            timeline: candidate.answers["19"] ?? null,
+          };
+        })
+        .filter((candidate) => candidate.score >= 70)
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 5);
+
+      const { data: saved, error: saveError } = await supabaseAdmin
+        .from("matches")
+        .update({
+          results: {
+            matches: enriched,
+            scoring_method: openAIReviews.size
+              ? "fixed-rubric-v1-with-openai-review"
+              : "fixed-rubric-v1",
+            openai_model: openAIReviews.size ? getOpenAIModelName() : null,
           },
         })
-        .select("id")
-        .maybeSingle();
-      if (pairingError?.code === "23505") continue;
-      if (pairingError) throw new Error("A suitable result could not be sent for imam review");
-      if (!pairing) continue;
-      existingPairs.add(pairKey);
-      submittedForReview += 1;
-      if (imamAccount) {
-        reviewCount.set(imamAccount.imam_id, (reviewCount.get(imamAccount.imam_id) ?? 0) + 1);
-        const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
-          user_id: imamAccount.user_id,
-          pairing_id: pairing.id,
-          kind: "imam_match_review",
-          title: "New compatibility review",
-          body: `A ${match.score}% compatibility result is ready for private review.`,
-        });
-        if (notificationError) throw new Error(notificationError.message);
-      }
-    }
+        .eq("id", claim.id)
+        .select()
+        .single();
+      if (saveError) throw new Error(saveError.message);
+      resultsSaved = true;
 
-    return {
-      id: saved.id,
-      created_at: saved.created_at,
-      suitable_match_count: enriched.length,
-      submitted_for_imam_review: submittedForReview,
-    };
+      // Suitable results become private imam-review work. No candidate id or
+      // raw compatibility payload is returned to the member's browser.
+      const matchUserIds = enriched.map((match) => match.match_user_id);
+      const [{ data: profiles }, { data: imamAccounts }, { data: verifiedImams }] =
+        await Promise.all([
+          supabaseAdmin
+            .from("profiles")
+            .select("id,uk_city,location_lat,location_lng")
+            .in("id", [context.userId, ...matchUserIds]),
+          supabaseAdmin
+            .from("imam_accounts")
+            .select("user_id,imam_id,radius_km")
+            .eq("active", true),
+          supabaseAdmin
+            .from("imams")
+            .select("id,city,lat,lng")
+            .eq("verification_status", "verified"),
+        ]);
+
+      const verifiedById = new Map((verifiedImams ?? []).map((imam) => [imam.id, imam]));
+      const availableImams = (imamAccounts ?? []).filter((account) =>
+        verifiedById.has(account.imam_id),
+      );
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const { data: currentReviews } = availableImams.length
+        ? await supabaseAdmin
+            .from("pairings")
+            .select("imam_id")
+            .eq("status", "imam_review")
+            .in(
+              "imam_id",
+              availableImams.map((account) => account.imam_id),
+            )
+        : { data: [] };
+      const reviewCount = new Map<string, number>();
+      for (const review of currentReviews ?? []) {
+        if (review.imam_id)
+          reviewCount.set(review.imam_id, (reviewCount.get(review.imam_id) ?? 0) + 1);
+      }
+
+      const { haversineKm } = await import("./geo");
+      const chooseImam = (candidateId: string) => {
+        if (availableImams.length === 0) return null;
+        const member = profileById.get(context.userId);
+        const candidate = profileById.get(candidateId);
+        const points = [member, candidate].filter(
+          (profile): profile is NonNullable<typeof profile> =>
+            !!profile && profile.location_lat != null && profile.location_lng != null,
+        );
+        const midpoint =
+          points.length > 0
+            ? {
+                lat:
+                  points.reduce((sum, profile) => sum + (profile.location_lat as number), 0) /
+                  points.length,
+                lng:
+                  points.reduce((sum, profile) => sum + (profile.location_lng as number), 0) /
+                  points.length,
+              }
+            : null;
+
+        return (
+          [...availableImams]
+            .map((account) => {
+              const imam = verifiedById.get(account.imam_id)!;
+              const distance =
+                midpoint && imam.lat != null && imam.lng != null
+                  ? haversineKm(midpoint.lat, midpoint.lng, imam.lat, imam.lng)
+                  : null;
+              const cityMatch = [member?.uk_city, candidate?.uk_city]
+                .filter(Boolean)
+                .some((city) => city?.toLocaleLowerCase() === imam.city.toLocaleLowerCase());
+              return {
+                account,
+                distance,
+                cityMatch,
+                workload: reviewCount.get(account.imam_id) ?? 0,
+              };
+            })
+            .sort((left, right) => {
+              const leftInRange =
+                left.distance != null && left.distance <= Math.max(left.account.radius_km, 5) * 2;
+              const rightInRange =
+                right.distance != null &&
+                right.distance <= Math.max(right.account.radius_km, 5) * 2;
+              if (leftInRange !== rightInRange) return leftInRange ? -1 : 1;
+              if (left.cityMatch !== right.cityMatch) return left.cityMatch ? -1 : 1;
+              if (left.workload !== right.workload) return left.workload - right.workload;
+              if (left.distance != null && right.distance != null)
+                return left.distance - right.distance;
+              if (left.distance != null) return -1;
+              if (right.distance != null) return 1;
+              return left.account.imam_id.localeCompare(right.account.imam_id);
+            })[0]?.account ?? null
+        );
+      };
+
+      const { data: existingPairings } = await supabaseAdmin
+        .from("pairings")
+        .select("user_a,user_b")
+        .or(`user_a.eq.${context.userId},user_b.eq.${context.userId}`);
+      const existingPairs = new Set(
+        (existingPairings ?? []).map((pairing) =>
+          [pairing.user_a, pairing.user_b].sort().join(":"),
+        ),
+      );
+      let submittedForReview = 0;
+      for (const match of enriched) {
+        const [userA, userB] = [context.userId, match.match_user_id].sort();
+        const pairKey = `${userA}:${userB}`;
+        if (existingPairs.has(pairKey)) continue;
+        const imamAccount = chooseImam(match.match_user_id);
+        const { data: pairing, error: pairingError } = await supabaseAdmin
+          .from("pairings")
+          .insert({
+            user_a: userA,
+            user_b: userB,
+            imam_id: imamAccount?.imam_id ?? null,
+            status: "imam_review",
+            compatibility_score: match.score,
+            compatibility_summary: {
+              strengths: match.strengths,
+              considerations: match.considerations,
+              scoring_method: match.scoring_method,
+            },
+          })
+          .select("id")
+          .maybeSingle();
+        if (pairingError?.code === "23505") continue;
+        if (pairingError) throw new Error("A suitable result could not be sent for imam review");
+        if (!pairing) continue;
+        existingPairs.add(pairKey);
+        submittedForReview += 1;
+        if (imamAccount) {
+          reviewCount.set(imamAccount.imam_id, (reviewCount.get(imamAccount.imam_id) ?? 0) + 1);
+          const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
+            user_id: imamAccount.user_id,
+            pairing_id: pairing.id,
+            kind: "imam_match_review",
+            title: "New compatibility review",
+            body: `A ${match.score}% compatibility result is ready for private review.`,
+          });
+          if (notificationError) throw new Error(notificationError.message);
+        }
+      }
+
+      return {
+        id: saved.id,
+        created_at: saved.created_at,
+        suitable_match_count: enriched.length,
+        submitted_for_imam_review: submittedForReview,
+      };
+    } catch (error) {
+      // A failed run must not lock the member out for ten minutes.
+      if (!resultsSaved) await release();
+      throw error;
+    }
   });
 
 export const getLatestMatches = createServerFn({ method: "GET" })
@@ -437,6 +482,7 @@ export const getLatestMatches = createServerFn({ method: "GET" })
       .from("matches")
       .select("id, results, created_at")
       .eq("user_id", context.userId)
+      .or("results->>scoring_method.is.null,results->>scoring_method.neq.pending")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

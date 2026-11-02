@@ -554,6 +554,7 @@ export const listCompatibilityComparisonsAdmin = createServerFn({ method: "GET" 
     const { data: generations, error } = await supabaseAdmin
       .from("matches")
       .select("id, user_id, results, created_at")
+      .or("results->>scoring_method.is.null,results->>scoring_method.neq.pending")
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);

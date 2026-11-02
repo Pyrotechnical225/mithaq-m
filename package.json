@@ -100,5 +100,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
   }
 }
