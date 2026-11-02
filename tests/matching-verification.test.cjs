@@ -303,6 +303,9 @@ function fakeDatabase(tables, mine) {
       or() {
         return query;
       },
+      gte() {
+        return query;
+      },
       order() {
         return query;
       },
@@ -325,6 +328,23 @@ function fakeDatabase(tables, mine) {
       insert(value) {
         write = value;
         inserts.push({ table, value });
+        // Keep the row so later reads in the same run see it, as the database would.
+        (tables[table] ??= []).push({
+          id: "synthetic-save",
+          created_at: "2026-08-30T00:00:00Z",
+          ...value,
+        });
+        return query;
+      },
+      update(value) {
+        write = value;
+        // Apply to the row this run inserted, so assertions read the final result.
+        const inserted = inserts.filter((item) => item.table === table).at(-1);
+        if (inserted) Object.assign(inserted.value, value);
+        return query;
+      },
+      delete() {
+        write = {};
         return query;
       },
       then(resolve, reject) {
@@ -491,4 +511,20 @@ test("the 70-point introduction threshold rejects low-scoring comparisons", asyn
   });
   assert.equal(result.suitable_match_count, 0);
   assert.equal(result.submitted_for_imam_review, 0);
+});
+
+test("a second simultaneous scoring request stops before any paid AI call", async () => {
+  const { mine, tables } = eligibleFixture(3);
+  // Another request reserved its run first; this one must give way.
+  tables.matches = [
+    { id: "earlier-run", user_id: "member-main", created_at: "2026-01-01T00:00:00Z", results: {} },
+  ];
+  const db = fakeDatabase(tables, mine);
+  const h = loadHarness({ db });
+  await assert.rejects(
+    h.generateMatches({ context: { userId: "member-main", supabase: db.member } }),
+    /already being scored/,
+  );
+  assert.equal(h.requests.length, 0, "no AI request was made");
+  assert.equal(db.inserts.filter((item) => item.table === "pairings").length, 0);
 });
