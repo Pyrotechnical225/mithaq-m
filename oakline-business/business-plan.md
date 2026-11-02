@@ -216,11 +216,12 @@ Compete on **clarity, care and speed**, not on being the cheapest.
 
 ### Channels, in order of priority
 
-1. **The free online check-up, delivered in person and by email.** Make a list of 50 local
+1. **The free online check-up, delivered in person or by post.** Make a list of 50 local
    businesses with no website, a weak website or an incomplete Google profile. Visit quiet shops
    mid-morning. Leave a printed one-page check-up with three specific fixes and your contact
-   details. Aim for 10 check-ups a week. Expect roughly 1 in 10 to become a client in the early
-   months; track your real numbers.
+   details. Aim for 10 check-ups a week. There is no reliable data on how many walk-ins become
+   clients, so track your own numbers from week one. Most cafés, salons and trades are sole
+   traders, and UK law limits cold emails and DMs to them (see section 5b).
 2. **Your own Google Business Profile and reviews.** Set it up on day one. Ask every client for
    an honest review. It’s free, and it ranks you for "web design near me".
 3. **Referrals.** Offer existing clients a thank-you (for example £100 credit or a free month of
@@ -250,6 +251,68 @@ Compete on **clarity, care and speed**, not on being the cheapest.
 
 Check-ups sent → calls booked → quotes sent → clients won · average project value · monthly
 recurring revenue · retainer cancellations · hours per client · effective hourly rate.
+
+## 5b. Contacting businesses within UK law
+
+Most of your prospects are **sole traders or partnerships**. The law treats them like private
+individuals for marketing, so the channel you use matters.
+
+| Channel                                          | Limited companies (Ltd, LLP)              | Sole traders and partnerships        | Notes                                                                                     |
+| ------------------------------------------------ | ----------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Walking in / in person                           | Yes                                       | Yes                                  | Lowest-risk channel. Keep any notes you take under UK GDPR.                               |
+| Posted letter or printed check-up                | Yes                                       | Yes                                  | Not covered by the electronic marketing rules (PECR).                                     |
+| Cold email or text                               | Yes, with your name and a working opt-out | **No**, unless they gave consent     | Check Companies House: if the business is a Ltd company, email is allowed.                |
+| Social media DMs (Instagram, Facebook, LinkedIn) | Yes, with an opt-out                      | **No**, unless they gave consent     | The ICO treats private DMs as electronic mail. Platforms also limit unsolicited messages. |
+| Cold calls                                       | Only after checking the CTPS register     | Only after checking the TPS register | A number being public online doesn't make it OK to call.                                  |
+
+Also: keep a do-not-contact list, explain how you use people's details (your privacy notice),
+and stop immediately when someone opts out. The Data (Use and Access) Act 2025 raises the
+maximum fine for breaking these rules to £17.5 million or 4% of turnover.
+
+### Where to find prospects
+
+- **Google Maps:** search "barber [town]", "café [town]" and look for listings with no website,
+  few reviews, old photos or "Own this business?" (unclaimed).
+- **Companies House Advanced Search:** filter by town, sector and incorporation date to find new
+  Ltd companies, which you can lawfully email with a personalised check-up.
+- **New openings:** "opening soon" signs and shop fit-outs. These owners need everything at once.
+- **Partners:** accountants, bookkeepers, sign makers, printers, shopfitters, coworking spaces,
+  chambers of commerce and business improvement districts. Offer about **10% of the first
+  project** as a referral fee, paid once the client has paid (the usual UK norm).
+- **Networking:** BNI costs roughly £700–£800 a year plus fees and meals (check your local
+  chapter); chambers and Enterprise Nation events are cheaper.
+
+### What a good first approach looks like
+
+A specific, useful one-page check-up (missing hours, no photos, unanswered reviews, slow mobile
+site), handed over in person or posted. For Ltd companies, a short personalised screen-recorded
+video walk-through works well; vendor case studies report around a 19% lift in replies. Small,
+personal batches beat mass messages.
+
+### Promoting Oakline itself
+
+| Tactic                                                                             | Cost                                                           | Verdict                                     |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
+| Your own Google Business Profile (address hidden, up to 20 service areas)          | Free                                                           | Do it on day one                            |
+| Town and niche pages on your website ("web design [town]", "websites for barbers") | Free                                                           | High value over time                        |
+| 3–5 discounted pilot projects for honest reviews and real case studies             | Your time                                                      | The fastest way to replace the concept work |
+| Free talks ("Get found on Google") at libraries, chambers, BIDs                    | Free                                                           | Builds trust with a room full of prospects  |
+| Instagram, TikTok and LinkedIn makeover content                                    | Free                                                           | Consistency matters more than volume        |
+| Free listings: Bing Places, Apple Business Connect, Yell, Clutch                   | Free                                                           | Quick wins                                  |
+| Meta ads with a "free Google profile check" offer                                  | £5–£10 a day (CPC roughly £0.50–£1.50)                         | Small test only                             |
+| Google Ads for "web design [town]"                                                 | Clicks about $12–$20 each in the UK                            | Too expensive until you have proof          |
+| Bark                                                                               | About £7–£40 per lead, each lead shared with up to 5 providers | Small test only, later                      |
+
+### Top 8 tactics for the first 90 days
+
+1. Win 3–5 discounted pilot clients locally for a real portfolio and honest reviews.
+2. Set up your own Google Business Profile, plus town and niche landing pages.
+3. Walk in with printed check-ups, especially to sole-trader businesses.
+4. Start a referral-partner programme with accountants, bookkeepers, sign makers and printers.
+5. Email new Ltd companies from Companies House with personalised video check-ups and an opt-out.
+6. Give free talks at chambers, BIDs, libraries and Enterprise Nation events.
+7. Post makeover content regularly and be helpful in local Facebook groups.
+8. Run a small Meta ads test. Hold off on Google Ads and Bark until you have results to show.
 
 ---
 
@@ -321,6 +384,32 @@ discount, write down your process, then raise the price.
 
 ---
 
+## 9b. Domain name
+
+Checked against the official registries on 2 November 2026.
+
+- **oaklinedigital.co.uk is taken** (registered 10 August 2026 through Cloudflare). It runs a live
+  website for an "Oakline Digital" web developer for small businesses. If that isn't yours, the
+  name clash is a serious risk: the same name in the same market can confuse customers and could
+  lead to a passing-off complaint.
+- **oaklinedigital.com is taken** (GoDaddy, since 2025, no live site). **oaklineweb.co.uk** is a
+  small-business web designer called "Oakline Web" with a very similar tagline.
+- "Oakline Digital" is not registered as a company name at Companies House.
+
+| Available domain                                           | GoDaddy guide price, year 1                                           | GoDaddy renewal            | Comment                       |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- | ----------------------------- |
+| oaklinedigital.uk                                          | $12.99 US list (UK price not confirmed)                               | $12.99/yr US list          | Best fit if you keep the name |
+| oaklinestudio.co.uk                                        | from £0.01 promo (may need a multi-year term), otherwise about £12.99 | £12.99/yr + VAT            | Good alternative              |
+| weareoakline.co.uk / hellooakline.co.uk / getoakline.co.uk | as above                                                              | £12.99/yr + VAT            | Fine as a backup or redirect  |
+| oaklinedigitalstudio.co.uk / .com                          | .co.uk as above; .com $4.99 new customer, then $12.99                 | .com about £19/yr ($22.99) | Long                          |
+| oaklinedigital.agency                                      | $3.99                                                                 | **$51.99/yr**              | Cheap now, expensive later    |
+| oaklinedigital.studio                                      | $21.99                                                                | **$79.99/yr**              | Expensive renewal             |
+| oaklinedigital.design / oakline.design                     | $19.99                                                                | **$89.99/yr**              | Expensive renewal             |
+
+GoDaddy UK prices are shown before VAT (add 20%). Dollar figures are GoDaddy's US list prices
+from a price tracker (domainoffer.net, 2 Nov 2026), because GoDaddy blocks automated checks.
+Confirm the total at checkout. Other registrars, such as Cloudflare, often renew .co.uk more cheaply.
+
 ## 10. Sources
 
 Market prices and costs were gathered in October 2026. Most are agency or industry sites rather
@@ -355,5 +444,17 @@ than official statistics, so treat them as indicative.
 - Businesses without websites: [whito.co.uk (DSIT survey)](https://whito.co.uk/?p=15602);
   unclaimed Google profiles: [allerdale.gov.uk](https://www.allerdale.gov.uk/en/news-and-blog/a-third-of-allerdale-businesses-arent-listed-on-google-study-says/)
 - Local search behaviour: [brightlocal.com](https://brightlocal.com/research/local-seo-statistics/)
+- Outreach law: [ICO B2B marketing](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/business-to-business-marketing/),
+  [ICO electronic mail key concepts](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-direct-marketing-using-electronic-mail/key-concepts-for-direct-marketing-using-electronic-mail/),
+  [ICO telephone marketing](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/electronic-and-telephone-marketing/telephone-marketing/),
+  [Mayer Brown on DUAA fines](https://www.mayerbrown.com/en/insights/publications/2025/06/the-data-use-and-access-act-pecr-reform-rules-relating-to-electronic-marketing-and-cookies-in-the-uk)
+- Promotion: [Google service-area businesses](https://support.google.com/business/answer/2853879?hl=en-GB),
+  [Companies House advanced search](https://companieshouse.blog.gov.uk/2023/04/26/using-the-companies-house-advanced-search-function/),
+  [Bark costs (whito.co.uk)](https://whito.co.uk/trades/tools/bark-cost-uk/),
+  [UK keyword CPCs (seojuice.io)](https://seojuice.io/keyword-research/digital-marketing/digital-design/GB),
+  [Video prospecting (Atlassian/Loom)](https://www.atlassian.com/blog/loom/video-prospecting),
+  [Referral fee norms (agencyanalytics.com)](https://agencyanalytics.com/blog/agency-referral-fee)
+- Domain prices: [365i.co.uk](https://www.365i.co.uk/news/2025/10/15/the-real-cost-of-cheap-uk-domains/),
+  [domainoffer.net](https://domainoffer.net/tld/co.uk/GoDaddy)
 - Fake reviews law: [cms.law](https://cms.law/en/gbr/legal-updates/no-more-faux-five-stars-the-dmcc-act-bans-fake-reviews),
   [which.co.uk](https://www.which.co.uk/news/article/fake-reviews-and-sneaky-fees-banned-under-new-law-campaigned-for-by-which-aLzVp4g0S76D)
